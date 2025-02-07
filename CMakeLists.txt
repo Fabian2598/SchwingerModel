@@ -12,6 +12,7 @@ set(SOURCES
     src/gauge_conf.cpp
     src/variables.cpp
     src/main.cpp   
+    src/matrix_operations.cpp
     #src/hmc.cpp
 )
 

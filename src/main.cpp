@@ -5,8 +5,6 @@
 #include "gauge_conf.h"
 #include "matrix_operations.h"
 
-
-
 int main() {
     srand(time(0));
 	initialize_matrices(); //Intialize gamma matrices, identity and unit vectors
