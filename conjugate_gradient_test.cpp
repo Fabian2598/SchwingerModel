@@ -3,6 +3,8 @@
 #include <complex>
 #include <random>
 
+//This program solves a linear problem using the conjugate gradient method.
+//I just have to modify it to solve the Dirac equation and connect it with the rest of the Schwinger model.
 
 typedef std::complex<double> c_double;
 typedef std::vector<c_double> c_vector;
@@ -55,7 +57,6 @@ c_vector operator-(const c_vector& v1, const c_vector& v2){
 }
 
 int main (){
-    //Conjugate gradient method
     srand(0);
     int N = 4;
     c_matrix A(N,c_vector(N,0));
@@ -120,7 +121,3 @@ int main (){
 return 0;
 }
 
-//conjugate gradient  method
-
-//A = [[1,2,3],[2,1,2],[3,2,1]]
-//b = [1,2,3]
