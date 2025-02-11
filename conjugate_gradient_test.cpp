@@ -2,6 +2,7 @@
 #include <vector>
 #include <complex>
 #include <random>
+#include <ctime>
 
 //This program solves a linear problem using the conjugate gradient method.
 //I just have to modify it to solve the Dirac equation and connect it with the rest of the Schwinger model.
@@ -25,7 +26,7 @@ c_double dot(const c_vector& x,const c_vector& y){
     //Dot product of two vectors
     c_double z = 0;
     for(int i=0;i<x.size();i++){
-        z += x[i]*std::conj(y[i]);
+        z += x[i]*std::conj(y[i]); //Complex dot product
     }
     return z;
 }
@@ -57,14 +58,15 @@ c_vector operator-(const c_vector& v1, const c_vector& v2){
 }
 
 int main (){
+    //srand(time(0));
     srand(0);
     int N = 4;
     c_matrix A(N,c_vector(N,0));
     c_vector b(N,0);
     for (int i = 0; i<N; i++){
         for(int j = i+1; j<N; j++){
-            A[i][j] = 1.0*(std::rand() % 10);
-            A[j][i] = A[i][j];
+            A[i][j] = c_double(1.0*(std::rand() % 10), 1.0 * (std::rand() % 10));
+            A[j][i] = std::conj(A[i][j]);
         }
     }
 
@@ -77,7 +79,7 @@ int main (){
     std::cout << "--------------------" << std::endl;  
     std::cout << "b = " << std::endl;  
     for (int i = 0; i<N; i++){
-        b[i] = 1.0*(std::rand() % 10);
+        b[i] = c_double(1.0*(std::rand() % 10), 1.0 * (std::rand() % 10));
         std::cout << b[i] << " ";
     }
     std::cout << std::endl;
@@ -95,20 +97,17 @@ int main (){
     double err = 1;
     r = b - A_d(A,x);
     d = r;
-    c_double r_norm2;
+    c_double r_norm2 = dot(r,r);
     while(k<max_iter && err>tol){
         Ad = A_d(A,d); //c_vector
-        r_norm2 = dot(r,r); //c_double
         alpha = r_norm2/dot(d,Ad); //c_double
         x = x + alpha*d; //c_vector
         r = r - alpha*Ad; //c_vector
-        beta = dot(r,r)/r_norm2; //c_double
+		err = std::real(dot(r, r)); //c_double
+        beta = err/r_norm2; //c_double
         d = r + beta*d; //c_vector
-        err = 0;
-        for(int i = 0; i<N; i++){
-            err += std::abs(r[i]);
-        }
         std::cout << "Error: " << err << std::endl;
+		r_norm2 = err;
         k++;
     }
     std::cout << "Number of iterations: " << k << std::endl;
@@ -117,6 +116,14 @@ int main (){
         std::cout << x[i] << " ";
     }
     std::cout << std::endl;
+
+    x = A_d(A, x);
+        //this should print b
+    for (int i = 0; i < N; i++) {
+        std::cout << x[i] << " ";
+    }
+    std::cout << std::endl;
+    
 
 return 0;
 }

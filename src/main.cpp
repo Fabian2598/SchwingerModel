@@ -4,6 +4,7 @@
 #include <string>
 #include "gauge_conf.h"
 #include "matrix_operations.h"
+#include "conjugate_gradient.h"
 
 int main() {
     srand(time(0));
@@ -11,13 +12,14 @@ int main() {
 	Coordinates(); //Compute vectorized coordinates
     int Ntot = Ns * Nt;
     std::vector<std::vector<std::complex<double>>>Conf(Ntot, std::vector<std::complex<double>>(2, 0));
+    std::vector<std::vector<std::complex<double>>> chi = RandomChi();
 	//Test configuration//
     for (int i = 0; i < Ntot; i++) {
          for (int mu = 0; mu < 2; mu++) {
              Conf[i][mu] = RandomU1(); //Conf[Ns x Nt][mu in {0,1}]
          }
     }
-    std::vector<std::vector<std::complex<double>>> chi = RandomChi();
+    
     char Name[500];
     sprintf(Name, "Conf.txt");
     SaveConf(Conf, Name);
@@ -25,7 +27,40 @@ int main() {
     SaveConf(chi, Name);
     double m0 = 1;
     std::vector<std::vector<std::complex<double>>> phi;
-   
+    std::cout << "----Chi----" << std::endl;
+    for (int x = 0; x < Ns; x++) {
+        for (int t = 0; t < Nt; t++) {
+            int n = Coords[x][t];
+            std::cout << x << " " << t << " " << chi[n][0]
+                << " " << chi[n][1] << std::endl;
+        }
+    }
+    //Computes (DD^dagger)^-1 chi
+    
+    phi = conjugate_gradient(Conf, chi, m0);
+    /*
+    std::cout << "----Inversion----" << std::endl;
+    for (int x = 0; x < Ns; x++) {
+        for (int t = 0; t < Nt; t++) {
+            int n = Coords[x][t];
+            std::cout << x << " " << t << " " << phi[n][0]
+                << " " << phi[n][1] << std::endl;
+        }
+    }
+    */
+   //Let's multiply this by DD^dagger to check that the iversion is correct
+	//Computes (DD^dagger)(DD^dagger)^-1 chi = chi
+    
+    std::cout << "----Chi----" << std::endl;
+    chi = D_D_dagger_phi(Conf, phi, m0);
+    for (int x = 0; x < Ns; x++) {
+        for (int t = 0; t < Nt; t++) {
+            int n = Coords[x][t];
+            std::cout << x << " " << t << " " << chi[n][0]
+                << " " << chi[n][1] << std::endl;
+        }
+    }
+    
     return 0;
 }
 

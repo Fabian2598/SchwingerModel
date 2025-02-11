@@ -13,6 +13,7 @@ set(SOURCES
     src/variables.cpp
     src/main.cpp   
     src/matrix_operations.cpp
+    src/conjugate_gradient.cpp
     #src/hmc.cpp
 )
 
@@ -30,5 +31,6 @@ target_include_directories("SM_${NS}x${NT}"
         ${PROJECT_SOURCE_DIR}/include
 )
 #PROJECT_SOURCE_DIR: it indicates where src is located
+#cmake -G "MinGW Makefiles" -DCMAKE_CXX_COMPILER="C:/msys64/ucrt64/bin/g++.exe" -DCMAKE_C_COMPILER="C:/msys64/ucrt64/bin/gcc.exe" ../
 
 
