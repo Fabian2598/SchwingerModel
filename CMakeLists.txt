@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.29.5)
+cmake_minimum_required(VERSION 3.26.5)
 set(CMAKE_CXX_STANDARD 11) 
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_C_COMPILER "C:/msys64/ucrt64/bin/gcc.exe")
-set(CMAKE_CXX_COMPILER "C:/msys64/ucrt64/bin/g++.exe")
+#set(CMAKE_C_COMPILER "C:/msys64/ucrt64/bin/gcc.exe")
+#set(CMAKE_CXX_COMPILER "C:/msys64/ucrt64/bin/g++.exe")
 
 project(Schwinger_model VERSION 1.0)
 
@@ -14,7 +14,7 @@ set(SOURCES
     src/main.cpp   
     src/matrix_operations.cpp
     src/conjugate_gradient.cpp
-    #src/hmc.cpp
+    src/hmc.cpp
 )
 
 set(NS "5") 
@@ -22,7 +22,12 @@ set(NT "5")
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 # Add an executable with the above sources
-add_executable("SM_${NS}x${NT}" ${SOURCES} "include/hmc.h" "include/matrix_operations.h")
+add_executable("SM_${NS}x${NT}" ${SOURCES} "include/hmc.h"
+ "include/matrix_operations.h" 
+ "include/conjugate_gradient.h" 
+ "include/variables.h" 
+ "include/gauge_conf.h" 
+ "include/statistics.h")
 
 # Set the directories that should be included in the build command for this target
 # when running g++ these will be included as -I/directory/path/

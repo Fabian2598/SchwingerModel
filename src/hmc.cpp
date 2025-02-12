@@ -42,22 +42,32 @@ void HMC::StapleHMC(const std::vector<std::vector<std::complex<double>>>& U) {
 //Pure gauge force
 void HMC::Force_G(const std::vector<std::vector<std::complex<double>>>& U) {
     StapleHMC(U); //Computes staples
+    //NOTE: I HAVE TO CALL FORCE_F FIRST
 	for (int x = 0; x < Ns; x++) {
 		for (int t = 0; t < Nt; t++) {
 			int i = Coords[x][t];
 			for (int mu = 0; mu < 2; mu++) {
-				Forces[i][mu] = -beta * std::imag(U[i][mu] * std::conj(staples[i][mu]));
+				Forces[i][mu] += -beta * std::imag(U[i][mu] * std::conj(staples[i][mu]));
 			}
 		}
 	}
 }
 
 //Fermions force
-void HMC::Force_F(const std::vector<std::vector<std::complex<double>>>& U) {
-    //have to finish this.
-
+//2* Re[ Psi^dagger partial D / partial omega(n) D Psi], where Psi = (DD^dagger)^(-1)phi, phi = D chi
+void HMC::Force(const std::vector<std::vector<std::complex<double>>>& U,const std::vector<std::vector<std::complex<double>>>& phi) {
+    std::vector<std::vector<std::complex<double>>> psi;
+    psi = conjugate_gradient(U, phi, m0);  //(DD^dagger)^-1 phi
+    std::vector<std::vector<std::complex<double>>> D_dagger_psi = D_dagger_phi(U, psi, m0);
+    
+    Forces = phi_dag_partialD_phi(U,psi,D_dagger_psi); //psi^dagger partial D / partial omega(n) D psi
+    //StapleHMC(U); //Computes staples 
+    //Force_G(U); //Gauge force 
 }
 
+
+
+/*
 double HMC::DeltaH() {
     Compute_Plaquette01();
     double deltaH = 0.0;
@@ -151,3 +161,5 @@ void HMC::HMC_algorithm(const int& MD_steps,
     }
     Ep = mean(SpVector) / (Ntot * 1.0); dEp = Jackknife_error(SpVector, 20) / (Ntot * 1.0);
 } 
+
+*/

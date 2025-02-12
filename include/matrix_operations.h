@@ -17,15 +17,15 @@ inline int mod(int a, int b) {
 	return r < 0 ? r + b : r;
 }
 
-//right periodic boundary
+//right periodic boundary x+hat{mu}
 inline int rpb(const int& x, const int& t, const int& mu) {
 	return Coords[mod(x + hat_mu[mu][1], Ns)][mod(t + hat_mu[mu][0], Nt)];
 }
-//left periodic boundary
+//left periodic boundary x-hat{mu}
 inline int lpb(const int& x, const int& t, const int& mu) {
 	return Coords[mod(x - hat_mu[mu][1], Ns)][mod(t - hat_mu[mu][0], Nt)];
 }
-//right fermionic boundary (antiperiodic in time)
+//right fermionic boundary (antiperiodic in time) x+hat{mu}
 inline std::complex<double> rfb(const std::vector<std::vector<std::complex<double>>>& phi, const int& x, const int& t, const int& mu, const int& bet) {
 	//time
 	if (mu == 0) {
@@ -42,7 +42,7 @@ inline std::complex<double> rfb(const std::vector<std::vector<std::complex<doubl
 	}
 }
 
-//left fermionic boundary (antiperiodic in time)
+//left fermionic boundary (antiperiodic in time) x-hat{mu}
 inline std::complex<double> lfb(const std::vector<std::vector<std::complex<double>>>& phi, const int& x, const int& t, const int& mu, const int& bet) {
 	//time
 	if (mu == 0) {
@@ -65,5 +65,10 @@ std::vector<std::vector<std::complex<double>>> D_phi(const std::vector<std::vect
 std::vector<std::vector<std::complex<double>>> D_dagger_phi(const std::vector<std::vector<std::complex<double>>>& U, const std::vector<std::vector<std::complex<double>>>& phi, const double& m0);
 //D D^dagger phi
 std::vector<std::vector<std::complex<double>>> D_D_dagger_phi(const std::vector<std::vector<std::complex<double>>>& U, const std::vector<std::vector<std::complex<double>>>& phi, const double& m0);
+
+
+//psi^dag \partial D / \partial omega(z) psi
+std::vector<std::vector<double>> phi_dag_partialD_phi(const std::vector<std::vector<std::complex<double>>>& U,
+ const std::vector<std::vector<std::complex<double>>>& left, const std::vector<std::vector<std::complex<double>>>& right);
 
 #endif

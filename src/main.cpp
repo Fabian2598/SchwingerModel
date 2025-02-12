@@ -5,6 +5,7 @@
 #include "gauge_conf.h"
 #include "matrix_operations.h"
 #include "conjugate_gradient.h"
+#include "hmc.h"
 
 int main() {
     srand(time(0));
@@ -26,20 +27,8 @@ int main() {
     sprintf(Name, "Chi.txt");
     SaveConf(chi, Name);
     double m0 = 1;
-    std::vector<std::vector<std::complex<double>>> phi;
-    std::cout << "----Chi----" << std::endl;
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            int n = Coords[x][t];
-            std::cout << x << " " << t << " " << chi[n][0]
-                << " " << chi[n][1] << std::endl;
-        }
-    }
-    //Computes (DD^dagger)^-1 chi
-    
-    phi = conjugate_gradient(Conf, chi, m0);
-    /*
-    std::cout << "----Inversion----" << std::endl;
+    std::vector<std::vector<std::complex<double>>> phi = D_phi(Conf, chi, m0);
+    std::cout << "---------psi = Dchi---------" << std::endl;
     for (int x = 0; x < Ns; x++) {
         for (int t = 0; t < Nt; t++) {
             int n = Coords[x][t];
@@ -47,20 +36,40 @@ int main() {
                 << " " << phi[n][1] << std::endl;
         }
     }
-    */
-   //Let's multiply this by DD^dagger to check that the iversion is correct
-	//Computes (DD^dagger)(DD^dagger)^-1 chi = chi
-    
-    std::cout << "----Chi----" << std::endl;
-    chi = D_D_dagger_phi(Conf, phi, m0);
+    std::cout  << std::endl;
+
+    std::vector<std::vector<std::complex<double>>> psi = conjugate_gradient(Conf, phi, m0);  //(DD^dagger)^-1 phi
+    std::cout << "---------(DD^dagger)^-1 psi---------" << std::endl;
     for (int x = 0; x < Ns; x++) {
         for (int t = 0; t < Nt; t++) {
             int n = Coords[x][t];
-            std::cout << x << " " << t << " " << chi[n][0]
-                << " " << chi[n][1] << std::endl;
+            std::cout << x << " " << t << " " << psi[n][0]
+                << " " << psi[n][1] << std::endl;
+        }
+    }
+    std::cout  << std::endl;
+    std::vector<std::vector<std::complex<double>>> D_dagger_psi = D_dagger_phi(Conf, psi, m0);
+    std::cout << "---------D^dagger (DD^dagger)^-1 psi---------" << std::endl;
+    for (int x = 0; x < Ns; x++) {
+        for (int t = 0; t < Nt; t++) {
+            int n = Coords[x][t];
+            std::cout << x << " " << t << " " << D_dagger_psi[n][0]
+                << " " << D_dagger_psi[n][1] << std::endl;
+        }
+    }
+    std::cout  << std::endl;
+    std::vector<std::vector<double>> Forces = phi_dag_partialD_phi(Conf,psi,D_dagger_psi); //psi^dagger partial D / partial omega(n) D psi
+     
+    for (int x = 0; x < Ns; x++) {
+        for (int t = 0; t < Nt; t++) {
+            int n = Coords[x][t];
+            std::cout << x << " " << t << " " << Forces[n][0]
+                << " " << Forces[n][1] << std::endl;
         }
     }
     
+ 
+  
     return 0;
 }
 

@@ -73,3 +73,31 @@ std::vector<std::vector<std::complex<double>>> D_dagger_phi(const std::vector<st
 std::vector<std::vector<std::complex<double>>> D_D_dagger_phi(const std::vector<std::vector<std::complex<double>>>& U, const std::vector<std::vector<std::complex<double>>>& phi, const double& m0) {
 	return D_phi(U, D_dagger_phi(U, phi, m0), m0);
 }
+
+
+//2* Re ( left^dag \partial D / \partial omega(z) right )
+std::vector<std::vector<double>> phi_dag_partialD_phi(const std::vector<std::vector<std::complex<double>>>& U,
+ const std::vector<std::vector<std::complex<double>>>& left,const std::vector<std::vector<std::complex<double>>>& right){
+	int Ntot = Ns * Nt;
+	std::vector<std::vector<double>> Dphi(Ntot, std::vector<double>(2, 0)); //Dphi[Ntot][2]
+	for (int x = 0; x < Ns; x++) {
+		for (int t = 0; t < Nt; t++) {
+			int n = Coords[x][t];
+			for (int mu = 0; mu < 2; mu++) {
+				Dphi[n][mu] = 0;
+				for (int alf = 0; alf < 2; alf++) {
+					for (int bet = 0; bet < 2; bet++) {
+						Dphi[n][mu] +=  std::imag(
+						std::conj(left[n][alf]) * (Identity[alf][bet] - gamma_mat[mu][alf][bet]) * U[n][mu] * rfb(right, x, t, mu, bet)
+						- std::conj(rfb(left, x, t, mu, alf)) * (Identity[alf][bet] + gamma_mat[mu][alf][bet]) * std::conj(U[n][mu]) * right[n][bet]
+						);
+					}
+				}
+				
+			}
+		}
+	}
+
+	return Dphi;
+ }
+	
