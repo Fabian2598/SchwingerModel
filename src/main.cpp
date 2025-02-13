@@ -8,7 +8,7 @@
 #include "hmc.h"
 
 int main() {
-    srand(time(0));
+    srand(0);//time(0);
 	initialize_matrices(); //Intialize gamma matrices, identity and unit vectors
 	Coordinates(); //Compute vectorized coordinates
     int Ntot = Ns * Nt;
@@ -26,7 +26,7 @@ int main() {
     SaveConf(Conf, Name);
     sprintf(Name, "Chi.txt");
     SaveConf(chi, Name);
-    double m0 = 1;
+    double m0 = 1, beta = 1;
     std::vector<std::vector<std::complex<double>>> phi = D_phi(Conf, chi, m0);
     std::cout << "---------psi = Dchi---------" << std::endl;
     for (int x = 0; x < Ns; x++) {
@@ -37,38 +37,29 @@ int main() {
         }
     }
     std::cout  << std::endl;
-
-    std::vector<std::vector<std::complex<double>>> psi = conjugate_gradient(Conf, phi, m0);  //(DD^dagger)^-1 phi
-    std::cout << "---------(DD^dagger)^-1 psi---------" << std::endl;
+    int MD_steps = 10;
+    double trajectory_length = 1;
+    HMC hmc = HMC(MD_steps, trajectory_length, 1, 1, 1, beta, Ns, Nt, Ntot, m0); 
+    hmc.Leapfrog(Conf, phi); 
+    std::vector<std::vector<std::complex<double>>> ConfCopy = hmc.getConfcopy();
+    std::cout << "---------Conf after leapfrog---------" << std::endl;
     for (int x = 0; x < Ns; x++) {
         for (int t = 0; t < Nt; t++) {
             int n = Coords[x][t];
-            std::cout << x << " " << t << " " << psi[n][0]
-                << " " << psi[n][1] << std::endl;
+            std::cout << x << " " << t << " " << ConfCopy[n][0]
+                << " " << ConfCopy[n][1] << std::endl;
         }
     }
-    std::cout  << std::endl;
-    std::vector<std::vector<std::complex<double>>> D_dagger_psi = D_dagger_phi(Conf, psi, m0);
-    std::cout << "---------D^dagger (DD^dagger)^-1 psi---------" << std::endl;
+    std::vector<std::vector<double>> PConfCopy = hmc.getMomentum();
+    std::cout << "---------Momentum Conf after leapfrog---------" << std::endl;
     for (int x = 0; x < Ns; x++) {
         for (int t = 0; t < Nt; t++) {
             int n = Coords[x][t];
-            std::cout << x << " " << t << " " << D_dagger_psi[n][0]
-                << " " << D_dagger_psi[n][1] << std::endl;
+            std::cout << x << " " << t << " " << PConfCopy[n][0]
+                << " " << PConfCopy[n][1] << std::endl;
         }
     }
-    std::cout  << std::endl;
-    std::vector<std::vector<double>> Forces = phi_dag_partialD_phi(Conf,psi,D_dagger_psi); //psi^dagger partial D / partial omega(n) D psi
-     
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            int n = Coords[x][t];
-            std::cout << x << " " << t << " " << Forces[n][0]
-                << " " << Forces[n][1] << std::endl;
-        }
-    }
-    
- 
+   
   
     return 0;
 }

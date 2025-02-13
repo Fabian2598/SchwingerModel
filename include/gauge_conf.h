@@ -89,8 +89,6 @@ public:
 	//indicates the link variable in x-direction or y-direction.
 	GaugeConf(const int& Nspace, const int& Ntime) : Ns(Nspace), Nt(Ntime), Ntot(Nspace*Ntime) {
 		Conf = std::vector<std::vector<std::complex<double>>>(Ntot, std::vector<std::complex<double>>(2, 0)); //Gauge configurationion copy
-		//staples = std::vector<std::vector<std::complex<double>>>(Ntot, std::vector<std::complex<double>>(2, 0)); //staples
-		//Coords = std::vector<std::vector<int>>(Ns, std::vector<int>(Nt, 0));
 		Plaquette01 = std::vector<std::complex<double>> (Ntot,0);
 		Plaquette01_prime = std::vector<std::complex<double>>(Ntot, 0);
 	}
