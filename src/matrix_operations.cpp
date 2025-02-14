@@ -6,7 +6,7 @@ std::vector<std::vector<std::vector<std::complex<double>>>> gamma_mat(2,
 );  //Pauli matrices
 std::complex<double> I_number(0, 1); //imaginary number
 std::vector<std::vector<std::complex<double>>>Identity(Ntot, std::vector<std::complex<double>>(2, 0));
-std::vector<std::vector<int>>hat_mu(Ntot, std::vector<int>(2, 0)); //hat_mu[mu][2] = {hat_mu_x, hat_mu_t}
+std::vector<std::vector<int>>hat_mu(Ntot, std::vector<int>(2, 0)); //hat_mu[mu][2] = {hat_mu_t, hat_mu_x}
 
 //Intialize gamma matrices, identity and unit vectors
 void initialize_matrices() {

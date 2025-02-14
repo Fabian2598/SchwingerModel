@@ -12,55 +12,15 @@ int main() {
 	initialize_matrices(); //Intialize gamma matrices, identity and unit vectors
 	Coordinates(); //Compute vectorized coordinates
     int Ntot = Ns * Nt;
-    std::vector<std::vector<std::complex<double>>>Conf(Ntot, std::vector<std::complex<double>>(2, 0));
-    std::vector<std::vector<std::complex<double>>> chi = RandomChi();
-	//Test configuration//
-    for (int i = 0; i < Ntot; i++) {
-         for (int mu = 0; mu < 2; mu++) {
-             Conf[i][mu] = RandomU1(); //Conf[Ns x Nt][mu in {0,1}]
-         }
-    }
+	GaugeConf GConf = GaugeConf(Ns, Nt);  //Gauge configuration
+	GConf.initialization(); //Random initialization of the gauge configuration
+    double m0 = 1, beta = 1; //bare mass and beta
     
-    char Name[500];
-    sprintf(Name, "Conf.txt");
-    SaveConf(Conf, Name);
-    sprintf(Name, "Chi.txt");
-    SaveConf(chi, Name);
-    double m0 = 1, beta = 1;
-    std::vector<std::vector<std::complex<double>>> phi = D_phi(Conf, chi, m0);
-    std::cout << "---------psi = Dchi---------" << std::endl;
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            int n = Coords[x][t];
-            std::cout << x << " " << t << " " << phi[n][0]
-                << " " << phi[n][1] << std::endl;
-        }
-    }
-    std::cout  << std::endl;
     int MD_steps = 10;
     double trajectory_length = 1;
-    HMC hmc = HMC(MD_steps, trajectory_length, 1, 1, 1, beta, Ns, Nt, Ntot, m0); 
-    hmc.Leapfrog(Conf, phi); 
-    std::vector<std::vector<std::complex<double>>> ConfCopy = hmc.getConfcopy();
-    std::cout << "---------Conf after leapfrog---------" << std::endl;
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            int n = Coords[x][t];
-            std::cout << x << " " << t << " " << ConfCopy[n][0]
-                << " " << ConfCopy[n][1] << std::endl;
-        }
-    }
-    std::vector<std::vector<double>> PConfCopy = hmc.getMomentum();
-    std::cout << "---------Momentum Conf after leapfrog---------" << std::endl;
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            int n = Coords[x][t];
-            std::cout << x << " " << t << " " << PConfCopy[n][0]
-                << " " << PConfCopy[n][1] << std::endl;
-        }
-    }
+    HMC hmc = HMC(GConf,MD_steps, trajectory_length, 1, 1, 1, beta, Ns, Nt, Ntot, m0);   
+    hmc.HMC_Update(); 
    
-  
     return 0;
 }
 
@@ -72,11 +32,11 @@ int main() {
     double trajectory_length;
     int MD_steps;
     //---Input data---//
-    std::cout << "-----------------------" << std::endl;
-    std::cout << "|Pure Gauge U(1) theory|" << std::endl;
-    std::cout << "-----------------------" << std::endl;
+    std::cout << "----------------------------" << std::endl;
+    std::cout << "|  Two-flavor Schwinger model   |" << std::endl;
+    std::cout << "| Hybrid Monte Carlo simulation |" << std::endl;
+    std::cout << "----------------------------" << std::endl;
     std::cout << "Ns " << Ns << " Nt " << Nt << std::endl;
-    std::cout << "----HMC----" << std::endl;
     std::cout << "Molecular dynamics steps: ";
     std::cin >> MD_steps;
     std::cout << "Trajectory length: ";

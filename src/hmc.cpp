@@ -1,55 +1,16 @@
 #include "hmc.h"
 #include <iomanip>
 
-//Compute staple at coordinate (x,t) in the mu-direction
-void HMC::StapleHMC(const std::vector<std::vector<std::complex<double>>>& U) {
-    //x and t --> lattice sites. x: rows, t: columns
-    // WARNING: Some references define the staple as the conjugate of this:
-    //U_v(x) U_m(x+v) U*_v(x+m) + U*_v(x-v) U_m(x-v) U_v(x+m-v)
-    //mu = 0 time direction, mu = 1 space direction
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            //These coordinates could change depending on the conventions 
-            int x1 = modulo(x - 1, Ns); 
-            int x_1 = modulo(x + 1, Ns);
-            int t1 = modulo(t - 1, Nt);
-            int t_1 = modulo(t + 1, Nt);
-            int i = Coords[x][t];
-            for (int mu = 0; mu < 2; mu++) {
-                if (mu == 0) {
-                    const std::complex<double>& conf1 = U[i][1];
-                    const std::complex<double>& conf2 = U[Coords[x1][t]][0];
-                    const std::complex<double>& conf3 = U[Coords[x][t1]][1];
-                    const std::complex<double>& conf4 = U[Coords[x_1][t]][1];
-                    const std::complex<double>& conf5 = U[Coords[x_1][t]][0];
-                    const std::complex<double>& conf6 = U[Coords[x_1][t1]][1];
-                    staples[i][mu] = conf1 * conf2 * std::conj(conf3) +
-                        std::conj(conf4) * conf5 * conf6;
-                }
-                else {
-                    const std::complex<double>& conf1 = U[i][0];
-                    const std::complex<double>& conf2 = U[Coords[x][t1]][1];
-                    const std::complex<double>& conf3 = U[Coords[x1][t]][0];
-                    const std::complex<double>& conf4 = U[Coords[x][t_1]][0];
-                    const std::complex<double>& conf5 = U[Coords[x][t_1]][1];
-                    const std::complex<double>& conf6 = U[Coords[x1][t_1]][0];
-                    staples[i][mu] = conf1 * conf2 * std::conj(conf3) +
-                        std::conj(conf4) * conf5 * conf6;
-                }
-            }
-        }
-    }
-}
 
 //Pure gauge force
-void HMC::Force_G(const std::vector<std::vector<std::complex<double>>>& U) {
-    StapleHMC(U); //Computes staples
-    //NOTE: I HAVE TO CALL phi_dag_partialD_phi FIRST
+//NOTE: I HAVE TO CALL phi_dag_partialD_phi FIRST
+void HMC::Force_G(GaugeConf& GConfig) {
+    GConfig.Compute_Staple(); //Computes staples
 	for (int x = 0; x < Ns; x++) {
 		for (int t = 0; t < Nt; t++) {
 			int i = Coords[x][t];
 			for (int mu = 0; mu < 2; mu++) {
-				Forces[i][mu] += -beta * std::imag(U[i][mu] * std::conj(staples[i][mu]));
+				Forces[i][mu] += -beta * std::imag(GConfig.Conf[i][mu] * std::conj(GConfig.Staples[i][mu]));
 			}
 		}
 	}
@@ -57,44 +18,37 @@ void HMC::Force_G(const std::vector<std::vector<std::complex<double>>>& U) {
 
 //Fermions force
 //2* Re[ Psi^dagger partial D / partial omega(n) D Psi], where Psi = (DD^dagger)^(-1)phi, phi = D chi
-void HMC::Force(const std::vector<std::vector<std::complex<double>>>& U,const std::vector<std::vector<std::complex<double>>>& phi) {
+void HMC::Force(GaugeConf& GConfig,const std::vector<std::vector<std::complex<double>>>& phi) {
     std::vector<std::vector<std::complex<double>>> psi;
-    psi = conjugate_gradient(U, phi, m0);  //(DD^dagger)^-1 phi
-    Forces = phi_dag_partialD_phi(U,psi,D_dagger_phi(U, psi, m0)); //psi^dagger partial D / partial omega(n) D psi
+    psi = conjugate_gradient(GConfig.Conf, phi, m0);  //(DD^dagger)^-1 phi
+    Forces = phi_dag_partialD_phi(GConfig.Conf,psi,D_dagger_phi(GConfig.Conf, psi, m0)); //psi^dagger partial D / partial omega(n) D psi
     for (int x = 0; x < Ns; x++) {
 		for (int t = 0; t < Nt; t++) {
 			int i = Coords[x][t];
 			for (int mu = 0; mu < 2; mu++) {
-				Forces[i][mu] *= beta;
+				Forces[i][mu] *= beta; //I STILL HAVE TO CHECK THIS FACTOR
 			}
 		}
     }
-    Force_G(U); //Gauge force 
+    Force_G(GConfig); //Gauge force 
 }
 
 //Generates new configuration [U,Pi]
-//LATER REMOVE PHI AND CONF AS ARGUMENTS ...
-void HMC::Leapfrog( 
-const std::vector<std::vector<std::complex<double>>>& Conf,const std::vector<std::vector<std::complex<double>>>& phi ){
+void HMC::Leapfrog(const std::vector<std::vector<std::complex<double>>>& phi){
         double StepSize = trajectory_length / (MD_steps * 1.0);
-        PConf = RandomMomentum(); //this will go in another function later
-        char Name[500];
-        sprintf(Name, "PConf.txt");
-        SavePIConf(PConf, Name);
         PConf_copy = PConf;
-        Conf_copy = Conf;
         std::complex<double> inumber(0.0, 1.0); //imaginary number
-
+		GConf_copy = GConf; //Copy of the gauge configuration
         //Conf_copy = Conf*exp(0.5i * StepSize * PConf_copy)
         for (int x = 0; x < Ns; x++) {
             for (int t = 0; t < Nt; t++) {
                 int i = Coords[x][t];
                 for (int mu = 0; mu < 2; mu++) {
-                    Conf_copy[i][mu] = Conf_copy[i][mu] * exp(0.5 * inumber * StepSize * PConf_copy[i][mu]);
+                    GConf_copy.Conf[i][mu] = GConf_copy.Conf[i][mu] * exp(0.5 * inumber * StepSize * PConf_copy[i][mu]);
                 }
             }
         }
-		Force(Conf_copy,phi);
+		Force(GConf_copy,phi); 
         for (int step = 1; step < MD_steps - 1; step++) {
             //PConf_copy += StepSize*force
             //Conf_copy *= exp(i * StepSize * PConf_copy)
@@ -103,11 +57,11 @@ const std::vector<std::vector<std::complex<double>>>& Conf,const std::vector<std
                     int i = Coords[x][t];
                     for (int mu = 0; mu < 2; mu++) {
                         PConf_copy[i][mu] += StepSize *  Forces[i][mu];
-                        Conf_copy[i][mu] *= exp(inumber * StepSize * PConf_copy[i][mu]);        
+                        GConf_copy.Conf[i][mu] *= exp(inumber * StepSize * PConf_copy[i][mu]);
                     }
                 }
             }
-            Force(Conf_copy,phi);
+            Force(GConf_copy,phi);
         }
         //PConf_copy += StepSize*force
         //Conf_copy = Conf*exp(0.5i * StepSize* PConf_copy)
@@ -116,59 +70,127 @@ const std::vector<std::vector<std::complex<double>>>& Conf,const std::vector<std
                 int i = Coords[x][t];
                 for (int mu = 0; mu < 2; mu++) {
                     PConf_copy[i][mu] += StepSize * Forces[i][mu];
-                    Conf_copy[i][mu] *= exp(0.5 * inumber * StepSize * PConf_copy[i][mu]);
+                    GConf_copy.Conf[i][mu] *= exp(0.5 * inumber * StepSize * PConf_copy[i][mu]);
                     
                 }
             }
         }
-       // SaveConf(Conf_copy,  "testing_confCopy.txt");
-
+		//----------------This is just for testing----------------//
+        std::cout << "---------Conf after leapfrog---------" << std::endl;
+        for (int x = 0; x < Ns; x++) {
+            for (int t = 0; t < Nt; t++) {
+                int n = Coords[x][t];
+                std::cout << x << " " << t << " " << GConf_copy.Conf[n][0]
+                    << " " << GConf_copy.Conf[n][1] << std::endl;
+            }
+        }
+        std::cout << "---------Momentum Conf after leapfrog---------" << std::endl;
+        for (int x = 0; x < Ns; x++) {
+            for (int t = 0; t < Nt; t++) {
+                int n = Coords[x][t];
+                std::cout << x << " " << t << " " << PConf_copy[n][0]
+                    << " " << PConf_copy[n][1] << std::endl;
+            }
+        }
+        //-------------------------------------------------------//
 }
 
-/*
-double HMC::DeltaH() {
-    Compute_Plaquette01();
-    double deltaH = 0.0;
-    double dS = 0.0;
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            dS += beta * std::real(Plaquette01[Coords[x][t]] - Plaquette01_prime[Coords[x][t]]);
-            for (int mu = 0; mu < 2; mu++) {
-                deltaH += 0.5 * (PConf_copy[Coords[x][t]][mu] * PConf_copy[Coords[x][t]][mu] - PConf[Coords[x][t]][mu] * PConf[Coords[x][t]][mu]);
-            }  
+double HMC::Action(GaugeConf& GConfig, const std::vector<std::vector<std::complex<double>>>& phi) {
+    double action = 0;
+    std::vector<std::vector<std::complex<double>>> phi_dagg(Ntot, std::vector<std::complex<double>>(2, 0)); //phi^dagger
+    GConfig.Compute_Plaquette01();
+    //Gauge contribution
+	for (int i = 0; i < Ntot; i++) {
+        action += beta * std::real(GConfig.Plaquette01[i]);
+		phi_dagg[i][0] = std::conj(phi[i][0]);
+        phi_dagg[i][1] = std::conj(phi[i][1]);
+	}
+    //Fermions contribution
+	action += std::real( dot(phi_dagg, conjugate_gradient(GConfig.Conf, phi, m0))); //Phi^dagger (DD^dagger)^-1 Phi
+    return action;
+}
+
+double HMC::Hamiltonian(GaugeConf& GConfig, const std::vector<std::vector<double>>& Pi,const std::vector<std::vector<std::complex<double>>>& phi) {
+    double H = 0;
+    //Momentum contribution
+    for (int i = 0; i < Ntot; i++) {
+        for (int mu = 0; mu < 2; mu++) {
+			H += 0.5 * Pi[i][mu] * Pi[i][mu];
         }
     }
-    deltaH += dS;
-    return deltaH;
+    //Action contribution
+    H += Action(GConfig,phi);
+
+    return H;
 }
 
-
-void HMC::HMC_Update(const int& MD_steps, const double& trajectory_length){
-    PConf = RandomMomentum();//random momentum conf sampled from a normal distribution
-    Leapfrog(MD_steps, trajectory_length); //Evolve [Pi] and [U] (updates PConf_copy and Conf_copy)
-    double deltaH = DeltaH(); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
+void HMC::HMC_Update() {
+	PConf = RandomMomentum(); //random momentum conf sampled from a normal distribution
+    //pseudofermions phi = D chi, where chi is normaly sampled
+    std::vector<std::vector<std::complex<double>>> chi = RandomChi();
+    std::vector<std::vector<std::complex<double>>> phi = D_phi(GConf.Conf, chi, m0);
+    /***********************************For testing***********************************/
+    char Name[500];
+    sprintf(Name, "PConf.txt");
+    SavePIConf(PConf, Name);
+    sprintf(Name, "Conf.txt");
+    SaveConf(GConf.Conf, Name);
+    sprintf(Name, "Chi.txt");
+    SaveConf(chi, Name);
+    
+    std::cout << "---------phi = Dchi---------" << std::endl;
+    for (int x = 0; x < Ns; x++) {
+        for (int t = 0; t < Nt; t++) {
+            int n = Coords[x][t];
+            std::cout << x << " " << t << " " << phi[n][0]
+                << " " << phi[n][1] << std::endl;
+        }
+    }
+    std::cout << std::endl;
+    std::vector<std::vector<std::complex<double>>> psi = conjugate_gradient(GConf.Conf, phi, m0);  //(DD^dagger)^-1 phi
+    std::cout << "---------(DD^dagger)^-1 psi---------" << std::endl;
+    for (int x = 0; x < Ns; x++) {
+        for (int t = 0; t < Nt; t++) {
+            int n = Coords[x][t];
+            std::cout << x << " " << t << " " << psi[n][0]
+                << " " << psi[n][1] << std::endl;
+        }
+    }
+    std::cout << std::endl;
+    std::cout << "---------Force of original conf---------" << std::endl;
+    Force(GConf, phi); //force_G + fermions
+    for (int x = 0; x < Ns; x++) {
+        for (int t = 0; t < Nt; t++) {
+            int n = Coords[x][t];
+            std::cout << x << " " << t << " " << Forces[n][0]
+                << " " << Forces[n][1] << std::endl;
+        }
+    }
+	std::cout << "---------Action of original conf---------" << std::endl;
+	std::cout << Action(GConf, phi) << std::endl;
+	std::cout << "---------Hamiltonian of original conf---------" << std::endl;
+	std::cout << Hamiltonian(GConf, PConf, phi) << std::endl;
+    //**************************************************************//
+    Leapfrog(phi); //Evolve [Pi] and [U] 
+    double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi)- Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
     double r = rand_range(0, 1);
-    if (r<= exp(-deltaH)){
+    if (r <= exp(-deltaH)) {
         //Accept the new configuration
-        Conf = Conf_copy;
+        GConf = GConf_copy;
     }
     //Else configuration is not modified.
 }
 
-//HMC algorithm
-void HMC::HMC_algorithm(const int& MD_steps, 
-	const double& trajectory_length, const int& Ntherm, 
-	const int& Nmeas, const int& Nsteps){
 
+void HMC::HMC_algorithm(){
     std::vector<double> SpVector(Nmeas);
-    initialization();
-    for(int i = 0; i < Ntherm; i++) {HMC_Update(MD_steps,trajectory_length);} //Thermalization
+	GConf.initialization(); //Intialize the gauge configuration
+    for(int i = 0; i < Ntherm; i++) {HMC_Update();} //Thermalization
     for(int i = 0; i < Nmeas; i++) {
-        HMC_Update(MD_steps,trajectory_length);
-        SpVector[i] = MeasureSp_HMC(); 
-        for(int j = 0; j < Nsteps; j++) {HMC_Update(MD_steps,trajectory_length);} //Decorrelation
+        HMC_Update();
+        SpVector[i] = GConf.MeasureSp_HMC(); //Plaquettes are computed when the action is called
+        for(int j = 0; j < Nsteps; j++) {HMC_Update();} //Decorrelation
     }
     Ep = mean(SpVector) / (Ntot * 1.0); dEp = Jackknife_error(SpVector, 20) / (Ntot * 1.0);
 } 
 
-*/
