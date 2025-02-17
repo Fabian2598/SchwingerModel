@@ -75,24 +75,7 @@ void HMC::Leapfrog(const std::vector<std::vector<std::complex<double>>>& phi){
                 }
             }
         }
-		//----------------This is just for testing----------------//
-        std::cout << "---------Conf after leapfrog---------" << std::endl;
-        for (int x = 0; x < Ns; x++) {
-            for (int t = 0; t < Nt; t++) {
-                int n = Coords[x][t];
-                std::cout << x << " " << t << " " << GConf_copy.Conf[n][0]
-                    << " " << GConf_copy.Conf[n][1] << std::endl;
-            }
-        }
-        std::cout << "---------Momentum Conf after leapfrog---------" << std::endl;
-        for (int x = 0; x < Ns; x++) {
-            for (int t = 0; t < Nt; t++) {
-                int n = Coords[x][t];
-                std::cout << x << " " << t << " " << PConf_copy[n][0]
-                    << " " << PConf_copy[n][1] << std::endl;
-            }
-        }
-        //-------------------------------------------------------//
+
 }
 
 double HMC::Action(GaugeConf& GConfig, const std::vector<std::vector<std::complex<double>>>& phi) {
@@ -101,12 +84,13 @@ double HMC::Action(GaugeConf& GConfig, const std::vector<std::vector<std::comple
     GConfig.Compute_Plaquette01();
     //Gauge contribution
 	for (int i = 0; i < Ntot; i++) {
-        action += beta * std::real(GConfig.Plaquette01[i]);
+        action += beta * std::real(1.0-GConfig.Plaquette01[i]);
 		phi_dagg[i][0] = std::conj(phi[i][0]);
         phi_dagg[i][1] = std::conj(phi[i][1]);
 	}
     //Fermions contribution
-	action += std::real( dot(phi_dagg, conjugate_gradient(GConfig.Conf, phi, m0))); //Phi^dagger (DD^dagger)^-1 Phi
+    //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
+	action += beta*std::real( dot(phi, conjugate_gradient(GConfig.Conf, phi, m0))); 
     return action;
 }
 
@@ -129,48 +113,6 @@ void HMC::HMC_Update() {
     //pseudofermions phi = D chi, where chi is normaly sampled
     std::vector<std::vector<std::complex<double>>> chi = RandomChi();
     std::vector<std::vector<std::complex<double>>> phi = D_phi(GConf.Conf, chi, m0);
-    /***********************************For testing***********************************/
-    char Name[500];
-    sprintf(Name, "PConf.txt");
-    SavePIConf(PConf, Name);
-    sprintf(Name, "Conf.txt");
-    SaveConf(GConf.Conf, Name);
-    sprintf(Name, "Chi.txt");
-    SaveConf(chi, Name);
-    
-    std::cout << "---------phi = Dchi---------" << std::endl;
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            int n = Coords[x][t];
-            std::cout << x << " " << t << " " << phi[n][0]
-                << " " << phi[n][1] << std::endl;
-        }
-    }
-    std::cout << std::endl;
-    std::vector<std::vector<std::complex<double>>> psi = conjugate_gradient(GConf.Conf, phi, m0);  //(DD^dagger)^-1 phi
-    std::cout << "---------(DD^dagger)^-1 psi---------" << std::endl;
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            int n = Coords[x][t];
-            std::cout << x << " " << t << " " << psi[n][0]
-                << " " << psi[n][1] << std::endl;
-        }
-    }
-    std::cout << std::endl;
-    std::cout << "---------Force of original conf---------" << std::endl;
-    Force(GConf, phi); //force_G + fermions
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            int n = Coords[x][t];
-            std::cout << x << " " << t << " " << Forces[n][0]
-                << " " << Forces[n][1] << std::endl;
-        }
-    }
-	std::cout << "---------Action of original conf---------" << std::endl;
-	std::cout << Action(GConf, phi) << std::endl;
-	std::cout << "---------Hamiltonian of original conf---------" << std::endl;
-	std::cout << Hamiltonian(GConf, PConf, phi) << std::endl;
-    //**************************************************************//
     Leapfrog(phi); //Evolve [Pi] and [U] 
     double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi)- Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
     double r = rand_range(0, 1);

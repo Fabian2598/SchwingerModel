@@ -69,7 +69,7 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
         r = r - alpha * Ad; //r_{i+1} = r_i - alpha*Ad_i
         err = std::real(dot(r, r)); //err = (r_{i+1},r_{i+1})
         if (err < tol) {
-            std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
+            //std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
             return x;
         }
         beta = err / r_norm2; //beta = (r_{i+1},r_{i+1})/(r_i,r_i)

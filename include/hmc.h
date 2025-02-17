@@ -16,20 +16,12 @@ public:
 		PConf = std::vector<std::vector<double>>(Ntot, std::vector<double>(2, 0));//Momenta PI
 		PConf_copy = std::vector<std::vector<double>>(Ntot, std::vector<double>(2, 0));//Momenta PI copy
 		Forces = std::vector<std::vector<double>>(Ntot, std::vector<double>(2, 0)); //Forces
+		Ep = 0; dEp = 0;
 		//std::cout << "HMC constructor" << std::endl;
 	}
 	~HMC() {} //std::cout << "HMC destructor" << std::endl;	
-	//---All these functions will be private in the future, except for the action---//
-	void Force_G(GaugeConf& GConfig); //force for gauge part
-	void Force(GaugeConf& GConfig, const std::vector<std::vector<std::complex<double>>>& phi); //force_G + fermions
-	void Leapfrog(const std::vector<std::vector<std::complex<double>>>& phi );
-	double Hamiltonian(GaugeConf& GConfig, const std::vector<std::vector<double>>& Pi, const std::vector<std::vector<std::complex<double>>>& phi);
-	//---------------------------------------------------------------------------------//
 	
-	double Action(GaugeConf& GConfig, const std::vector<std::vector<std::complex<double>>>& phi);
-	void HMC_Update();
 	void HMC_algorithm();
-	std::vector<std::vector<double>> getForce() { return Forces; }
 	double getEp() { return Ep; }
 	double getdEp() { return dEp; }
 
@@ -45,6 +37,14 @@ private:
 	std::vector<std::vector<double>> Forces;
 	GaugeConf GConf; //Gauge configuration
 	GaugeConf GConf_copy; //Copy of the gauge configuration
+
+	double Action(GaugeConf& GConfig, const std::vector<std::vector<std::complex<double>>>& phi);
+	void Force_G(GaugeConf& GConfig); //force for gauge part
+	void Force(GaugeConf& GConfig, const std::vector<std::vector<std::complex<double>>>& phi); //force_G + fermions
+	void Leapfrog(const std::vector<std::vector<std::complex<double>>>& phi );
+	double Hamiltonian(GaugeConf& GConfig, const std::vector<std::vector<double>>& Pi, const std::vector<std::vector<std::complex<double>>>& phi);
+	void HMC_Update();
+	
 };
 
 
@@ -87,7 +87,8 @@ inline std::vector<std::vector<std::complex<double>>> RandomChi() {
 	std::random_device rd;
 	std::default_random_engine generator;
 	generator.seed(rd()); //This generator has to be seeded differently. srand doesn't work here
-	std::normal_distribution<double> distribution(0.0, 1.0); //mu, standard deviation
+	// The result is very much affected by the standard deviation
+	std::normal_distribution<double> distribution(0.0, 0.5); //mu, standard deviation
 	std::vector<std::vector<std::complex<double>>> RandPI(Ns * Nt, std::vector<std::complex<double>>(2, 0));
 	for (int i = 0; i < Ns * Nt; i++) {
 		for (int mu = 0; mu < 2; mu++) {

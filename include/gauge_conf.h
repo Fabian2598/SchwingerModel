@@ -1,7 +1,7 @@
 #ifndef GAUGECONF_H_INCLUDED
 #define GAUGECONF_H_INCLUDED
-#include <iostream>
-#include <cmath> 
+//#include <iostream>
+//#include <cmath> 
 #include <complex>  
 #include "variables.h"
 #include "statistics.h"
