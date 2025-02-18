@@ -12,6 +12,7 @@ c_double dot(const c_matrix& x, const c_matrix& y) {
     return z;
 }
 
+
 //Overload + - and * operators
 template <typename T>
 c_matrix operator*(const T& lambda, const c_matrix& A) {
@@ -43,6 +44,8 @@ c_matrix operator-(const c_matrix& A, const c_matrix& B) {
     }
     return C;
 }
+
+
 
 //Conjugate gradient for computing (DD^dagger)^-1 phi, where phi is a vector represented by a matrix
 //phi[Ntot][2]
@@ -80,3 +83,43 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
     std::cout << "Did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
     return x;
 }
+
+/*
+// OpenMP parallelization
+#include <omp.h>
+//Overload + - and * operators
+template <typename T>
+c_matrix operator*(const T& lambda, const c_matrix& A) {
+    c_matrix B(A.size(), c_vector(A[0].size(), 0));
+#pragma omp parallel for
+    for (int i = 0; i < A.size(); i++) {
+        for (int j = 0; j < A[i].size(); j++) {
+            B[i][j] = lambda * A[i][j];
+        }
+    }
+    return B;
+}
+
+c_matrix operator+(const c_matrix& A, const c_matrix& B) {
+    c_matrix C(A.size(), c_vector(A[0].size(), 0));
+#pragma omp parallel for
+    for (int i = 0; i < A.size(); i++) {
+        for (int j = 0; j < A[i].size(); j++) {
+            C[i][j] = A[i][j] + B[i][j];
+        }
+    }
+    return C;
+}
+
+c_matrix operator-(const c_matrix& A, const c_matrix& B) {
+    c_matrix C(A.size(), c_vector(A[0].size(), 0));
+#pragma omp parallel for
+    for (int i = 0; i < A.size(); i++) {
+        for (int j = 0; j < A[i].size(); j++) {
+            C[i][j] = A[i][j] - B[i][j];
+        }
+    }
+    return C;
+}
+
+*/

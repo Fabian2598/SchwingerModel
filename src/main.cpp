@@ -6,7 +6,7 @@
 
 
 int main() {
-     srand(time(0));
+    srand(time(0));
     int Ntherm, Nmeas, Nsteps, Nbeta; //Simulation parameters
     double beta_min, beta_max; //Beta range
     double trajectory_length; //HMC parameters
