@@ -36,7 +36,7 @@ std::vector<std::vector<std::complex<double>>> D_phi(const std::vector<std::vect
 					for (int mu = 0; mu < 2; mu++) {
 						Dphi[n][alf] += -0.5 * (
 							(Identity[alf][bet] - gamma_mat[mu][alf][bet]) * U[n][mu] * rfb(phi, x, t, mu, bet)
-							+ (Identity[alf][bet] + gamma_mat[mu][alf][bet]) * std::conj(U[lpb(x, t, mu)][mu]) * lfb(phi, x, t, mu, bet)
+							+ (Identity[alf][bet] + gamma_mat[mu][alf][bet]) * std::conj(U[LeftPB[x][t][mu]][mu]) * lfb(phi, x, t, mu, bet)
 							);
 					}
 				}
@@ -58,7 +58,7 @@ std::vector<std::vector<std::complex<double>>> D_dagger_phi(const std::vector<st
 				for (int bet = 0; bet < 2; bet++) {
 					for (int mu = 0; mu < 2; mu++) {
 						Dphi[n][alf] += -0.5 * (
-							(Identity[alf][bet] - gamma_mat[mu][alf][bet]) * std::conj(U[lpb(x, t, mu)][mu]) * lfb(phi, x, t, mu, bet)
+							(Identity[alf][bet] - gamma_mat[mu][alf][bet]) * std::conj(U[LeftPB[x][t][mu]][mu]) * lfb(phi, x, t, mu, bet)
 							+ (Identity[alf][bet] + gamma_mat[mu][alf][bet]) * U[n][mu] * rfb(phi, x, t, mu, bet)
 							);
 					}

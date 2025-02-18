@@ -26,7 +26,7 @@ void HMC::Force(GaugeConf& GConfig,const std::vector<std::vector<std::complex<do
 		for (int t = 0; t < Nt; t++) {
 			int i = Coords[x][t];
 			for (int mu = 0; mu < 2; mu++) {
-				Forces[i][mu] *= beta; //I STILL HAVE TO CHECK THIS FACTOR
+				Forces[i][mu] *= beta; 
 			}
 		}
     }

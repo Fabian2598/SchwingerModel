@@ -33,7 +33,8 @@ void GaugeConf::Compute_Plaquette01() {
 	int Ntot = Ns * Nt;
 	for (int x = 0; x < Ns; x++) {
 		for (int t = 0; t < Nt; t++) {
-			int Coord0 = Coords[x][t], Coord1 = Coords[x][modulo(t - 1, Nt)], Coord2 = Coords[modulo(x - 1, Ns)][t];
+			//int Coord0 = Coords[x][t], Coord1 = Coords[x][modulo(t - 1, Nt)], Coord2 = Coords[modulo(x - 1, Ns)][t];
+			int Coord0 = Coords[x][t], Coord1 = LeftPB[x][t][0], Coord2 = LeftPB[x][t][1];
 			Plaquette01[Coord0] = Conf[Coord0][0] * Conf[Coord1][1] * std::conj(Conf[Coord2][0]) * std::conj(Conf[Coord0][1]);
 		}
 	}
@@ -47,29 +48,29 @@ void GaugeConf::Compute_Staple() {
     for (int x = 0; x < Ns; x++) {
         for (int t = 0; t < Nt; t++) {
             //These coordinates could change depending on the conventions 
-            int x1 = modulo(x - 1, Ns);
-            int x_1 = modulo(x + 1, Ns);
-            int t1 = modulo(t - 1, Nt);
-            int t_1 = modulo(t + 1, Nt);
+			int x1 = LeftPB[x][t][1]; //Coords[modulo(x - 1, Ns) ,t]
+			int x_1 = RightPB[x][t][1]; //Coords[modulo(x + 1, Ns) ,t]
+			int t1 = LeftPB[x][t][0]; //Coords[x, modulo(t - 1, Nt)]
+			int t_1 = RightPB[x][t][0]; //Coords[x, modulo(t + 1, Nt)]
             int i = Coords[x][t];
             for (int mu = 0; mu < 2; mu++) {
                 if (mu == 0) {
                     const std::complex<double>& conf1 = Conf[i][1];
-                    const std::complex<double>& conf2 = Conf[Coords[x1][t]][0];
-                    const std::complex<double>& conf3 = Conf[Coords[x][t1]][1];
-                    const std::complex<double>& conf4 = Conf[Coords[x_1][t]][1];
-                    const std::complex<double>& conf5 = Conf[Coords[x_1][t]][0];
-                    const std::complex<double>& conf6 = Conf[Coords[x_1][t1]][1];
+                    const std::complex<double>& conf2 = Conf[x1][0];
+                    const std::complex<double>& conf3 = Conf[t1][1];
+                    const std::complex<double>& conf4 = Conf[x_1][1];
+                    const std::complex<double>& conf5 = Conf[x_1][0];
+                    const std::complex<double>& conf6 = Conf[ x_1_t1[x][t] ][1]; //Coords[mod(x + 1, Ns)][mod(t - 1, Nt)];
                     Staples[i][mu] = conf1 * conf2 * std::conj(conf3) +
                         std::conj(conf4) * conf5 * conf6;
                 }
                 else {
                     const std::complex<double>& conf1 = Conf[i][0];
-                    const std::complex<double>& conf2 = Conf[Coords[x][t1]][1];
-                    const std::complex<double>& conf3 = Conf[Coords[x1][t]][0];
-                    const std::complex<double>& conf4 = Conf[Coords[x][t_1]][0];
-                    const std::complex<double>& conf5 = Conf[Coords[x][t_1]][1];
-                    const std::complex<double>& conf6 = Conf[Coords[x1][t_1]][0];
+                    const std::complex<double>& conf2 = Conf[t1][1];
+                    const std::complex<double>& conf3 = Conf[x1][0];
+                    const std::complex<double>& conf4 = Conf[t_1][0];
+                    const std::complex<double>& conf5 = Conf[t_1][1];
+                    const std::complex<double>& conf6 = Conf[ x1_t_1[x][t] ][0]; //Coords[mod(x - 1, Ns)][mod(t + 1, Nt)];
                     Staples[i][mu] = conf1 * conf2 * std::conj(conf3) +
                         std::conj(conf4) * conf5 * conf6;
                 }

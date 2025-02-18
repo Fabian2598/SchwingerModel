@@ -41,6 +41,7 @@ int main() {
     std::vector<double> Betas(Nbeta);
     initialize_matrices(); //Intialize gamma matrices, identity and unit vectors
 	Coordinates(); //Compute vectorized coordinates
+    periodic_boundary(); //Compute right and left periodic boundary
     int Ntot = Ns * Nt;
 	GaugeConf GConf = GaugeConf(Ns, Nt);  //Gauge configuration
     if (Nbeta == 1) {
