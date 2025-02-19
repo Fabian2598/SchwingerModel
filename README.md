@@ -4,16 +4,22 @@ Simulation of the two-flavor Schwinger Model with degenerate fermions. The simul
 
 The code implements Wilson fermions 
 
-$$S[\Phi,\Phi^\dagger,U_\mu]=\beta\sum_{x\in V}\sum_{\mu<\nu}\textrm{Re}\left(1-U_{\mu\nu}(x)\right)+\Phi^\dagger(\textbf{n}') (DD^\dagger)_{\textbf{n'},\textbf{n}}^{-1\,\alpha\beta}\Phi_\beta(\textbf{n}),$$ 
+$$S[\Phi,\Phi^\dagger,U_\mu]=\beta\sum_{x\in V}\sum_{\mu<\nu}\textrm{Re}\left(1-U_{\mu\nu}(x)\right)+\Phi_\alpha^\dagger(\textbf{n}') (DD^\dagger)_{\textbf{n'},\textbf{n}}^{-1\,\alpha\beta}\Phi{\beta} (\textbf{n})$$
 
 where $U_{\mu\nu}$ is the plaquette and $\Phi$ represents the pseudofermion field. The Dirac operator has the following structure 
-$$\begin{equation*}D\left[\textbf{n}',\textbf{n}\right]^{\alpha\beta} = \left(m_0 + 2\right)\delta^{\alpha\beta}\delta_{\textbf{n}',\textbf{n}} - \frac{1}{2} \sum_{\mu=\{0,1\}}
+
+$$D\left[\textbf{n}',\textbf{n}\right]^{\alpha\beta} = \left(m_0 + 2\right)\delta^{\alpha\beta}\delta_{\textbf{n}',\textbf{n}} - \frac{1}{2} \sum_{\mu=\{0,1\}}
 	\left[
 		\left(1-\sigma_{\mu}\right)^{\alpha\beta} U_{\mu}(\textbf{n}') \delta_{\textbf{n}' + \hat{\mu},\textbf{n} }
 		+\left(1+\sigma_{\mu}\right)^{\alpha\beta} U_{\mu}^\dagger(\textbf{n}'-\hat{\mu}) \delta_{\textbf{n}' - \hat{\mu},\textbf{n} }
-	\right]\end{equation*}.$$
+	\right].$$
 
-$$\sigma_0 = \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}, \quad \sigma_1 = \begin{pmatrix}0 & -i \\ i & 0\end{pmatrix}.$$ 
+$$
+\sigma_0 = \begin{pmatrix} 0 & 1 \\ 
+1 & 0 \end{pmatrix}, \quad \sigma_1 = \begin{pmatrix}0 & -i \\ 
+i & 0\end{pmatrix}.
+$$ 
+
 $\mu=0$ refers to time and $\mu=1$ to space. 
 
 
