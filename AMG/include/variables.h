@@ -1,0 +1,23 @@
+#ifndef VARIABLES_H_INCLUDED
+#define VARIABLES_H_INCLUDED
+#include "config.h"
+#include <vector>
+
+extern double pi;
+
+constexpr int Ns=NS; //We extract this value from config.h
+constexpr int Nt = NT; //We extract this value from config.h
+constexpr int block_x = BLOCK_X; //We extract this value from config.h
+constexpr int block_t = BLOCK_T; //We extract this value from config.h
+constexpr int x_elements = Ns/block_x; //Number of elements in the x direction
+constexpr int t_elements = Nt/block_t; //Number of elements in the t direction
+
+extern std::vector<std::vector<int>>Coords;
+extern std::vector<std::vector<int>>x_1_t1;
+extern std::vector<std::vector<int>>x1_t_1;
+extern std::vector<std::vector<std::vector<int>>>RightPB; //Right periodic boundary
+extern std::vector<std::vector<std::vector<int>>>LeftPB; //Left periodic boundary
+extern std::vector<std::vector<int>> Agg; //Aggregates[number_of_aggregate][vectorized_coordinate of the lattice point]
+//Each aggregate considers both spins 0 and 1
+
+#endif 

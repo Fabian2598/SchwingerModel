@@ -1,4 +1,7 @@
 CG.cpp
+*.txt
+!CmakeLists.txt
+!AMG/CmakeLists.txt
 Exersise8_solution.ipynb
 out
 .vs
@@ -6,3 +9,4 @@ build
 .ipynb_checkpoints
 .vscode
 CGcpp.cpython-39-x86_64-linux-gnu.so
+AMG/build

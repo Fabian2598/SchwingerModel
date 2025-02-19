@@ -1,0 +1,7 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+#define NS ${NS}
+#define NT ${NT}
+#define BLOCK_X ${BLOCK_X}
+#define BLOCK_T ${BLOCK_T}
+#endif
