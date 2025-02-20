@@ -1,5 +1,6 @@
 #include "hmc.h"
 #include <iomanip>
+#include <omp.h>
 
 
 //Pure gauge force
@@ -131,7 +132,7 @@ void HMC::HMC_algorithm(){
     for(int i = 0; i < Nmeas; i++) {
         HMC_Update();
         SpVector[i] = GConf.MeasureSp_HMC(); //Plaquettes are computed when the action is called
-        for(int j = 0; j < Nsteps; j++) {HMC_Update();} //Decorrelation
+		for (int j = 0; j < Nsteps; j++) { HMC_Update(); } //Decorrelation
     }
     Ep = mean(SpVector) / (Ntot * 1.0); dEp = Jackknife_error(SpVector, 20) / (Ntot * 1.0);
 } 

@@ -1,7 +1,7 @@
 CG.cpp
 *.txt
-!CmakeLists.txt
-!AMG/CmakeLists.txt
+!CMakeLists.txt
+!AMG/CMakeLists.txt
 Exersise8_solution.ipynb
 out
 .vs
