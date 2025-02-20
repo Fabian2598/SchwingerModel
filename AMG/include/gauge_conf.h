@@ -12,7 +12,6 @@ void SaveConf(std::vector<std::vector<std::complex<double>>>& Conf, char* Name);
 void PrintAggregates();
 
 //class GaugeConf;
-
 class GaugeConf {
 public:
 	GaugeConf() {} //Default constructor

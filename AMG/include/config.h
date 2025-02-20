@@ -4,4 +4,5 @@
 #define NT 8
 #define BLOCK_X 4
 #define BLOCK_T 4
+#define NTEST 5
 #endif

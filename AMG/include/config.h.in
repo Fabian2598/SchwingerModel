@@ -4,4 +4,5 @@
 #define NT ${NT}
 #define BLOCK_X ${BLOCK_X}
 #define BLOCK_T ${BLOCK_T}
+#define NTEST ${NTEST}$
 #endif

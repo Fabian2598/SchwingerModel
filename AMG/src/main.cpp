@@ -5,6 +5,7 @@
 #include "gauge_conf.h"
 
 
+
 int main() {
     std::cout << "Ns = " << Ns <<  " Nt = " << Nt << std::endl;
     std::cout << "block_x = " << block_x << " block_t = " << block_t << std::endl;
@@ -13,6 +14,7 @@ int main() {
     Coordinates(); //Vectorized coordinates
     Aggregates(); //Aggregates
     PrintAggregates();
+	//Print P e_i where e_i are the basis vectord. The result should return the test vectors chopped over the aggregates.
 
 
 	return 0;

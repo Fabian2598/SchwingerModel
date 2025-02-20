@@ -1,6 +1,7 @@
 #ifndef VARIABLES_H_INCLUDED
 #define VARIABLES_H_INCLUDED
 #include "config.h"
+#include <complex>
 #include <vector>
 
 extern double pi;
@@ -9,6 +10,7 @@ constexpr int Ns=NS; //We extract this value from config.h
 constexpr int Nt = NT; //We extract this value from config.h
 constexpr int block_x = BLOCK_X; //We extract this value from config.h
 constexpr int block_t = BLOCK_T; //We extract this value from config.h
+constexpr int Ntest = NTEST; //Number of test vectors
 constexpr int x_elements = Ns/block_x; //Number of elements in the x direction
 constexpr int t_elements = Nt/block_t; //Number of elements in the t direction
 
