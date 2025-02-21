@@ -1,26 +1,28 @@
 cmake_minimum_required(VERSION 3.26.5)
 set(CMAKE_CXX_STANDARD 11) 
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_C_COMPILER "C:/msys64/ucrt64/bin/gcc.exe")
-set(CMAKE_CXX_COMPILER "C:/msys64/ucrt64/bin/g++.exe")
+#set(CMAKE_C_COMPILER "C:/msys64/ucrt64/bin/gcc.exe")
+#set(CMAKE_CXX_COMPILER "C:/msys64/ucrt64/bin/g++.exe")
 project(Schwinger_model VERSION 1.0)
 
 # Create a sources variable with a link to all cpp files to compile
 set(SOURCES
     src/variables.cpp
-    src/main.cpp   
     src/gauge_conf.cpp
     src/matrix_operations.cpp
+    src/conjugate_gradient.cpp
+    src/amg.cpp
+    src/main.cpp  
 )
 
 #Lattice dimensions
-set(NS "8") 
-set(NT "8") 
+set(NS "4") 
+set(NT "4") 
 #Lattice blocks (used for aggregation)
-set(BLOCK_X "4")
-set(BLOCK_T "4")
+set(BLOCK_X "2")
+set(BLOCK_T "2")
 #Number of test vectors
-set(NTEST "5") 
+set(NTEST "1") 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 
@@ -29,6 +31,8 @@ configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/inclu
 add_executable("SM_${NS}x${NT}" ${SOURCES} "include/matrix_operations.h" 
  "include/variables.h" 
  "include/gauge_conf.h" 
+ "include/conjugate_gradient.h"
+ "include/amg.h"
 )
 
 # Set the directories that should be included in the build command for this target
@@ -38,7 +42,7 @@ target_include_directories("SM_${NS}x${NT}"
         ${PROJECT_SOURCE_DIR}/include
 )
 target_compile_options("SM_${NS}x${NT}" PRIVATE
-			-O3
+			#-O3
 			#-fopenmp
 )
 

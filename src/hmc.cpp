@@ -115,7 +115,7 @@ void HMC::HMC_Update() {
     std::vector<std::vector<std::complex<double>>> chi = RandomChi();
     std::vector<std::vector<std::complex<double>>> phi = D_phi(GConf.Conf, chi, m0);
     Leapfrog(phi); //Evolve [Pi] and [U] 
-    double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi)- Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
+    double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
     double r = rand_range(0, 1);
     if (r <= exp(-deltaH)) {
         //Accept the new configuration

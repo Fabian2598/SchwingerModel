@@ -1,6 +1,5 @@
 #ifndef MATRIX_OPERATIONS_INCLUDED
 #define MATRIX_OPERATIONS_INCLUDED
-#include <complex>
 #include "variables.h"
 
 constexpr int Ntot = Ns * Nt;

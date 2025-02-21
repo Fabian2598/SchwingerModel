@@ -91,7 +91,7 @@ c_matrix conjugate_gradient_D(const c_matrix& U, const c_matrix& phi, const doub
     double tol = 1e-10; //maybe I lower the tolerance later
     int k = 0; //Iteration number
     double err = 1;
-
+    
     //D_D_dagger_phi(U, phi, m0); //DD^dagger  
     c_matrix r(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
     c_matrix d(Ntot, c_vector(2, 0)); //search direction
@@ -102,6 +102,7 @@ c_matrix conjugate_gradient_D(const c_matrix& U, const c_matrix& phi, const doub
     r = phi - D_phi(U, x, m0); //The initial solution can be a vector with zeros 
     d = r; //initial search direction
     c_double r_norm2 = dot(r, r);
+   
     while (k<max_iter && err>tol) {
         Ad = D_phi(U, d, m0); //DD^dagger*d 
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
