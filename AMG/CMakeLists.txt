@@ -18,7 +18,8 @@ set(SOURCES
 #Lattice dimensions
 set(NS "4") 
 set(NT "4") 
-#Lattice blocks (used for aggregation)
+#Number of lattice blocks (used for aggregation)
+#N_i / BLOCK_i has to be an integer number
 set(BLOCK_X "2")
 set(BLOCK_T "2")
 #Number of test vectors

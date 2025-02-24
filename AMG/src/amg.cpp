@@ -5,16 +5,15 @@ void PrintVector(const std::vector<std::vector<std::complex<double>>>& v ){
         for(int j = 0; j < v[i].size(); j++){
             std::cout << v[i][j] << " ";
         }
-        //std::cout << std::endl;
     }
     std::cout << std::endl;
 }
 
-//CHECK THIS FUNCTION
 std::vector<std::vector<std::complex<double>>> canonical_vector(const int& i, const int& N1, const int& N2) {
 	std::vector<std::vector<std::complex<double>>> e_i(N1, std::vector<std::complex<double> >(N2,0.0));
-	e_i[i][0] = 1.0;
-	e_i[i][1] = 0.0;
+	int j = i / N2;
+	int k = i % N2;
+	e_i[j][k] = 1.0;
 	return e_i;
 }
 
@@ -26,8 +25,8 @@ inline std::vector<std::vector<std::complex<double>>> RandomChi() {
 	generator.seed(rd()); //This generator has to be seeded differently. srand doesn't work here
 	// The result is very much affected by the standard deviation
 	std::normal_distribution<double> distribution(0.0, 0.5); //mu, standard deviation
-	std::vector<std::vector<std::complex<double>>> RandPI(Ns * Nt, std::vector<std::complex<double>>(2, 0));
-	for (int i = 0; i < Ns * Nt; i++) {
+	std::vector<std::vector<std::complex<double>>> RandPI(Ntot, std::vector<std::complex<double>>(2, 0));
+	for (int i = 0; i < Ntot; i++) {
 		for (int mu = 0; mu < 2; mu++) {
 			RandPI[i][mu] = 1.0 * distribution(generator) + 0 * (0, 1);
 
@@ -41,10 +40,7 @@ inline std::vector<std::vector<std::complex<double>>> RandomChi() {
 //test vectors initialization
 void AMG::tv_init(const double& eps) {
 	for (int i = 0; i < Ntest; i++) {
-		//std::vector<std::vector<std::complex<double>>> chi = RandomChi();
-		//std::vector<std::vector<std::complex<double>>> phi = D_phi(GConf.Conf, chi, m0);
-		//test_vectors[i] =  D_phi(GConf.Conf, chi, m0);
-		
+		int count = 0;
 		for (int j = 0; j < Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
 				test_vectors[i][j][k] = eps * RandomU1(); //epsilon fixes the norm
@@ -69,7 +65,7 @@ std::vector<std::vector<std::complex<double>>> AMG::P_v(const std::vector<std::v
 	for (int i = 0; i < Ntot; i++) {
 		//These two for loops run over the number of columns of P
 		for (int k = 0; k < Ntest; k++) {
-			for (int a = 0; a < block_x * block_t; a++) {
+			for (int a = 0; a < Nagg; a++) {
 				//Checking if i belongs to the aggregate	
 				if (std::find(Agg[a].begin(), Agg[a].end(), i) != Agg[a].end()){
 					//both spins belong to the same aggregate
@@ -84,28 +80,19 @@ std::vector<std::vector<std::complex<double>>> AMG::P_v(const std::vector<std::v
 }
 
 //x_i = P^T_ij v_j. dim(P) = 2 Ntot x Ntest Na, Na = block_x * block_t
-//dim(v) = Ntest Na, dim(x) = Ntest Nagg
+//dim(v) = 2 NTot, dim(x) = Ntest Nagg
 std::vector<std::vector<std::complex<double>>> AMG::Pt_v(const std::vector<std::vector<std::complex<double>>>& v) {
 	//Prolongation operator times vector
-	std::vector<std::vector<std::complex<double>>> x(Ntot, std::vector<std::complex<double>>(2, 0));
+	std::vector<std::vector<std::complex<double>>> x(Ntest, std::vector<std::complex<double>>(Nagg, 0));
 	((Ntot, std::vector<std::complex<double>>(2, 0)));
-	for (int i = 0; i < Ntest*block_x*block_t; i++) {
-		std::vector<std::vector<std::complex<double>>> e_i = canonical_vector(i, Ntest,block_x*block_t);
-		std::vector<std::vector<std::complex<double>>> P_row = P_v();
+	//Loop over rows of Pt
+	for (int i = 0; i < Ntest*Nagg; i++) {
+		std::vector<std::vector<std::complex<double>>> e_i = canonical_vector(i, Ntest,Nagg);
+		std::vector<std::vector<std::complex<double>>> P_row = P_v(e_i);
 		//These two for loops run over the number of columns of Pt
-		for (int k = 0; k < Ntest; k++) {
-			for (int a = 0; a < block_x * block_t; a++) {
-				//Checking if i belongs to the aggregate	
-				//Maybe later I could do some kind of dictionary to store which rows belong to which aggregate
-				//This would make the search faster after repeated calls
-				if (std::find(Agg[a].begin(), Agg[a].end(), i) != Agg[a].end()){
-					//both spins belong to the same aggregate
-					for (int alf = 0; alf < 2; alf++) {
-						x[i][alf] += test_vectors[k][i][alf] * v[k][a];
-					}
-				}
-			}
-		}
+		int j = i / Nagg;
+		int k = i % Nagg;
+		x[j][k] = dot(P_row,v);
 	}
 	return x;
 }

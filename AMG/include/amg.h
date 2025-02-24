@@ -6,7 +6,7 @@
 #include <random>
 
 void PrintVector(const std::vector<std::vector<std::complex<double>>>& v );
-std::vector<std::vector<std::complex<double>>> canonical_vector(const int& i, const int& Ntot);
+std::vector<std::vector<std::complex<double>>> canonical_vector(const int& i, const int& N1, const int& N2);
 
 class AMG {
 public:

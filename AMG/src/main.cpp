@@ -11,7 +11,7 @@ int main() {
     Coordinates(); //Vectorized coordinates
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     Aggregates(); //Aggregates
-    
+    int Ntot = Ns*Nt;
     std::cout << "Ns = " << Ns <<  " Nt = " << Nt << std::endl;
     std::cout << "block_x = " << block_x << " block_t = " << block_t << std::endl;
     std::cout << "x_elements = " << x_elements << " t_elements = " << t_elements << std::endl;
@@ -28,20 +28,22 @@ int main() {
         std::cout << "------tv" << i << "------" << std::endl;
         PrintVector(tv[i]);
     }
-    int count = 0;
-    for(int i = 0; i < Ntest; i++){
-        for(int j =0; j<block_x*block_t; j++) {
-            
-            std::cout << "------e_" << count << "------" << std::endl;
-            std::vector<std::vector<std::complex<double>>> e_i(Ntest, std::vector<std::complex<double> >(block_x*block_t,0.0));
-            e_i[i][j] = 1.0;
-            std::vector<std::vector<std::complex<double>>> Pe = amg.P_v(e_i);
-            
-            PrintVector(Pe);
-            count += 1;
-        }
+    for(int i = 0; i < Ntest*block_x*block_t; i++){
+        std::cout << "------e_" << i << "------" << std::endl;
+        std::vector<std::vector<std::complex<double>>> e_i = canonical_vector(i, Ntest,block_x*block_t);
+        PrintVector(e_i);
+        std::vector<std::vector<std::complex<double>>> Pe = amg.P_v(e_i); 
+        PrintVector(Pe);    
+    }
+    for(int i = 0; i < 2*Ntot;i++){
+        std::cout << "------e_" << i << "------" << std::endl;
+        std::vector<std::vector<std::complex<double>>> e_i = canonical_vector(i, Ntot, 2);
+        //PrintVector(e_i);
+        std::vector<std::vector<std::complex<double>>> Pe = amg.Pt_v(e_i); 
+        PrintVector(Pe);
     }
 
 
+    
 	return 0;
 }
