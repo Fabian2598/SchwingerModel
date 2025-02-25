@@ -2,7 +2,6 @@
 #define MATRIX_OPERATIONS_INCLUDED
 #include "variables.h"
 
-constexpr int Ntot = Ns * Nt;
 extern std::vector<std::vector<std::vector<std::complex<double>>>> gamma_mat;  //Pauli matrices
 extern std::complex<double> I_number; //imaginary number
 extern std::vector<std::vector<std::complex<double>>> Identity;

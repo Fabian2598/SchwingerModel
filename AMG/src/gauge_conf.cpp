@@ -32,6 +32,10 @@ void Aggregates(){
 			//Once the loops are finished count should be x_elements*t_elements
 		}
 	}
+	// Convert Agg to a vector of unordered_sets for faster lookup
+	for (int a = 0; a < Nagg; ++a) {
+		Agg_sets[a] = std::unordered_set<int>(Agg[a].begin(), Agg[a].end());
+	}
 }
 
 //Print aggregates. Useful for debugging

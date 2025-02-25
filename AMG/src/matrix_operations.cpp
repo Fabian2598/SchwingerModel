@@ -1,6 +1,5 @@
 #include "matrix_operations.h"
 
-
 std::vector<std::vector<std::vector<std::complex<double>>>> gamma_mat(2,
 	std::vector<std::vector<std::complex<double>>>(2, std::vector<std::complex<double>>(2, 0))
 );  //Pauli matrices

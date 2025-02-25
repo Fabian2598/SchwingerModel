@@ -17,30 +17,10 @@ std::vector<std::vector<std::complex<double>>> canonical_vector(const int& i, co
 	return e_i;
 }
 
-//Random Chi vector 
-inline std::vector<std::vector<std::complex<double>>> RandomChi() {
-	//We use a Gaussian distribution to sample the momenta
-	std::random_device rd;
-	std::default_random_engine generator;
-	generator.seed(rd()); //This generator has to be seeded differently. srand doesn't work here
-	// The result is very much affected by the standard deviation
-	std::normal_distribution<double> distribution(0.0, 0.5); //mu, standard deviation
-	std::vector<std::vector<std::complex<double>>> RandPI(Ntot, std::vector<std::complex<double>>(2, 0));
-	for (int i = 0; i < Ntot; i++) {
-		for (int mu = 0; mu < 2; mu++) {
-			RandPI[i][mu] = 1.0 * distribution(generator) + 0 * (0, 1);
-
-		}
-	}
-
-	return RandPI;
-}
-
-
 //test vectors initialization
 void AMG::tv_init(const double& eps) {
+	//Random initialization
 	for (int i = 0; i < Ntest; i++) {
-		int count = 0;
 		for (int j = 0; j < Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
 				test_vectors[i][j][k] = eps * RandomU1(); //epsilon fixes the norm
@@ -48,13 +28,11 @@ void AMG::tv_init(const double& eps) {
 		}
 		
 	}
-	
 	//Apply three steps of the smoother to approximately solve D x = v
-	for (int n = 0; n < 3; n++) {
-		for (int i = 0; i < Ntest; i++) {
-			test_vectors[i] = conjugate_gradient(GConf.Conf, test_vectors[i], m0); //I have to implement Bi-GCR for this ... later SAP
-		}
+	for (int i = 0; i < Ntest; i++) {
+		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
 	}
+	
 }
 
 //x_i = P_ij v_j. dim(P) = 2 Ntot x Ntest Na, Na = block_x * block_t
@@ -62,18 +40,19 @@ void AMG::tv_init(const double& eps) {
 std::vector<std::vector<std::complex<double>>> AMG::P_v(const std::vector<std::vector<std::complex<double>>>& v) {
 	//Prolongation operator times vector
 	std::vector<std::vector<std::complex<double>>> x(Ntot, std::vector<std::complex<double>>(2, 0));
+	//Loop over rows of P
 	for (int i = 0; i < Ntot; i++) {
-		//These two for loops run over the number of columns of P
-		for (int k = 0; k < Ntest; k++) {
-			for (int a = 0; a < Nagg; a++) {
-				//Checking if i belongs to the aggregate	
-				if (std::find(Agg[a].begin(), Agg[a].end(), i) != Agg[a].end()){
-					//both spins belong to the same aggregate
-					for (int alf = 0; alf < 2; alf++) {
-						x[i][alf] += test_vectors[k][i][alf] * v[k][a];
-					}
+		//Loops over columns
+		for (int j = 0; j < Ntest*Nagg; j++) {
+			int k = j / Nagg; //Number of test vector
+			int a = j % Nagg; //Number of aggregate
+			//Checking if i belongs to the aggregate. We do it using the sets, complexitiy is log(N).
+			if (Agg_sets[a].find(i) != Agg_sets[a].end()) {
+				for (int alf = 0; alf < 2; alf++) {
+					x[i][alf] += test_vectors[k][i][alf] * v[k][a];
 				}
 			}
+			
 		}
 	}
 	return x;
@@ -82,17 +61,14 @@ std::vector<std::vector<std::complex<double>>> AMG::P_v(const std::vector<std::v
 //x_i = P^T_ij v_j. dim(P) = 2 Ntot x Ntest Na, Na = block_x * block_t
 //dim(v) = 2 NTot, dim(x) = Ntest Nagg
 std::vector<std::vector<std::complex<double>>> AMG::Pt_v(const std::vector<std::vector<std::complex<double>>>& v) {
-	//Prolongation operator times vector
 	std::vector<std::vector<std::complex<double>>> x(Ntest, std::vector<std::complex<double>>(Nagg, 0));
-	((Ntot, std::vector<std::complex<double>>(2, 0)));
 	//Loop over rows of Pt
 	for (int i = 0; i < Ntest*Nagg; i++) {
 		std::vector<std::vector<std::complex<double>>> e_i = canonical_vector(i, Ntest,Nagg);
-		std::vector<std::vector<std::complex<double>>> P_row = P_v(e_i);
-		//These two for loops run over the number of columns of Pt
+		std::vector<std::vector<std::complex<double>>> Pt_row = P_v(e_i); 
 		int j = i / Nagg;
 		int k = i % Nagg;
-		x[j][k] = dot(P_row,v);
+		x[j][k] = dot(Pt_row,v);
 	}
 	return x;
 }
