@@ -81,10 +81,14 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
 }
 
 //Bi_GCR for D^-1 phi
-c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
+//phi --> right-hand side
+//x0 --> initial guess  
+//U --> configuration
+c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
     int k = 0; //Iteration number
     double err = 1;
 
+    
     //D_D_dagger_phi(U, phi, m0); //DD^dagger  
     c_matrix r(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
     c_matrix r_tilde(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
@@ -94,7 +98,7 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const double& m0, con
     c_matrix Ad(Ntot, c_vector(2, 0)); //DD^dagger*d
     c_matrix x(Ntot, c_vector(2, 0)); //solution
     c_double alpha, beta, rho_i, omega, rho_i_2;;
-    x = phi; //initial solution
+    x = x0; //initial solution
     r = phi - D_phi(U, x, m0); //r = b - A*x
     r_tilde = r;
     while (k<max_iter && err>tol) {

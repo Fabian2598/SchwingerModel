@@ -30,7 +30,7 @@ void AMG::tv_init(const double& eps) {
 	}
 	//Apply three steps of the smoother to approximately solve D x = v
 	for (int i = 0; i < Ntest; i++) {
-		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
+		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
 	}
 	
 }
@@ -73,10 +73,70 @@ std::vector<std::vector<std::complex<double>>> AMG::Pt_v(const std::vector<std::
 	return x;
 }
 
+//Dc = P^T D P 
+std::vector<std::vector<std::complex<double>>> AMG::Pt_D_P(const std::vector<std::vector<std::complex<double>>>& v){
+	return Pt_v(D_phi(GConf.Conf,P_v(v),m0));
+}
 
-//void AMG::tv_update() {
-	//Build interpolator
-	//Apply D^-1 to the test vectors, using MULTIGRID
-//}
-	
+//x = D^-1 phi
+std::vector<std::vector<std::complex<double>>> AMG::TwoGrid(const int& nu1, const int& nu2, const std::vector<std::vector<std::complex<double>>>& x0, const std::vector<std::vector<std::complex<double>>>& phi){
+	//nu1 --> pre-smoothing steps
+	//nu2 --> post-smoothing steps
+	//x0 --> initial guess
+	//phi --> right hand side
+	std::vector<std::vector<std::complex<double>>> x = bi_cgstab(GConf.Conf, phi,x0,m0,nu1,1e-10,false);
+	//x = x + P*Dc^-1 * P^T * (phi-D*x); 
+	std::vector<std::vector<std::complex<double>>> Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //TP^T (phi - D x)
+	x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,1000,1e-10,false)); //The bi_cgstab here has to be for DC^-1 not D^-1
+	x = bi_cgstab(GConf.Conf, phi,x,m0,nu2,1e-10,false);
 
+	return x;
+}
+
+
+
+c_matrix AMG::bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
+    int k = 0; //Iteration number
+    double err = 1;
+
+    //D_D_dagger_phi(U, phi, m0); //DD^dagger  
+    c_matrix r(Ntest, c_vector(Nagg, 0));  //r[coordinate][spin] residual
+    c_matrix r_tilde(Ntest, c_vector(Nagg, 0));  //r[coordinate][spin] residual
+    c_matrix d(Ntest, c_vector(Nagg, 0)); //search direction
+    c_matrix s(Ntest, c_vector(Nagg, 0));
+    c_matrix t(Ntest, c_vector(Nagg, 0));
+    c_matrix Ad(Ntest, c_vector(Nagg, 0)); //DD^dagger*d
+    c_matrix x(Ntest, c_vector(Nagg, 0)); //solution
+    c_double alpha, beta, rho_i, omega, rho_i_2;
+    x = x0; //initial solution
+    r = phi - Pt_D_P(x); //r = b - A*x
+    r_tilde = r;
+    while (k<max_iter && err>tol) {
+        rho_i = dot(r, r_tilde); //r . r_dagger
+        if (k == 0) {
+            d = r; //d_1 = r_0
+        }
+        else {
+            beta = alpha * rho_i / (omega * rho_i_2); //beta_{i-1} = alpha_{i-1} * rho_{i-1} / (omega_{i-1} * rho_{i-2})
+            d = r + beta * (d - omega * Ad); //d_i = r_{i-1} + beta_{i-1} * (d_{i-1} - omega_{i-1} * Ad_{i-1})
+        }
+        Ad = Pt_D_P(x);  //A d_i 
+        alpha = rho_i / dot(Ad, r_tilde); //alpha_i = rho_{i-1} / (Ad_i, r_tilde)
+        s = r - alpha * Ad; //s = r_{i-1} - alpha_i * Ad_i
+        err = std::real(dot(s, s));
+        if (err < tol) {
+            x = x + alpha * d;
+            return x;
+        }
+        t = Pt_D_P(x);   //A s
+        omega = dot(s, t) / dot(t, t); //omega_i = t^dagg . s / t^dagg . t
+        r = s - omega * t; //r_i = s - omega_i * t
+        x = x + alpha * d + omega * s; //x_i = x_{i-1} + alpha_i * d_i + omega_i * s
+        rho_i_2 = rho_i; //rho_{i-2} = rho_{i-1}
+        k++;
+    }
+    if (print_message == true) {
+        std::cout << "Did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
+    }
+    return x;
+}

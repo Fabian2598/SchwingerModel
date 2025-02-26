@@ -21,7 +21,7 @@ c_matrix operator-(const c_matrix& A, const c_matrix& B);
 //phi[Ntot][2]
 c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double& m0); 
 
-c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const double& m0, const int& max_iter, const double& tol, const bool& print_message); //D^-1 phi 
+c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0,const double& m0, const int& max_iter, const double& tol, const bool& print_message); //D^-1 phi 
 
 
 #endif
