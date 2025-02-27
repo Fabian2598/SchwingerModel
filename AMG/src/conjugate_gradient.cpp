@@ -11,6 +11,7 @@ c_double dot(const c_matrix& x, const c_matrix& y) {
     }
     return z;
 }
+
 //Overload + - and * operators
 template <typename T>
 c_matrix operator*(const T& lambda, const c_matrix& A) {
@@ -41,6 +42,7 @@ c_matrix operator-(const c_matrix& A, const c_matrix& B) {
     }
     return C;
 }
+
 
 
 //Conjugate gradient for computing (DD^dagger)^-1 phi, where phi is a vector represented by a matrix
@@ -116,6 +118,7 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
         err = std::real(dot(s, s));
         if (err < tol) {
             x = x + alpha * d;
+            std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
             return x;
         }
         t = D_phi(U, s, m0);   //A s

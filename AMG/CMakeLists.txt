@@ -23,7 +23,7 @@ set(NT "4")
 set(BLOCK_X "2")
 set(BLOCK_T "2")
 #Number of test vectors
-set(NTEST "2") 
+set(NTEST "1") 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 
