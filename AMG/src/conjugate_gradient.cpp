@@ -1,50 +1,5 @@
 #include "conjugate_gradient.h"
 
-//Complex dot product (not matrix multiplication)
-c_double dot(const c_matrix& x, const c_matrix& y) {
-    //Dot product of two vectors
-    c_double z = 0;
-    for (int i = 0; i < x.size(); i++) {
-        for (int j = 0; j < x[i].size(); j++) {
-            z += x[i][j] * std::conj(y[i][j]);
-        }
-    }
-    return z;
-}
-
-//Overload + - and * operators
-template <typename T>
-c_matrix operator*(const T& lambda, const c_matrix& A) {
-    c_matrix B(A.size(), c_vector(A[0].size(), 0));
-    for (int i = 0; i < A.size(); i++) {
-        for (int j = 0; j < A[i].size(); j++) {
-            B[i][j] = lambda * A[i][j];
-        }
-    }
-    return B;
-}
-
-c_matrix operator+(const c_matrix& A, const c_matrix& B) {
-    c_matrix C(A.size(), c_vector(A[0].size(), 0));
-    for (int i = 0; i < A.size(); i++) {
-        for (int j = 0; j < A[i].size(); j++) {
-            C[i][j] = A[i][j] + B[i][j];
-        }
-    }
-    return C;
-}
-c_matrix operator-(const c_matrix& A, const c_matrix& B) {
-    c_matrix C(A.size(), c_vector(A[0].size(), 0));
-    for (int i = 0; i < A.size(); i++) {
-        for (int j = 0; j < A[i].size(); j++) {
-            C[i][j] = A[i][j] - B[i][j];
-        }
-    }
-    return C;
-}
-
-
-
 //Conjugate gradient for computing (DD^dagger)^-1 phi, where phi is a vector represented by a matrix
 //phi[Ntot][2]
 c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double& m0) {

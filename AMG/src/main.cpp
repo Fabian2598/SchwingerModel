@@ -4,94 +4,58 @@
 #include <string>
 #include "amg.h"
 
-
-
 int main() {
     srand(time(0));
     initialize_matrices(); //Initialize gamma matrices, identity and unit vectors
     Coordinates(); //Vectorized coordinates
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     Aggregates(); //Aggregates
-    std::cout << "Ns = " << Ns <<  " Nt = " << Nt << std::endl;
+    std::cout << "Ns = " << Ns << " Nt = " << Nt << std::endl;
     std::cout << "block_x = " << block_x << " block_t = " << block_t << std::endl;
     std::cout << "x_elements = " << x_elements << " t_elements = " << t_elements << std::endl;
     std::cout << "Number of test vectors = " << Ntest << std::endl;
-    GaugeConf GConf = GaugeConf(Ns,Nt);
+    GaugeConf GConf = GaugeConf(Ns, Nt);
     GConf.initialization(); //Initialize the gauge configuration
     PrintAggregates();
     double m0 = 1;
-    AMG amg = AMG(GConf,Ns,Nt,Ntest,m0);
-    amg.tv_init(1,0); //test vectors intialization
 
-    c_matrix phi(Ntot, c_vector(2, 0)); //For multiplying Pt phi
-	for (int i = 0; i < Ntot; i++) {
-		for (int j = 0; j < 2; j++) {
-			phi[i][j] = 1.0 * RandomU1();
-		}
-	}
+    c_matrix phi(Ntot, c_vector(2, 0));
+    for (int i = 0; i < Ntot; i++) {
+        for (int j = 0; j < 2; j++) {
+            phi[i][j] = 1.0 * RandomU1();
+        }
+    }
     std::cout << "------phi------" << std::endl;
-    PrintVector(phi);
-	c_matrix Pt(Nagg*Ntest, c_vector(2*Ntot, 0));
-    c_matrix P(2*Ntot, c_vector(Nagg*Ntest, 0));
+    //PrintVector(phi);
+    std::cout << phi[0][0] << " " << phi[0][1] << std::endl;
+    std::cout << "################Bi-CGstab inversion##############" << std::endl;
+    c_matrix x = bi_cgstab(GConf.Conf, phi, phi, m0, 1000, 1e-10, true);//bi_cgstab(GConf.Conf, phi,m0); //D^-1 phi
+    std::cout << "------D^-1 phi------" << std::endl;
+    //PrintVector(x);
+    std::cout << x[0][0] << " " << x[0][1] << std::endl;
+    std::cout << "------D D^-1 phi------" << std::endl;
+    x = D_phi(GConf.Conf, x, m0); //D D^-1 phi
+    //PrintVector(x);
+    std::cout << x[0][0] << " " << x[0][1] << std::endl;
+    std::cout << std::endl;
+    std::cout << "################Multigrid inversion##############" << std::endl;
+    AMG amg = AMG(GConf, Ns, Nt, Ntest, m0);
 
-	for(int col = 0; col < 2*Ntot; col++){
-		c_matrix v = amg.Pt_v(canonical_vector(col,Ntot,2)); //column
-		int count = 0;
-		for(int i = 0; i < v.size(); i++){
-			for(int j = 0; j < v[i].size(); j++){
-				Pt[count][col] = v[i][j];
-				count += 1;
-			}
-		}	
-	} 
+    amg.tv_init(1, 3); //test vectors intialization
+    std::vector<std::vector<std::complex<double>>> x0(Ntot, std::vector<std::complex<double>>(2, 0));
+    x0 = amg.TwoGrid(1, 1, x0, phi, true);
+    std::cout << "------D^-1 phi------" << std::endl;
+    //PrintVector(x0);
+    std::cout << x0[0][0] << " " << x0[0][1] << std::endl;
+    std::cout << "------D D^-1 phi------" << std::endl;
+    x0 = D_phi(GConf.Conf, x0, m0); //D D^-1 phi
+    std::cout << x0[0][0] << " " << x0[0][1] << std::endl;
+    //PrintVector(x0);
 
-    for(int col = 0; col < Ntest*Nagg; col++){
-		c_matrix v = amg.P_v(canonical_vector(col,Ntest,Nagg)); //column
-		int count = 0;
-		for(int i = 0; i < v.size(); i++){
-			for(int j = 0; j < v[i].size(); j++){
-				P[count][col] = v[i][j];
-				count += 1;
-			}
-		}	
-	} 
-	std::cout << "------P------" << std::endl;
-	for(int i = 0; i < P.size(); i++){
-		for(int j = 0; j < P[i].size(); j++){
-			std::cout << P[i][j] << " ";
-		}
-		std::cout << std::endl;
-	}
-	std::cout << "------P^T------" << std::endl;
-	for(int i = 0; i < Pt.size(); i++){
-		for(int j = 0; j < Pt[i].size(); j++){
-			std::cout << Pt[i][j] << " ";
-		}
-		std::cout << std::endl;
-	}
-	//Flatten phi
-	c_vector phi_flat(2*Ntot, 0);
-	int count = 0;
-	for(int i = 0; i < phi.size(); i++){
-		for(int j = 0; j < phi[i].size(); j++){
-			phi_flat[count] = phi[i][j];
-			count += 1;
-		}
-	}
-	std::cout << "------phi_flat------" << std::endl;
-	for(int i = 0; i < phi_flat.size(); i++){
-		std::cout << phi_flat[i] << " ";
-	}
-	std::cout << std::endl;
-    std::cout << "------P^T phi_flat------" << std::endl;
-    PPrintVector(Pt*phi_flat);
-
-    c_matrix Pt_phi = amg.Pt_v(phi);
-    std::cout << "------P^T phi------" << std::endl;
-    PrintVector(Pt_phi);
-    
-	return 0;
+    return 0;
 }
+
+
 
 /*
     AMG amg = AMG(GConf,Ns,Nt,Ntest,m0);

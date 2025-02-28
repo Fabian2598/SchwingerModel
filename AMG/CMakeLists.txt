@@ -16,14 +16,14 @@ set(SOURCES
 )
 
 #Lattice dimensions
-set(NS "4") 
-set(NT "4") 
+set(NS "32") 
+set(NT "32") 
 #Number of lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
-set(BLOCK_X "2")
-set(BLOCK_T "2")
+set(BLOCK_X "8")
+set(BLOCK_T "8")
 #Number of test vectors
-set(NTEST "1") 
+set(NTEST "15") 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 
@@ -34,6 +34,7 @@ add_executable("SM_${NS}x${NT}" ${SOURCES} "include/matrix_operations.h"
  "include/gauge_conf.h" 
  "include/conjugate_gradient.h"
  "include/amg.h"
+ "include/operator_overloads.h" 
 )
 
 # Set the directories that should be included in the build command for this target
