@@ -47,7 +47,7 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	}
 	//Apply three steps of the smoother to approximately solve D x = v
 	for (int i = 0; i < Ntest; i++) {
-		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0,5,1e-10,false); //The tolerance is not really relevant here
+		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
 		normalize(test_vectors[i]); //normalizing the test vectors
 	}
 
@@ -75,6 +75,7 @@ c_matrix AMG::P_v(const c_matrix& v) {
 		int k = j / Nagg; //Number of test vector
 		int a = j % Nagg; //Number of aggregate
 		for (int i = 0; i < Agg[a].size(); i++) {
+			//Each aggregate considers both spins
 			for (int alf = 0; alf < 2; alf++) {
 				x[Agg[a][i]][alf] += test_vectors[k][Agg[a][i]][alf] * v[k][a];
 			}
@@ -91,6 +92,7 @@ c_matrix AMG::Pt_v(const c_matrix& v) {
 		int k = i / Nagg; //number of test vector
 		int a = i % Nagg; //number of aggregate
 		for (int j = 0; j < Agg[a].size(); j++) {
+			//Each aggregate considers both spins
 			for (int alf = 0; alf < 2; alf++) {
 				x[k][a] += test_vectors[k][Agg[a][j]][alf] * v[Agg[a][j]][alf];
 			}

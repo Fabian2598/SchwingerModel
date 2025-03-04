@@ -3,7 +3,6 @@
 #include "config.h"
 #include <complex>
 #include <vector>
-#include <unordered_set>
 
 extern double pi;
 
@@ -23,7 +22,6 @@ extern std::vector<std::vector<int>>x1_t_1;
 extern std::vector<std::vector<std::vector<int>>>RightPB; //Right periodic boundary
 extern std::vector<std::vector<std::vector<int>>>LeftPB; //Left periodic boundary
 extern std::vector<std::vector<int>> Agg; //Aggregates[number_of_aggregate][vectorized_coordinate of the lattice point]
-extern std::vector<std::unordered_set<int>> Agg_sets; //aggregate sets
 //Each aggregate considers both spins 0 and 1
 
 #endif 
