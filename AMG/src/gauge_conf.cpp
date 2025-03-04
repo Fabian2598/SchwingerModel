@@ -36,7 +36,7 @@ void Aggregates(){
 
 //Print aggregates. Useful for debugging
 void PrintAggregates() {
-	for (int i = 0; i < block_x * block_t; i++) {
+	for (int i = 0; i < Nagg; i++) {
 		std::cout << "-------Aggregate-----" << i << std::endl;
 		for (int j = 0; j < x_elements * t_elements; j++) {
 			std::cout << Agg[i][j] << " ";
@@ -49,29 +49,32 @@ void PrintAggregates() {
 void AggregatesV2() {
 	for (int x = 0; x < block_x; x++) {
 		for (int t = 0; t < block_t; t++) {
-			int x0 = x * x_elements, t0 = t * t_elements;
-			int x1 = (x + 1) * x_elements, t1 = (t + 1) * t_elements;
-			int aggregate = x * block_x + t;
-			int count = 0;
-			//x and t are redefined in the following loop
-			for (int x = x0; x < x1; x++) {
-				for (int t = t0; t < t1; t++) {
-					int i = x * Ns + t;
-					Agg[aggregate][count] = i;
-					count++;
+			for (int s = 0; s < 2; s++) {
+				//vectorize the coordinates of these three loops
+				int x0 = x * x_elements, t0 = t * t_elements;
+				int x1 = (x + 1) * x_elements, t1 = (t + 1) * t_elements;
+				int aggregate = x * block_t * 2 + t * 2 + s;
+				int count = 0;
+				//x and t are redefined in the following loop
+				for (int x = x0; x < x1; x++) {
+					for (int t = t0; t < t1; t++) {
+						int i = x * Ns + t + s;
+						Agg[aggregate][count] = i;
+						count++;
+					}
 				}
-			}
-			if (count != x_elements * t_elements) {
-				std::cout << "Aggregate " << aggregate << " has " << count << " elements" << std::endl;
-			}
-			//Once the loops are finished count should be x_elements*t_elements
+				if (count != 2*x_elements * t_elements) {
+					std::cout << "Aggregate " << aggregate << " has " << count << " elements" << std::endl;
+				}
+				//Once the loops are finished count should be x_elements*t_elements
+			}	
 		}
 	}
 }
 
 //Print aggregates. Useful for debugging
 void PrintAggregatesV2() {
-	for (int i = 0; i < block_x * block_t; i++) {
+	for (int i = 0; i < Nagg; i++) {
 		std::cout << "-------Aggregate-----" << i << std::endl;
 		for (int j = 0; j < x_elements * t_elements; j++) {
 			std::cout << Agg[i][j] << " ";

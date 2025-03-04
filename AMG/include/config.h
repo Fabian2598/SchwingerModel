@@ -1,8 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
-#define NS 32
-#define NT 32
-#define BLOCK_X 8
-#define BLOCK_T 8
-#define NTEST 20
+#define NS 4
+#define NT 4
+#define BLOCK_X 2
+#define BLOCK_T 2
+#define NTEST 1
 #endif

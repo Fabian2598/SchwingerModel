@@ -40,16 +40,16 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
-				test_vectors[i][j][k] = eps * RandomU1();
+				test_vectors[i][j][k] = i * Ntot * 2 + j * 2 + k + 1;//eps * RandomU1();
 			}
 		}
 		
 	}
 	//Apply three steps of the smoother to approximately solve D x = v
-	for (int i = 0; i < Ntest; i++) {
-		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
-		normalize(test_vectors[i]); //normalizing the test vectors
-	}
+	//for (int i = 0; i < Ntest; i++) {
+	//	test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
+	//	normalize(test_vectors[i]); //normalizing the test vectors
+	//}
 
 	//Iterating over the multigrid to improve the test vectors
 	//This initialization is taking too much execution time
@@ -73,11 +73,10 @@ c_matrix AMG::P_v(const c_matrix& v) {
 	//Loop over columns
 	for (int j = 0; j < Ntest * Nagg; j++) {
 		int k = j / Nagg; //Number of test vector
-		int a = j % Nagg; //Number of aggregate
+		int a = j % (Nagg/2); //Number of aggregate
 		for (int i = 0; i < Agg[a].size(); i++) {
-			//Each aggregate considers both spins
 			for (int alf = 0; alf < 2; alf++) {
-				x[Agg[a][i]][alf] += test_vectors[k][Agg[a][i]][alf] * v[k][a];
+				x[Agg[a][i]][alf] += test_vectors[k][Agg[a][i]][alf] * v[k][2 * a + alf];
 			}
 		}
 	}
@@ -90,11 +89,11 @@ c_matrix AMG::Pt_v(const c_matrix& v) {
 	c_matrix x(Ntest, c_vector(Nagg, 0));
 	for (int i = 0; i < Ntest*Nagg; i++) {
 		int k = i / Nagg; //number of test vector
-		int a = i % Nagg; //number of aggregate
+		int a = i % (Nagg/2); //number of aggregate
 		for (int j = 0; j < Agg[a].size(); j++) {
 			//Each aggregate considers both spins
 			for (int alf = 0; alf < 2; alf++) {
-				x[k][a] += test_vectors[k][Agg[a][j]][alf] * v[Agg[a][j]][alf];
+				x[k][2 * a + alf] += test_vectors[k][Agg[a][j]][alf] * v[Agg[a][j]][alf];
 			}
 		}
 	}
