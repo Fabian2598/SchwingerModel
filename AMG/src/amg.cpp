@@ -40,27 +40,28 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
-				test_vectors[i][j][k] = eps * RandomU1(); //epsilon fixes the norm
+				test_vectors[i][j][k] = eps * RandomU1();
 			}
 		}
 		
 	}
 	//Apply three steps of the smoother to approximately solve D x = v
 	for (int i = 0; i < Ntest; i++) {
-		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
+		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0,5,1e-10,false); //The tolerance is not really relevant here
+		normalize(test_vectors[i]); //normalizing the test vectors
 	}
-	std::cout << "bi_cg_stab for test vectors done" << std::endl;
+
 	//Iterating over the multigrid to improve the test vectors
 	//This initialization is taking too much execution time
-	for(int n=0; n<Nit; n++){
-		std::vector<c_matrix> test_vectors_copy = test_vectors;
-		for(int i = 0; i < Ntest; i++){
-			test_vectors_copy[i] = TwoGrid(1,1,test_vectors[i],test_vectors[i],false); 
-			normalize(test_vectors_copy[i]); //normalizing the test vectors
-		}
-		test_vectors = test_vectors_copy;
-	}
-	std::cout << "test vectors intialized" << std::endl;
+//	for(int n=0; n<Nit; n++){
+//		std::vector<c_matrix> test_vectors_copy = test_vectors;
+//		for(int i = 0; i < Ntest; i++){
+//			test_vectors_copy[i] = TwoGrid(1,1,test_vectors[i],test_vectors[i],false); 
+//			normalize(test_vectors_copy[i]); //normalizing the test vectors
+//		}
+//		test_vectors = test_vectors_copy;
+//	}
+	//std::cout << "test vectors intialized" << std::endl;
 	
 }
 
@@ -69,19 +70,14 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 c_matrix AMG::P_v(const c_matrix& v) {
 	//Prolongation operator times vector
 	c_matrix x(Ntot, c_vector(2, 0));
-	//Loop over rows of P
-	for (int i = 0; i < Ntot; i++) {
-		//Loops over columns
-		for (int j = 0; j < Ntest*Nagg; j++) {
-			int k = j / Nagg; //Number of test vector
-			int a = j % Nagg; //Number of aggregate
-			//Checking if i belongs to the aggregate. We do it using the sets, complexitiy is log(N).
-			if (Agg_sets[a].find(i) != Agg_sets[a].end()) {
-				for (int alf = 0; alf < 2; alf++) {
-					x[i][alf] += test_vectors[k][i][alf] * v[k][a];
-				}
+	//Loop over columns
+	for (int j = 0; j < Ntest * Nagg; j++) {
+		int k = j / Nagg; //Number of test vector
+		int a = j % Nagg; //Number of aggregate
+		for (int i = 0; i < Agg[a].size(); i++) {
+			for (int alf = 0; alf < 2; alf++) {
+				x[Agg[a][i]][alf] += test_vectors[k][Agg[a][i]][alf] * v[k][a];
 			}
-			
 		}
 	}
 	return x;
@@ -91,16 +87,18 @@ c_matrix AMG::P_v(const c_matrix& v) {
 //dim(v) = 2 NTot, dim(x) = Ntest Nagg
 c_matrix AMG::Pt_v(const c_matrix& v) {
 	c_matrix x(Ntest, c_vector(Nagg, 0));
-	//Loop over rows of Pt
 	for (int i = 0; i < Ntest*Nagg; i++) {
-		c_matrix e_i = canonical_vector(i, Ntest,Nagg);
-		c_matrix Pt_row = P_v(e_i); //P^T row = P column, dimension: 2 Ntot
-		int j = i / Nagg; //number of test vector
-		int k = i % Nagg; //number of aggregate
-		x[j][k] = dot_v2(Pt_row,v); //This not a complex dot product ...
+		int k = i / Nagg; //number of test vector
+		int a = i % Nagg; //number of aggregate
+		for (int j = 0; j < Agg[a].size(); j++) {
+			for (int alf = 0; alf < 2; alf++) {
+				x[k][a] += test_vectors[k][Agg[a][j]][alf] * v[Agg[a][j]][alf];
+			}
+		}
 	}
 	return x;
 }
+
 
 //Dc = P^T D P, dim(Dc) = Ntest Nagg x Ntest Nagg, dim(v) = Ntest Nagg, 
 c_matrix AMG::Pt_D_P(const c_matrix& v){
@@ -114,14 +112,9 @@ c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const c_matrix& x0,
 	//nu2 --> post-smoothing steps
 	//x0 --> initial guess
 	//phi --> right hand side
-	std::cout << "pre-smoothing" << std::endl;
 	c_matrix x = bi_cgstab(GConf.Conf, phi,x0,m0,nu1,1e-10,false);
-	std::cout << "pre-smoothing done" << std::endl;
 	//x = x + P*Dc^-1 * P^T * (phi-D*x); 
-	std::cout << "--coarse-grid correction--" << std::endl;
-	std::cout << "--Applying Pt_v--" << std::endl;
 	c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //TP^T (phi - D x)
-	std::cout << "--Pt_v done--" << std::endl;
 	std::cout << "--Inverting Dc with CGstab--" << std::endl;
 	x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,1000,1e-10,true)); //The bi_cgstab here has to be for DC^-1 not D^-1
 	std::cout << "--Dc inverted--" << std::endl;
@@ -185,7 +178,7 @@ c_matrix AMG::bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matri
 }
 
 
-//These function are provitional
+//These functions are for saving the matrices. Useful for testing.
 void save_matrix(c_matrix& Matrix,char* Name){
     char NameData[500], Data_str[500];
 	sprintf(NameData, Name);

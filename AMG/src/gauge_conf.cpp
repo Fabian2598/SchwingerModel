@@ -10,7 +10,7 @@ void Coordinates() {
 	}
 }
 
-//Aggregates
+//Aggregates A_j = L_j x {0,1}
 void Aggregates(){
 	for (int x = 0; x < block_x; x++) {
 		for (int t = 0; t < block_t; t++) {
@@ -48,6 +48,46 @@ void PrintAggregates() {
 		std::cout << std::endl;
 	}
 }
+
+//Aggregates A_j_0 = L_j x {0}, A_j_1 = L_j x {1}
+void AggregatesV2() {
+	for (int x = 0; x < block_x; x++) {
+		for (int t = 0; t < block_t; t++) {
+			int x0 = x * x_elements, t0 = t * t_elements;
+			int x1 = (x + 1) * x_elements, t1 = (t + 1) * t_elements;
+			int aggregate = x * block_x + t;
+			int count = 0;
+			//x and t are redefined in the following loop
+			for (int x = x0; x < x1; x++) {
+				for (int t = t0; t < t1; t++) {
+					int i = x * Ns + t;
+					Agg[aggregate][count] = i;
+					count++;
+				}
+			}
+			if (count != x_elements * t_elements) {
+				std::cout << "Aggregate " << aggregate << " has " << count << " elements" << std::endl;
+			}
+			//Once the loops are finished count should be x_elements*t_elements
+		}
+	}
+	// Convert Agg to a vector of unordered_sets for faster lookup
+	for (int a = 0; a < Nagg; ++a) {
+		Agg_sets[a] = std::unordered_set<int>(Agg[a].begin(), Agg[a].end());
+	}
+}
+
+//Print aggregates. Useful for debugging
+void PrintAggregatesV2() {
+	for (int i = 0; i < block_x * block_t; i++) {
+		std::cout << "-------Aggregate-----" << i << std::endl;
+		for (int j = 0; j < x_elements * t_elements; j++) {
+			std::cout << Agg[i][j] << " ";
+		}
+		std::cout << std::endl;
+	}
+}
+
 
 
 //Random U1 variable
