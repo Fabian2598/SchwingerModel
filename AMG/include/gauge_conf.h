@@ -41,8 +41,6 @@ public:
 	std::vector<std::vector<std::complex<double>>> Staples; //Staples
 	std::vector<std::complex<double>> Plaquette01; //Plaquette U_01(x)
 
-
-	
 	void Compute_Staple(); //Computes staples
 	void Compute_Plaquette01(); //Computes plaquettes
 	double MeasureSp_HMC();

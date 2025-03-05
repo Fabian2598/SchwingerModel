@@ -32,6 +32,38 @@ void normalize(c_matrix& v){
 	v =  1.0/norm * v; 
 }
 
+//Orthonormalize the P columns.
+void AMG::orthonormalize(){
+	//Gram-Schmidt orthonormalization
+	std::vector<c_matrix> test_vectors_copy(Ntest, c_matrix( Ntot, c_vector (2,0)));
+	std::vector<c_matrix> v_chopped(Ntest*Nagg, c_matrix(Ntot, c_vector(2,0)));
+	for(int i = 0; i < Ntest*Nagg; i++){
+		c_matrix e_i = canonical_vector(i, Ntest, Nagg);
+		v_chopped[i] = P_v(e_i); //Columns of the interpolator
+	}
+	//Orthonormalization of v_chopped
+	for(int i = 0; i < Ntest*Nagg; i++){
+		for(int j = 0; j < i; j++){
+			c_double proj = dot(v_chopped[i],v_chopped[j]);
+			v_chopped[i] = v_chopped[i] - proj * v_chopped[j];
+		}
+		normalize(v_chopped[i]);
+	}
+	
+	//Replacing test vectors
+	for(int i = 0; i < Ntest; i++){
+		for(int j = 0; j < Nagg; j++){
+			for(int n = 0; n < Ntot; n++){
+				for(int alf=0; alf<2; alf++){
+					test_vectors_copy[i][n][alf] += v_chopped[i*Nagg + j][n][alf]; 
+				}
+			}
+			
+		}
+	}
+	test_vectors = test_vectors_copy;
+}; 
+
 //test vectors initialization
 void AMG::tv_init(const double& eps,const int& Nit) {
 	//eps --> the norm of the test vectors during random initialization
@@ -40,29 +72,34 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
-				test_vectors[i][j][k] = i * Ntot * 2 + j * 2 + k + 1;//eps * RandomU1(); //
+				test_vectors[i][j][k] = eps * RandomU1();//i * Ntot * 2 + j * 2 + k + 1;
 			}
 		}
 		
 	}
 	//Apply three steps of the smoother to approximately solve D x = v
-	/*
+	
 	for (int i = 0; i < Ntest; i++) {
+		//c_matrix x0(Ntot, c_vector(2, 0));
 		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
+		//normalize(test_vectors[i]); //normalizing the test vectors
 	}
+	orthonormalize(); //is this necessary?
 
 	//Iterating over the multigrid to improve the test vectors
-	//This initialization is taking too much execution time
+	
 	for(int n=0; n<Nit; n++){
 		std::vector<c_matrix> test_vectors_copy = test_vectors;
 		for(int i = 0; i < Ntest; i++){
 			test_vectors_copy[i] = TwoGrid(1,1,test_vectors[i],test_vectors[i],false); 
-			normalize(test_vectors_copy[i]); //normalizing the test vectors
+			//normalize(test_vectors_copy[i]); //normalizing the test vectors
 		}
 		test_vectors = test_vectors_copy;
+		orthonormalize(); //Orthonormalize the test vectors
 	}
-	std::cout << "test vectors intialized" << std::endl;
-	*/
+	std::cout << "test vectors initialized" << std::endl;
+	
+	
 	
 }
 
@@ -92,7 +129,7 @@ c_matrix AMG::P_v(const c_matrix& v) {
 	return x;
 }
 
-//x_i = P^T_ij v_j. dim(P^T) =  Ntest Na x 2 Ntot, Nagg = block_x * block_t
+//x_i = P^H_ij v_j. dim(P^T) =  Ntest Na x 2 Ntot, Nagg = block_x * block_t
 //dim(v) = 2 NTot, dim(x) = Ntest Nagg
 c_matrix AMG::Pt_v(const c_matrix& v) {
 	c_matrix x(Ntest, c_vector(Nagg, 0));
@@ -103,13 +140,13 @@ c_matrix AMG::Pt_v(const c_matrix& v) {
 			if (Nagg == block_x * block_t){
 				//Aggregation scheme 1
 				for (int alf = 0; alf < 2; alf++) {
-					x[k][a] += test_vectors[k][Agg[a][j]][alf] * v[Agg[a][j]][alf];
+					x[k][a] += std::conj(test_vectors[k][Agg[a][j]][alf]) * v[Agg[a][j]][alf];
 				}
 			}
 			else{
 				//Aggregation scheme 2
 				int x_coord = XCoord[Agg[a][j]], t_coord = TCoord[Agg[a][j]], s_coord = SCoord[Agg[a][j]];
-				x[k][a] += test_vectors[k][Coords[x_coord][t_coord]][s_coord] * v[Coords[x_coord][t_coord]][s_coord];
+				x[k][a] += std::conj(test_vectors[k][Coords[x_coord][t_coord]][s_coord]) * v[Coords[x_coord][t_coord]][s_coord];
 			}
 		}
 	}
@@ -158,7 +195,7 @@ c_matrix AMG::bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matri
     c_matrix x(Ntest, c_vector(Nagg, 0)); //solution
     c_double alpha, beta, rho_i, omega, rho_i_2;
     x = x0; //initial solution
-    r = phi - Pt_D_P(x); //r = b - A*x //Already this operation gives something different
+    r = phi - Pt_D_P(x); //r = b - A*x 
     r_tilde = r;
     while (k<max_iter && err>tol) {
         rho_i = dot(r, r_tilde); //r . r_dagger

@@ -24,10 +24,12 @@ public:
 	void tv_init(const double& eps, const int& Nit);
 	c_matrix TwoGrid(const int& nu1, const int& nu2, 
 		const c_matrix& x0, const c_matrix& phi,const bool& print_message);
-	//void tv_update(); //update test vectors
+
 	c_matrix P_v(const c_matrix& v); //P v
 	c_matrix Pt_v(const c_matrix& v); // Pt v
 	c_matrix Pt_D_P(const c_matrix& v); //Dc v = P^T D P v 
+
+	void orthonormalize(); //Orthonormalize the test vectors
 
 	c_matrix bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matrix& x0,
 		 const double& m0, const int& max_iter, const double& tol, const bool& print_message); //Dc^-1 phi

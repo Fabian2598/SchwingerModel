@@ -4,7 +4,7 @@
 #define NT 8
 #define BLOCK_X 4
 #define BLOCK_T 4
-#define NTEST 3
-#define NAGG 32
+#define NTEST 4
+#define NAGG 16
 
 #endif
