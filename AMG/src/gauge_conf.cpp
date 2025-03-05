@@ -56,14 +56,17 @@ void AggregatesV2() {
 				int aggregate = x * block_t * 2 + t * 2 + s;
 				int count = 0;
 				//x and t are redefined in the following loop
+				
 				for (int x = x0; x < x1; x++) {
 					for (int t = t0; t < t1; t++) {
-						int i = x * Ns + t + s;
+						int i = x * Nt * 2  + t * 2 + s;
+						XCoord[i] = x; TCoord[i] = t; SCoord[i] = s;
+						std::cout << "i = " << i << " x = " << XCoord[i] << " t = " << TCoord[i] << " s = " << SCoord[i]  << std::endl;
 						Agg[aggregate][count] = i;
 						count++;
 					}
 				}
-				if (count != 2*x_elements * t_elements) {
+				if (count != x_elements * t_elements) {
 					std::cout << "Aggregate " << aggregate << " has " << count << " elements" << std::endl;
 				}
 				//Once the loops are finished count should be x_elements*t_elements

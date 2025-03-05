@@ -73,11 +73,10 @@ c_matrix AMG::P_v(const c_matrix& v) {
 	//Loop over columns
 	for (int j = 0; j < Ntest * Nagg; j++) {
 		int k = j / Nagg; //Number of test vector
-		int a = j % (Nagg/2); //Number of aggregate
+		int a = j % Nagg; //Number of aggregate
 		for (int i = 0; i < Agg[a].size(); i++) {
-			for (int alf = 0; alf < 2; alf++) {
-				x[Agg[a][i]][alf] += test_vectors[k][Agg[a][i]][alf] * v[k][2 * a + alf];
-			}
+			int x_coord = XCoord[Agg[a][i]], t_coord = TCoord[Agg[a][i]], s_coord = SCoord[Agg[a][i]];
+			x[Coords[x_coord][t_coord]][s_coord] += test_vectors[k][Coords[x_coord][t_coord]][s_coord] * v[k][a];		
 		}
 	}
 	return x;
@@ -89,12 +88,11 @@ c_matrix AMG::Pt_v(const c_matrix& v) {
 	c_matrix x(Ntest, c_vector(Nagg, 0));
 	for (int i = 0; i < Ntest*Nagg; i++) {
 		int k = i / Nagg; //number of test vector
-		int a = i % (Nagg/2); //number of aggregate
+		int a = i % Nagg; //number of aggregate
 		for (int j = 0; j < Agg[a].size(); j++) {
-			//Each aggregate considers both spins
-			for (int alf = 0; alf < 2; alf++) {
-				x[k][2 * a + alf] += test_vectors[k][Agg[a][j]][alf] * v[Agg[a][j]][alf];
-			}
+			int x_coord = XCoord[Agg[a][j]], t_coord = TCoord[Agg[a][j]], s_coord = SCoord[Agg[a][j]];
+			x[k][a] += test_vectors[k][Coords[x_coord][t_coord]][s_coord] * v[Coords[x_coord][t_coord]][s_coord];
+			
 		}
 	}
 	return x;
