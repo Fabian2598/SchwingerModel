@@ -11,7 +11,7 @@ void Coordinates() {
 }
 
 //Aggregates A_j = L_j x {0,1}
-void Aggregates(){
+void AggregatesV1(){
 	for (int x = 0; x < block_x; x++) {
 		for (int t = 0; t < block_t; t++) {
 			int x0 = x * x_elements, t0 = t * t_elements;
@@ -34,16 +34,6 @@ void Aggregates(){
 	}
 }
 
-//Print aggregates. Useful for debugging
-void PrintAggregates() {
-	for (int i = 0; i < Nagg; i++) {
-		std::cout << "-------Aggregate-----" << i << std::endl;
-		for (int j = 0; j < x_elements * t_elements; j++) {
-			std::cout << Agg[i][j] << " ";
-		}
-		std::cout << std::endl;
-	}
-}
 
 //Aggregates A_j_0 = L_j x {0}, A_j_1 = L_j x {1}
 void AggregatesV2() {
@@ -56,12 +46,10 @@ void AggregatesV2() {
 				int aggregate = x * block_t * 2 + t * 2 + s;
 				int count = 0;
 				//x and t are redefined in the following loop
-				
 				for (int x = x0; x < x1; x++) {
 					for (int t = t0; t < t1; t++) {
 						int i = x * Nt * 2  + t * 2 + s;
 						XCoord[i] = x; TCoord[i] = t; SCoord[i] = s;
-						std::cout << "i = " << i << " x = " << XCoord[i] << " t = " << TCoord[i] << " s = " << SCoord[i]  << std::endl;
 						Agg[aggregate][count] = i;
 						count++;
 					}
@@ -75,8 +63,23 @@ void AggregatesV2() {
 	}
 }
 
+void Aggregates(){
+	if (Nagg ==  block_x * block_t) {
+        std::cout << "Aggregation scheme 1 " << std::endl;
+		AggregatesV1();
+	}
+	else if (Nagg == 2 * block_x * block_t) {
+		std::cout << "Aggregation scheme 2 " << std::endl;
+		AggregatesV2();
+	}
+	else {
+		std::cout << "Nagg has to be block_x * block_t or 2 * block_x * block_t" << std::endl;
+		exit(1);
+	}
+}
+
 //Print aggregates. Useful for debugging
-void PrintAggregatesV2() {
+void PrintAggregates() {
 	for (int i = 0; i < Nagg; i++) {
 		std::cout << "-------Aggregate-----" << i << std::endl;
 		for (int j = 0; j < x_elements * t_elements; j++) {
@@ -85,7 +88,6 @@ void PrintAggregatesV2() {
 		std::cout << std::endl;
 	}
 }
-
 
 
 //Random U1 variable

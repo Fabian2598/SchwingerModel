@@ -13,7 +13,7 @@ constexpr int block_t = BLOCK_T; //We extract this value from config.h
 constexpr int Ntest = NTEST; //Number of test vectors
 constexpr int x_elements = Ns/block_x; //Number of elements in the x direction
 constexpr int t_elements = Nt/block_t; //Number of elements in the t direction
-constexpr int Nagg = 2*block_x * block_t; //Number of aggregates (one spin per aggregate)
+constexpr int Nagg = NAGG;//2*block_x * block_t; //Number of aggregates (one spin per aggregate)
 constexpr int Ntot = Ns*Nt; //Total number of lattice points
 
 extern std::vector<std::vector<int>>Coords; //Vectorize coordinates for the lattice points

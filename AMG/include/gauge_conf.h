@@ -7,11 +7,12 @@
 
 std::complex<double> RandomU1(); //defined on gauge_conf.cpp
 void Coordinates(); //Vectorized coordinates. Coords[x][t]. Computed only once
-void Aggregates(); //Compute aggregates for a lattice blocking. 
-void AggregatesV2(); //Compute aggregates for a lattice blocking. 
+void Aggregates(); //Chooses one of the schemes depending on the number of aggregates Nagg
+void AggregatesV1(); //Aggregation scheme 1
+void AggregatesV2(); //Aggregation scheme 2
 void SaveConf(std::vector<std::vector<std::complex<double>>>& Conf, char* Name); //Save Gauge configuration
 void PrintAggregates();
-void PrintAggregatesV2();
+
 
 //class GaugeConf;
 class GaugeConf {

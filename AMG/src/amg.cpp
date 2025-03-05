@@ -40,28 +40,29 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
-				test_vectors[i][j][k] = i * Ntot * 2 + j * 2 + k + 1;//eps * RandomU1();
+				test_vectors[i][j][k] = i * Ntot * 2 + j * 2 + k + 1;//eps * RandomU1(); //
 			}
 		}
 		
 	}
 	//Apply three steps of the smoother to approximately solve D x = v
-	//for (int i = 0; i < Ntest; i++) {
-	//	test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
-	//	normalize(test_vectors[i]); //normalizing the test vectors
-	//}
+	/*
+	for (int i = 0; i < Ntest; i++) {
+		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
+	}
 
 	//Iterating over the multigrid to improve the test vectors
 	//This initialization is taking too much execution time
-//	for(int n=0; n<Nit; n++){
-//		std::vector<c_matrix> test_vectors_copy = test_vectors;
-//		for(int i = 0; i < Ntest; i++){
-//			test_vectors_copy[i] = TwoGrid(1,1,test_vectors[i],test_vectors[i],false); 
-//			normalize(test_vectors_copy[i]); //normalizing the test vectors
-//		}
-//		test_vectors = test_vectors_copy;
-//	}
-	//std::cout << "test vectors intialized" << std::endl;
+	for(int n=0; n<Nit; n++){
+		std::vector<c_matrix> test_vectors_copy = test_vectors;
+		for(int i = 0; i < Ntest; i++){
+			test_vectors_copy[i] = TwoGrid(1,1,test_vectors[i],test_vectors[i],false); 
+			normalize(test_vectors_copy[i]); //normalizing the test vectors
+		}
+		test_vectors = test_vectors_copy;
+	}
+	std::cout << "test vectors intialized" << std::endl;
+	*/
 	
 }
 
@@ -75,8 +76,17 @@ c_matrix AMG::P_v(const c_matrix& v) {
 		int k = j / Nagg; //Number of test vector
 		int a = j % Nagg; //Number of aggregate
 		for (int i = 0; i < Agg[a].size(); i++) {
-			int x_coord = XCoord[Agg[a][i]], t_coord = TCoord[Agg[a][i]], s_coord = SCoord[Agg[a][i]];
-			x[Coords[x_coord][t_coord]][s_coord] += test_vectors[k][Coords[x_coord][t_coord]][s_coord] * v[k][a];		
+			if (Nagg ==  block_x * block_t){
+				//Aggregation scheme 1
+				for (int alf = 0; alf < 2; alf++) {
+					x[Agg[a][i]][alf] += test_vectors[k][Agg[a][i]][alf] * v[k][a];
+				}
+			}
+			else{
+				//Aggregation scheme 2 
+				int x_coord = XCoord[Agg[a][i]], t_coord = TCoord[Agg[a][i]], s_coord = SCoord[Agg[a][i]];
+				x[Coords[x_coord][t_coord]][s_coord] += test_vectors[k][Coords[x_coord][t_coord]][s_coord] * v[k][a];		
+			}
 		}
 	}
 	return x;
@@ -90,9 +100,17 @@ c_matrix AMG::Pt_v(const c_matrix& v) {
 		int k = i / Nagg; //number of test vector
 		int a = i % Nagg; //number of aggregate
 		for (int j = 0; j < Agg[a].size(); j++) {
-			int x_coord = XCoord[Agg[a][j]], t_coord = TCoord[Agg[a][j]], s_coord = SCoord[Agg[a][j]];
-			x[k][a] += test_vectors[k][Coords[x_coord][t_coord]][s_coord] * v[Coords[x_coord][t_coord]][s_coord];
-			
+			if (Nagg == block_x * block_t){
+				//Aggregation scheme 1
+				for (int alf = 0; alf < 2; alf++) {
+					x[k][a] += test_vectors[k][Agg[a][j]][alf] * v[Agg[a][j]][alf];
+				}
+			}
+			else{
+				//Aggregation scheme 2
+				int x_coord = XCoord[Agg[a][j]], t_coord = TCoord[Agg[a][j]], s_coord = SCoord[Agg[a][j]];
+				x[k][a] += test_vectors[k][Coords[x_coord][t_coord]][s_coord] * v[Coords[x_coord][t_coord]][s_coord];
+			}
 		}
 	}
 	return x;
@@ -114,10 +132,7 @@ c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const c_matrix& x0,
 	c_matrix x = bi_cgstab(GConf.Conf, phi,x0,m0,nu1,1e-10,false);
 	//x = x + P*Dc^-1 * P^T * (phi-D*x); 
 	c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //TP^T (phi - D x)
-	std::cout << "--Inverting Dc with CGstab--" << std::endl;
-	x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,1000,1e-10,true)); //The bi_cgstab here has to be for DC^-1 not D^-1
-	std::cout << "--Dc inverted--" << std::endl;
-	std::cout << "--coarse-grid corrected--" << std::endl;
+	x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,10000,1e-10,true)); //The bi_cgstab here has to be for DC^-1 not D^-1
 	x = bi_cgstab(GConf.Conf, phi,x,m0,nu2,1e-10,false);
 
 	double err = std::real(dot(phi - D_phi(GConf.Conf,x,m0),phi - D_phi(GConf.Conf,x,m0)));
