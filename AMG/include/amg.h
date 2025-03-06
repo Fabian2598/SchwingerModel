@@ -22,7 +22,7 @@ public:
 	//--CHECK LATER WHICH MEMBER FUNCTIONS WILL BE PRIVATE--//
 
 	void tv_init(const double& eps, const int& Nit);
-	c_matrix TwoGrid(const int& nu1, const int& nu2, 
+	c_matrix TwoGrid(const int& nu1, const int& nu2, const int& max_iter, const double& tol,
 		const c_matrix& x0, const c_matrix& phi,const bool& print_message);
 
 	c_matrix P_v(const c_matrix& v); //P v
