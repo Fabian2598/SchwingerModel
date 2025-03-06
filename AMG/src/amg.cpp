@@ -42,6 +42,7 @@ void AMG::orthonormalize(){
 		v_chopped[i] = P_v(e_i); //Columns of the interpolator
 	}
 	//Orthonormalization of v_chopped
+	clock_t begin = clock();
 	for(int i = 0; i < Ntest*Nagg; i++){
 		for(int j = 0; j < i; j++){
 			c_double proj = dot(v_chopped[i],v_chopped[j]);
@@ -49,8 +50,11 @@ void AMG::orthonormalize(){
 		}
 		normalize(v_chopped[i]);
 	}
-	
+	clock_t end = clock();
+	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+	std::cout << "Time for orthonormalizing V_chopped " << elapsed_secs << " s" << std::endl;
 	//Replacing test vectors
+	begin = clock();
 	for(int i = 0; i < Ntest; i++){
 		for(int j = 0; j < Nagg; j++){
 			for(int n = 0; n < Ntot; n++){
@@ -61,6 +65,9 @@ void AMG::orthonormalize(){
 			
 		}
 	}
+	end = clock();
+	elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+	std::cout << "Time for replacing the test vectors " << elapsed_secs << " s" << std::endl;
 	test_vectors = test_vectors_copy;
 }; 
 
@@ -75,27 +82,30 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 				test_vectors[i][j][k] = eps * RandomU1();//i * Ntot * 2 + j * 2 + k + 1;
 			}
 		}
-		
 	}
 	//Apply three steps of the smoother to approximately solve D x = v
-	
 	for (int i = 0; i < Ntest; i++) {
-		//c_matrix x0(Ntot, c_vector(2, 0));
-		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
-		//normalize(test_vectors[i]); //normalizing the test vectors
+		c_matrix zero = c_matrix(Ntot, c_vector(2, 0)); //Homogeneous Dirac equation
+		test_vectors[i] = bi_cgstab(GConf.Conf, zero, test_vectors[i], m0,3,1e-10,true); //The tolerance is not really relevant here
 	}
-	orthonormalize(); //is this necessary?
+	//Testing execution time
+    clock_t begin = clock();
+    orthonormalize(); 
+    clock_t end = clock();
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    std::cout << "Orthonormalization Time = " << elapsed_secs << " s" << std::endl;
+
+	
 
 	//Iterating over the multigrid to improve the test vectors
-	
 	for(int n=0; n<Nit; n++){
 		std::vector<c_matrix> test_vectors_copy = test_vectors;
 		for(int i = 0; i < Ntest; i++){
-			test_vectors_copy[i] = TwoGrid(1,1,test_vectors[i],test_vectors[i],false); 
-			//normalize(test_vectors_copy[i]); //normalizing the test vectors
+			test_vectors_copy[i] = TwoGrid(0,1,1,1e-10,test_vectors[i],test_vectors[i],true); 
+			normalize(test_vectors_copy[i]); //normalizing the test vectors
 		}
 		test_vectors = test_vectors_copy;
-		orthonormalize(); //Orthonormalize the test vectors
+		orthonormalize(); 
 	}
 	std::cout << "test vectors initialized" << std::endl;
 	
@@ -129,7 +139,7 @@ c_matrix AMG::P_v(const c_matrix& v) {
 	return x;
 }
 
-//x_i = P^H_ij v_j. dim(P^T) =  Ntest Na x 2 Ntot, Nagg = block_x * block_t
+//x_i = P^H_ij v_j. dim(P^H) =  Ntest Na x 2 Ntot, Nagg = block_x * block_t
 //dim(v) = 2 NTot, dim(x) = Ntest Nagg
 c_matrix AMG::Pt_v(const c_matrix& v) {
 	c_matrix x(Ntest, c_vector(Nagg, 0));
@@ -160,21 +170,34 @@ c_matrix AMG::Pt_D_P(const c_matrix& v){
 }
 
 //x = D^-1 phi
-c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const c_matrix& x0, 
+c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const int& max_iter, const double& tol, const c_matrix& x0, 
 	const c_matrix& phi, const bool& print_message) {
 	//nu1 --> pre-smoothing steps
 	//nu2 --> post-smoothing steps
 	//x0 --> initial guess
 	//phi --> right hand side
-	c_matrix x = bi_cgstab(GConf.Conf, phi,x0,m0,nu1,1e-10,false);
-	//x = x + P*Dc^-1 * P^T * (phi-D*x); 
-	c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //TP^T (phi - D x)
-	x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,10000,1e-10,true)); //The bi_cgstab here has to be for DC^-1 not D^-1
-	x = bi_cgstab(GConf.Conf, phi,x,m0,nu2,1e-10,false);
-
-	double err = std::real(dot(phi - D_phi(GConf.Conf,x,m0),phi - D_phi(GConf.Conf,x,m0)));
+	//max_iter --> maximum number of iterations
+	//tol --> tolerance
+	c_matrix x = x0;
+	double err = 1;
+	int k = 0;
+	while(k < max_iter && err > tol){
+		if (nu1>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu1,1e-10,false);}
+		//x = x + P*Dc^-1 * P^H * (phi-D*x); 
+		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
+		x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,10000,1e-10,true)); //The bi_cgstab here is for Dc
+		if (nu2>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu2,1e-10,false);}
+		err = std::real(dot(phi - D_phi(GConf.Conf,x,m0),phi - D_phi(GConf.Conf,x,m0)));
+		if (err < tol){
+			if (print_message == true){
+				std::cout << "Two-grid method converged in " << k+1 << " iterations" << " Error " << err << std::endl;
+			}
+		return x;
+		}
+		k++;
+	}
 	if (print_message == true){
-		std::cout << "Error = " << err << std::endl;
+		std::cout << "Two-grid did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
 	}
 	return x;
 }
@@ -212,7 +235,9 @@ c_matrix AMG::bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matri
         err = std::real(dot(s, s));
         if (err < tol) {
             x = x + alpha * d;
-			std::cout << "Bi-CG-stab for Dc converged in " << k << " iterations" << " Error " << err << std::endl;
+			if (print_message == true) {
+				std::cout << "Bi-CG-stab for Dc converged in " << k << " iterations" << " Error " << err << std::endl;
+			}
             return x;
         }
         t = Pt_D_P(s);   //A s

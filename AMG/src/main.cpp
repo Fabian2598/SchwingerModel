@@ -5,7 +5,7 @@
 #include "amg.h"
 
 int main() {
-    srand(time(0));//srand(0);
+    srand(time(0));//srand(0); //srand(time(0));
     initialize_matrices(); //Initialize gamma matrices, identity and unit vectors
     Coordinates(); //Vectorized coordinates
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
@@ -19,8 +19,8 @@ int main() {
 
     GaugeConf GConf = GaugeConf(Ns, Nt);
     GConf.initialization(); //Initialize the gauge configuration
-    PrintAggregates();
-    double m0 = 1;
+    //PrintAggregates();
+    double m0 = -0.5; //for negative masses close to zero this gets very ill-conditioned for V = 8^2
 
     c_matrix PHI(Ntot, c_vector(2, 0));
     for (int i = 0; i < Ntot; i++) {
@@ -31,7 +31,8 @@ int main() {
   
     std::cout << "################Bi-CGstab inversion##############" << std::endl;
     c_matrix x = bi_cgstab(GConf.Conf, PHI, PHI, m0, 1000, 1e-10, true);//bi_cgstab(GConf.Conf, phi,m0); //D^-1 phi
-
+    std::cout << "------D^-1 phi------" << std::endl;
+    std::cout << x[0][0] << " " << x[0][1] << std::endl;
 
     c_matrix phi(Ntest, c_vector(Nagg, 0));
     for (int i = 0; i < Ntest; i++) {
@@ -40,49 +41,14 @@ int main() {
         }
     }
 
-    std::cout << "################Bi-CGstab_DC inversion##############" << std::endl;
+    std::cout << "################Set-up phase##############" << std::endl;
     AMG amg = AMG(GConf, Ns, Nt, Ntest, m0);
     amg.tv_init(1, 6); //test vectors intialization
-    c_matrix Dc(Ntest * Nagg, c_vector(Ntest * Nagg, 0));
-
-    for (int col = 0; col < Ntest * Nagg; col++) {
-        c_matrix v = amg.Pt_D_P(canonical_vector(col, Ntest, Nagg)); //column
-        int count = 0;
-        for (int i = 0; i < v.size(); i++) {
-            for (int j = 0; j < v[i].size(); j++) {
-                Dc[count][col] = v[i][j];
-                count += 1;
-            }
-        }
-    }
-
-    //Flatten phi
-    c_vector phi_flat(Ntest * Nagg, 0);
-    int count = 0;
-    for (int i = 0; i < phi.size(); i++) {
-        for (int j = 0; j < phi[i].size(); j++) {
-            phi_flat[count] = phi[i][j];
-            count += 1;
-        }
-    }
-    //PrintVector(Dc);
-    save_matrix(Dc, "Dc.dat");
-    save_vector(phi_flat, "phi.dat");
-    c_vector Dc_phi_flat = Dc * phi_flat;
-    std::cout << std::endl;
-    std::cout << "------phi------" << std::endl;
-    std::cout << phi[0][0] << "   " << phi[0][1] << std::endl;
-    std::cout << "------Dc^-1 phi------" << std::endl;
-    c_matrix x1 = amg.bi_cgstab_Dc(GConf.Conf, phi, phi, m0, 10000, 1e-10, true);
-    std::cout << x1[0][0] << " " << x1[0][1] << std::endl;
-    std::cout << "------Dc Dc^-1 phi------" << std::endl;
-    c_matrix Dc_x = amg.Pt_D_P(x1);
-    std::cout << Dc_x[0][0] << " " << Dc_x[0][1] << std::endl;
-
-    
     std::cout << "################Two-grid inversion of D##############" << std::endl;
+    int nu1 = 0, nu2 = 2;
+    std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
     c_matrix x0;
-    x0 = amg.TwoGrid(2, 2, PHI, PHI, true);
+    x0 = amg.TwoGrid(nu1, nu2, 100, 1e-10,  PHI, PHI, true);
     std::cout << "------PHI------" << std::endl;
     std::cout << PHI[0][0] << " " << PHI[0][1] << std::endl;
     std::cout << "------D^-1 phi------" << std::endl;

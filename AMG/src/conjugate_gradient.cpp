@@ -73,7 +73,9 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
         err = std::real(dot(s, s));
         if (err < tol) {
             x = x + alpha * d;
-            std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
+            if (print_message == true) {
+                std::cout << "Bi-CG-stab converged in " << k << " iterations" << " Error " << err << std::endl;
+            }
             return x;
         }
         t = D_phi(U, s, m0);   //A s
