@@ -44,6 +44,7 @@ public:
 	void Compute_Staple(); //Computes staples
 	void Compute_Plaquette01(); //Computes plaquettes
 	double MeasureSp_HMC();
+	void PrintConf();
 private:
 	int Ns, Nt, Ntot;
 };

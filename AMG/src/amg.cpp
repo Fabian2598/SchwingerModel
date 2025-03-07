@@ -42,6 +42,49 @@ void AMG::orthonormalize(){
 		v_chopped[i] = P_v(e_i); //Columns of the interpolator
 	}
 	//Orthonormalization of v_chopped
+	//clock_t begin = clock();
+	/*
+	for (int i = 0; i < Nagg; i++) {
+		for (int nt = 0; nt < Ntest; nt++) {
+			for (int j = 0; j < nt; j++) {
+
+				c_double proj = dot(v_chopped[nt*Nagg], v_chopped[j*Nagg]);
+				v_chopped[nt*Nagg] = v_chopped[nt*Nagg] - proj * v_chopped[j*Nagg];
+			}
+			normalize(v_chopped[nt*Nagg]);
+		}
+		
+	}
+	*/
+	/*
+	clock_t begin = clock();
+	// Precompute dot products to avoid redundant calculations
+	std::vector<std::vector<c_double>> dot_products(Ntest * Nagg, std::vector<c_double>(Ntest * Nagg, 0));
+	for (int i = 0; i < Ntest * Nagg; i++) {
+		for (int j = 0; j <= i; j++) {
+			dot_products[i][j] = dot(v_chopped[i], v_chopped[j]);
+			if (i != j) {
+				dot_products[j][i] = dot_products[i][j];
+			}
+		}
+	}
+
+	for (int i = 0; i < Ntest * Nagg; i++) {
+		for (int j = 0; j < i; j++) {
+			c_double proj = dot_products[i][j];
+			for (int n = 0; n < Ntot; n++) {
+				for (int alf = 0; alf < 2; alf++) {
+					v_chopped[i][n][alf] -= proj * v_chopped[j][n][alf];
+				}
+			}
+		}
+		normalize(v_chopped[i]);
+	}
+	clock_t end = clock();
+	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+	std::cout << "Time for orthonormalizing V_chopped " << elapsed_secs << " s" << std::endl;
+	*/
+
 	clock_t begin = clock();
 	for(int i = 0; i < Ntest*Nagg; i++){
 		for(int j = 0; j < i; j++){
@@ -50,11 +93,13 @@ void AMG::orthonormalize(){
 		}
 		normalize(v_chopped[i]);
 	}
+	
+
 	clock_t end = clock();
 	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 	std::cout << "Time for orthonormalizing V_chopped " << elapsed_secs << " s" << std::endl;
+
 	//Replacing test vectors
-	begin = clock();
 	for(int i = 0; i < Ntest; i++){
 		for(int j = 0; j < Nagg; j++){
 			for(int n = 0; n < Ntot; n++){
@@ -65,9 +110,6 @@ void AMG::orthonormalize(){
 			
 		}
 	}
-	end = clock();
-	elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-	std::cout << "Time for replacing the test vectors " << elapsed_secs << " s" << std::endl;
 	test_vectors = test_vectors_copy;
 }; 
 
@@ -86,22 +128,15 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	//Apply three steps of the smoother to approximately solve D x = v
 	for (int i = 0; i < Ntest; i++) {
 		c_matrix zero = c_matrix(Ntot, c_vector(2, 0)); //Homogeneous Dirac equation
-		test_vectors[i] = bi_cgstab(GConf.Conf, zero, test_vectors[i], m0,3,1e-10,true); //The tolerance is not really relevant here
+		test_vectors[i] = bi_cgstab(GConf.Conf, zero, test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
 	}
-	//Testing execution time
-    clock_t begin = clock();
+
     orthonormalize(); 
-    clock_t end = clock();
-    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    std::cout << "Orthonormalization Time = " << elapsed_secs << " s" << std::endl;
-
-	
-
 	//Iterating over the multigrid to improve the test vectors
 	for(int n=0; n<Nit; n++){
 		std::vector<c_matrix> test_vectors_copy = test_vectors;
 		for(int i = 0; i < Ntest; i++){
-			test_vectors_copy[i] = TwoGrid(0,1,1,1e-10,test_vectors[i],test_vectors[i],true); 
+			test_vectors_copy[i] = TwoGrid(0,1,1,1e-10,test_vectors[i],test_vectors[i],false); 
 			normalize(test_vectors_copy[i]); //normalizing the test vectors
 		}
 		test_vectors = test_vectors_copy;
@@ -185,10 +220,11 @@ c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const int& max_iter, const
 		if (nu1>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu1,1e-10,false);}
 		//x = x + P*Dc^-1 * P^H * (phi-D*x); 
 		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
-		x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,10000,1e-10,true)); //The bi_cgstab here is for Dc
+		x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,10000,1e-10,false)); //The bi_cgstab here is for Dc
 		if (nu2>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu2,1e-10,false);}
 		err = std::real(dot(phi - D_phi(GConf.Conf,x,m0),phi - D_phi(GConf.Conf,x,m0)));
 		if (err < tol){
+			it_count = k + 1;
 			if (print_message == true){
 				std::cout << "Two-grid method converged in " << k+1 << " iterations" << " Error " << err << std::endl;
 			}
@@ -196,6 +232,7 @@ c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const int& max_iter, const
 		}
 		k++;
 	}
+	it_count = max_iter;
 	if (print_message == true){
 		std::cout << "Two-grid did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
 	}

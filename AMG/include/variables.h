@@ -5,6 +5,7 @@
 #include <vector>
 
 extern double pi;
+extern double it_count;
 
 constexpr int Ns=NS; //We extract this value from config.h
 constexpr int Nt = NT; //We extract this value from config.h

@@ -13,18 +13,19 @@ set(SOURCES
     src/conjugate_gradient.cpp
     src/amg.cpp
     src/main.cpp  
+    src/statistics.cpp
 )
 
 #Lattice dimensions
-set(NS "32") 
-set(NT "32") 
+set(NS "16") 
+set(NT "16") 
 #Number of lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
-set(BLOCK_X "8")
-set(BLOCK_T "8")
+set(BLOCK_X "4")
+set(BLOCK_T "4")
 #Number of test vectors
 set(NTEST "20") 
-set(NAGG "64") #BlockX * BlockT for aggregation scheme 1 and 2 * BlockX * BlockT for scheme 2
+set(NAGG "16") #BlockX * BlockT for aggregation scheme 1 and 2 * BlockX * BlockT for scheme 2
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 
@@ -36,6 +37,7 @@ add_executable("SM_${NS}x${NT}" ${SOURCES} "include/matrix_operations.h"
  "include/conjugate_gradient.h"
  "include/amg.h"
  "include/operator_overloads.h" 
+ "include/statistics.h"
 )
 
 # Set the directories that should be included in the build command for this target

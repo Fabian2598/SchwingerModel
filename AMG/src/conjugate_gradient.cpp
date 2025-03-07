@@ -73,8 +73,9 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
         err = std::real(dot(s, s));
         if (err < tol) {
             x = x + alpha * d;
+            it_count = k+1;
             if (print_message == true) {
-                std::cout << "Bi-CG-stab converged in " << k << " iterations" << " Error " << err << std::endl;
+                std::cout << "Bi-CG-stab converged in " << k+1 << " iterations" << " Error " << err << std::endl;
             }
             return x;
         }
@@ -85,6 +86,7 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
         rho_i_2 = rho_i; //rho_{i-2} = rho_{i-1}
         k++;
     }
+    it_count = max_iter;
     if (print_message == true) {
         std::cout << "Did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
     }

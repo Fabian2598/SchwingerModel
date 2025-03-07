@@ -3,6 +3,7 @@
 
 #include "matrix_operations.h"
 #include "operator_overloads.h"
+#include "variables.h"
 #include <iostream>
 
 //Conjugate gradient for computing (DD^dagger)^-1 phi, where phi is a vector represented by a matrix

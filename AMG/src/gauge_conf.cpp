@@ -5,7 +5,6 @@ void Coordinates() {
 	for (int x = 0; x < Ns; x++) {
 		for (int t = 0; t < Nt; t++) {
 			Coords[x][t] = x * Ns + t;
-			//Coords[t][x] = t * Nt + x;
 		}
 	}
 }
@@ -188,4 +187,13 @@ double GaugeConf::MeasureSp_HMC() {
 	return Sp;
 }
 
+void GaugeConf::PrintConf() {
+	for (int x = 0; x < Ns; x++) {
+		for (int t = 0; t < Nt; t++) {
+			for (int mu = 0; mu < 2; mu++) {
+				std::cout << "x " << x << " t " << t << " mu " << mu << "   " << Conf[Coords[x][t]][mu] << std::endl;
+			}
+		}
+	}
+}
 
