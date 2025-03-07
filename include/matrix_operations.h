@@ -2,11 +2,12 @@
 #define MATRIX_OPERATIONS_INCLUDED
 #include <complex>
 #include "variables.h"
+#include "operator_overloads.h"
 
 constexpr int Ntot = Ns * Nt;
-extern std::vector<std::vector<std::vector<std::complex<double>>>> gamma_mat;  //Pauli matrices
-extern std::complex<double> I_number; //imaginary number
-extern std::vector<std::vector<std::complex<double>>> Identity;
+extern std::vector<c_matrix> gamma_mat;  //Pauli matrices
+extern c_double I_number; //imaginary number
+extern c_matrix Identity;
 extern std::vector<std::vector<int>> hat_mu; //hat_mu[mu][2] = {hat_mu_x, hat_mu_t}
 
 //Intialize gamma matrices, identity and unit vectors
@@ -37,7 +38,7 @@ inline void periodic_boundary() {
 
 
 //right fermionic boundary (antiperiodic in time) x+hat{mu}
-inline std::complex<double> rfb(const std::vector<std::vector<std::complex<double>>>& phi, const int& x, const int& t, const int& mu, const int& bet) {
+inline c_double rfb(const c_matrix& phi, const int& x, const int& t, const int& mu, const int& bet) {
 	//time
 	if (mu == 0) {
 		if (t == Nt - 1) {
@@ -54,7 +55,7 @@ inline std::complex<double> rfb(const std::vector<std::vector<std::complex<doubl
 }
 
 //left fermionic boundary (antiperiodic in time) x-hat{mu}
-inline std::complex<double> lfb(const std::vector<std::vector<std::complex<double>>>& phi, const int& x, const int& t, const int& mu, const int& bet) {
+inline c_double lfb(const c_matrix& phi, const int& x, const int& t, const int& mu, const int& bet) {
 	//time
 	if (mu == 0) {
 		if (t == 0) {
@@ -71,15 +72,15 @@ inline std::complex<double> lfb(const std::vector<std::vector<std::complex<doubl
 }
 
 //D phi
-std::vector<std::vector<std::complex<double>>> D_phi(const std::vector<std::vector<std::complex<double>>>& U, const std::vector<std::vector<std::complex<double>>>& phi, const double& m0);
+c_matrix D_phi(const c_matrix& U, const c_matrix& phi, const double& m0);
 //D^dagger phi
-std::vector<std::vector<std::complex<double>>> D_dagger_phi(const std::vector<std::vector<std::complex<double>>>& U, const std::vector<std::vector<std::complex<double>>>& phi, const double& m0);
+c_matrix D_dagger_phi(const c_matrix& U, const c_matrix& phi, const double& m0);
 //D D^dagger phi
-std::vector<std::vector<std::complex<double>>> D_D_dagger_phi(const std::vector<std::vector<std::complex<double>>>& U, const std::vector<std::vector<std::complex<double>>>& phi, const double& m0);
+c_matrix D_D_dagger_phi(const c_matrix& U, const c_matrix& phi, const double& m0);
 
 
 //psi^dag \partial D / \partial omega(z) psi
-std::vector<std::vector<double>> phi_dag_partialD_phi(const std::vector<std::vector<std::complex<double>>>& U,
- const std::vector<std::vector<std::complex<double>>>& left, const std::vector<std::vector<std::complex<double>>>& right);
+std::vector<std::vector<double>> phi_dag_partialD_phi(const c_matrix& U,
+ const c_matrix& left, const c_matrix& right);
 
 #endif

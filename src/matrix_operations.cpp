@@ -1,11 +1,11 @@
 #include "matrix_operations.h"
 
 
-std::vector<std::vector<std::vector<std::complex<double>>>> gamma_mat(2,
-	std::vector<std::vector<std::complex<double>>>(2, std::vector<std::complex<double>>(2, 0))
+std::vector<c_matrix> gamma_mat(2,
+	c_matrix(2, c_vector(2, 0))
 );  //Pauli matrices
-std::complex<double> I_number(0, 1); //imaginary number
-std::vector<std::vector<std::complex<double>>>Identity(Ntot, std::vector<std::complex<double>>(2, 0));
+c_double I_number(0, 1); //imaginary number
+c_matrix Identity(Ntot, c_vector(2, 0));
 std::vector<std::vector<int>>hat_mu(Ntot, std::vector<int>(2, 0)); //hat_mu[mu][2] = {hat_mu_t, hat_mu_x}
 
 //Intialize gamma matrices, identity and unit vectors
@@ -24,9 +24,9 @@ void initialize_matrices() {
 }
 
 //D phi
-std::vector<std::vector<std::complex<double>>> D_phi(const std::vector<std::vector<std::complex<double>>>& U, const std::vector<std::vector<std::complex<double>>>& phi, const double& m0) {
+c_matrix D_phi(const c_matrix& U, const c_matrix& phi, const double& m0) {
 	int Ntot = Ns * Nt;
-	std::vector<std::vector<std::complex<double>>> Dphi(Ntot, std::vector<std::complex<double>>(2, 0)); //Dphi[Ntot][2]
+	c_matrix Dphi(Ntot, c_vector(2, 0)); //Dphi[Ntot][2]
 	for (int x = 0; x < Ns; x++) {
 		for (int t = 0; t < Nt; t++) {
 			int n = Coords[x][t];
@@ -47,9 +47,9 @@ std::vector<std::vector<std::complex<double>>> D_phi(const std::vector<std::vect
 }
 
 //D^dagger phi
-std::vector<std::vector<std::complex<double>>> D_dagger_phi(const std::vector<std::vector<std::complex<double>>>& U, const std::vector<std::vector<std::complex<double>>>& phi, const double& m0) {
+c_matrix D_dagger_phi(const c_matrix& U, const c_matrix& phi, const double& m0) {
 	int Ntot = Ns * Nt;
-	std::vector<std::vector<std::complex<double>>> Dphi(Ntot, std::vector<std::complex<double>>(2, 0)); //Dphi[Ntot][2]
+	c_matrix Dphi(Ntot, c_vector(2, 0)); //Dphi[Ntot][2]
 	for (int x = 0; x < Ns; x++) {
 		for (int t = 0; t < Nt; t++) {
 			int n = Coords[x][t];
@@ -70,14 +70,14 @@ std::vector<std::vector<std::complex<double>>> D_dagger_phi(const std::vector<st
 }
 
 //D D^dagger phi
-std::vector<std::vector<std::complex<double>>> D_D_dagger_phi(const std::vector<std::vector<std::complex<double>>>& U, const std::vector<std::vector<std::complex<double>>>& phi, const double& m0) {
+c_matrix D_D_dagger_phi(const c_matrix& U, const c_matrix& phi, const double& m0) {
 	return D_phi(U, D_dagger_phi(U, phi, m0), m0);
 }
 
 
 //2* Re ( left^dag \partial D / \partial omega(z) right )
-std::vector<std::vector<double>> phi_dag_partialD_phi(const std::vector<std::vector<std::complex<double>>>& U,
- const std::vector<std::vector<std::complex<double>>>& left,const std::vector<std::vector<std::complex<double>>>& right){
+std::vector<std::vector<double>> phi_dag_partialD_phi(const c_matrix& U,
+ const c_matrix& left,const c_matrix& right){
 	int Ntot = Ns * Nt;
 	std::vector<std::vector<double>> Dphi(Ntot, std::vector<double>(2, 0)); //Dphi[Ntot][2]
 	for (int x = 0; x < Ns; x++) {

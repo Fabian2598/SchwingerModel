@@ -1,8 +1,11 @@
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include <complex>
 #include <random>
 #include <ctime>
+#include <sstream>
+#include <string>
 
 //This program solves a linear problem using the conjugate gradient method.
 //I just have to modify it to solve the Dirac equation and connect it with the rest of the Schwinger model.
@@ -57,8 +60,15 @@ c_vector operator-(const c_vector& v1, const c_vector& v2){
     return y;
 }
 
+std::string format(double number) {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(4) << number;
+    std::string str = oss.str();
+    str.erase(str.find('.'), 1); // Elimina el punto decimal
+    return str;
+}
+
 int main (){
-    //srand(time(0));
     srand(0);
     int N = 4;
     c_matrix A(N,c_vector(N,0));
@@ -123,8 +133,6 @@ int main (){
         std::cout << x[i] << " ";
     }
     std::cout << std::endl;
-    
-
 return 0;
 }
 

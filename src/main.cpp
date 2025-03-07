@@ -12,6 +12,7 @@ int main() {
     double trajectory_length; //HMC parameters
     int MD_steps;
     double m0; //bare mass
+	int saveconf = 0; //Save configurations
     //---Input data---//
     std::cout << "----------------------------" << std::endl;
     std::cout << "|  Two-flavor Schwinger model   |" << std::endl;
@@ -36,6 +37,8 @@ int main() {
     std::cin >> Nmeas;
     std::cout << "Step (sweeps between measurements): ";
     std::cin >> Nsteps;
+    std::cout << "Save configurations yes/no (1 or 0): ";
+    std::cin >> saveconf;
     std::cout << " " << std::endl;
 
     std::vector<double> Betas(Nbeta);
@@ -57,7 +60,7 @@ int main() {
     Datfile.open(NameData);
     for (double beta : Betas) {
         std::cout << "beta = " << beta << std::endl;
-        HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, Ns, Nt, Ntot, m0);   
+        HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, Ns, Nt, Ntot, m0,saveconf);   
         clock_t begin = clock();
         hmc.HMC_algorithm();
         clock_t end = clock();

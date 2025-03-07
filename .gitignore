@@ -10,3 +10,6 @@ build
 .vscode
 CGcpp.cpython-39-x86_64-linux-gnu.so
 AMG/build
+AMG/confs
+bi_gcstab.cpp
+conjugate_gradient_test.cpp

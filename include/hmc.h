@@ -2,16 +2,15 @@
 #define HMC_INCLUDED
 
 #include "gauge_conf.h"
-#include "matrix_operations.h"
 #include "conjugate_gradient.h"
 
 class HMC {
 
 public:
 	HMC(GaugeConf& GConf, const int& MD_steps, const double& trajectory_length, const int& Ntherm, const int& Nmeas, 
-		const int& Nsteps, const double& beta, const int& Nspace, const int& Ntime, const int& Ntot, const double& m0) : 
+		const int& Nsteps, const double& beta, const int& Nspace, const int& Ntime, const int& Ntot, const double& m0, const int& saveconf) : 
 		MD_steps(MD_steps), trajectory_length(trajectory_length), Ntherm(Ntherm), Nmeas(Nmeas), Nsteps(Nsteps), 
-		beta(beta), Ns(Nspace), Nt(Ntime), Ntot(Ntot), m0(m0), GConf(GConf) {
+		beta(beta), Ns(Nspace), Nt(Ntime), Ntot(Ntot), m0(m0), saveconf(saveconf), GConf(GConf) {
 
 		PConf = std::vector<std::vector<double>>(Ntot, std::vector<double>(2, 0));//Momenta PI
 		PConf_copy = std::vector<std::vector<double>>(Ntot, std::vector<double>(2, 0));//Momenta PI copy
@@ -28,6 +27,7 @@ public:
 private:
 	int Ns, Nt, Ntot;
 	int MD_steps, Ntherm, Nmeas, Nsteps;
+	int saveconf;
 	double trajectory_length;
 	double beta;
 	double m0;
@@ -38,11 +38,11 @@ private:
 	GaugeConf GConf; //Gauge configuration
 	GaugeConf GConf_copy; //Copy of the gauge configuration
 
-	double Action(GaugeConf& GConfig, const std::vector<std::vector<std::complex<double>>>& phi);
+	double Action(GaugeConf& GConfig, const c_matrix& phi);
 	void Force_G(GaugeConf& GConfig); //force for gauge part
-	void Force(GaugeConf& GConfig, const std::vector<std::vector<std::complex<double>>>& phi); //force_G + fermions
-	void Leapfrog(const std::vector<std::vector<std::complex<double>>>& phi );
-	double Hamiltonian(GaugeConf& GConfig, const std::vector<std::vector<double>>& Pi, const std::vector<std::vector<std::complex<double>>>& phi);
+	void Force(GaugeConf& GConfig, const c_matrix& phi); //force_G + fermions
+	void Leapfrog(const c_matrix& phi );
+	double Hamiltonian(GaugeConf& GConfig, const std::vector<std::vector<double>>& Pi, const c_matrix& phi);
 	void HMC_Update();
 	
 };
@@ -82,14 +82,14 @@ inline std::vector<std::vector<double>> RandomMomentum() {
 }
 
 //Random Chi vector 
-inline std::vector<std::vector<std::complex<double>>> RandomChi() {
+inline c_matrix RandomChi() {
 	//We use a Gaussian distribution to sample the momenta
 	std::random_device rd;
 	std::default_random_engine generator;
 	generator.seed(rd()); //This generator has to be seeded differently. srand doesn't work here
 	// The result is very much affected by the standard deviation
 	std::normal_distribution<double> distribution(0.0, 0.5); //mu, standard deviation
-	std::vector<std::vector<std::complex<double>>> RandPI(Ns * Nt, std::vector<std::complex<double>>(2, 0));
+	c_matrix RandPI(Ns * Nt, c_vector(2, 0));
 	for (int i = 0; i < Ns * Nt; i++) {
 		for (int mu = 0; mu < 2; mu++) {
 			RandPI[i][mu] = 1.0 * distribution(generator) + 0 * (0, 1);

@@ -16,8 +16,8 @@ set(SOURCES
     src/hmc.cpp
 )
 
-set(NS "4") 
-set(NT "4") 
+set(NS "16") 
+set(NT "16") 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 
@@ -28,7 +28,7 @@ add_executable("SM_${NS}x${NT}" ${SOURCES} "include/hmc.h"
  "include/conjugate_gradient.h" 
  "include/variables.h" 
  "include/gauge_conf.h" 
- "include/statistics.h")
+ "include/statistics.h" "include/operator_overloads.h")
 
 # Set the directories that should be included in the build command for this target
 # when running g++ these will be included as -I/directory/path/
