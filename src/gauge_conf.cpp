@@ -4,7 +4,7 @@
 void Coordinates() {
 	for (int x = 0; x < Ns; x++) {
 		for (int t = 0; t < Nt; t++) {
-			Coords[x][t] = x * Ns + t;
+			Coords[x][t] = x * Nt + t;
 		}
 	}
 }
