@@ -59,6 +59,7 @@ Number of betas: 10
 Thermalization: 0
 Measurements: 1000
 Step (sweeps between measurements): 0
+Save configurations yes/no (1 or 0): 0
 ```
 
 ## Windows
