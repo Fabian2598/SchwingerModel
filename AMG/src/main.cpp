@@ -35,10 +35,10 @@ int main() {
     int nu1 = 0, nu2 = 2;
     std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
     
-    double m0 = -0.5; 
+    double m0 = -0.6; 
     double beta = 1;
     int n_conf = 50;
-    std::cout << "m0 " << m0 << "beta " << beta << std::endl;
+    std::cout << "m0 " << m0 << " beta " << beta << std::endl;
     std::vector<double> bi_cg_it(n_conf);
     std::vector<double> multigrid_it(n_conf);
     for (int n = 0; n < n_conf; n++) {
@@ -66,10 +66,11 @@ int main() {
         std::cout << "##### Conf " << n << "#####" << std::endl;
         std::cout << "Bi-CGstab inversion" << std::endl;
         c_matrix X = bi_cgstab(GConf.Conf, PHI, PHI, m0, 100000, 1e-10, true);
+        std::cout << "----------------" << std::endl;   
         bi_cg_it[n] = it_count;
 
         AMG amg = AMG(GConf, Ns, Nt, Ntest, m0);
-        amg.tv_init(1, 6); //test vectors intialization
+        amg.tv_init(1, 3); //test vectors intialization
         std::cout << "Two-grid inversion" << std::endl;
         c_matrix x0;
         x0 = amg.TwoGrid(nu1, nu2, 300, 1e-10, PHI, PHI, true);

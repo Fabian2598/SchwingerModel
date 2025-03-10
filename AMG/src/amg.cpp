@@ -41,64 +41,22 @@ void AMG::orthonormalize(){
 		c_matrix e_i = canonical_vector(i, Ntest, Nagg);
 		v_chopped[i] = P_v(e_i); //Columns of the interpolator
 	}
-	//Orthonormalization of v_chopped
-	//clock_t begin = clock();
-	/*
+
+	
+	clock_t begin = clock();
 	for (int i = 0; i < Nagg; i++) {
 		for (int nt = 0; nt < Ntest; nt++) {
 			for (int j = 0; j < nt; j++) {
-
-				c_double proj = dot(v_chopped[nt*Nagg], v_chopped[j*Nagg]);
-				v_chopped[nt*Nagg] = v_chopped[nt*Nagg] - proj * v_chopped[j*Nagg];
+				c_double proj = dot(v_chopped[nt*Nagg+i], v_chopped[j*Nagg+i]);
+				v_chopped[nt*Nagg+i] = v_chopped[nt*Nagg+i] - proj * v_chopped[j*Nagg+i];
 			}
-			normalize(v_chopped[nt*Nagg]);
+			normalize(v_chopped[nt*Nagg+i]);
 		}
-		
-	}
-	*/
-	/*
-	clock_t begin = clock();
-	// Precompute dot products to avoid redundant calculations
-	std::vector<std::vector<c_double>> dot_products(Ntest * Nagg, std::vector<c_double>(Ntest * Nagg, 0));
-	for (int i = 0; i < Ntest * Nagg; i++) {
-		for (int j = 0; j <= i; j++) {
-			dot_products[i][j] = dot(v_chopped[i], v_chopped[j]);
-			if (i != j) {
-				dot_products[j][i] = dot_products[i][j];
-			}
-		}
-	}
-
-	for (int i = 0; i < Ntest * Nagg; i++) {
-		for (int j = 0; j < i; j++) {
-			c_double proj = dot_products[i][j];
-			for (int n = 0; n < Ntot; n++) {
-				for (int alf = 0; alf < 2; alf++) {
-					v_chopped[i][n][alf] -= proj * v_chopped[j][n][alf];
-				}
-			}
-		}
-		normalize(v_chopped[i]);
 	}
 	clock_t end = clock();
 	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-	std::cout << "Time for orthonormalizing V_chopped " << elapsed_secs << " s" << std::endl;
-	*/
-
-	clock_t begin = clock();
-	for(int i = 0; i < Ntest*Nagg; i++){
-		for(int j = 0; j < i; j++){
-			c_double proj = dot(v_chopped[i],v_chopped[j]);
-			v_chopped[i] = v_chopped[i] - proj * v_chopped[j];
-		}
-		normalize(v_chopped[i]);
-	}
+	std::cout << "Time for orthonormalizing V_chopped with overload " << elapsed_secs << " s" << std::endl;
 	
-
-	clock_t end = clock();
-	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-	std::cout << "Time for orthonormalizing V_chopped " << elapsed_secs << " s" << std::endl;
-
 	//Replacing test vectors
 	for(int i = 0; i < Ntest; i++){
 		for(int j = 0; j < Nagg; j++){
@@ -121,30 +79,32 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
-				test_vectors[i][j][k] = eps * RandomU1();//i * Ntot * 2 + j * 2 + k + 1;
+				test_vectors[i][j][k] = eps * RandomU1();//i * Ntot * 2 + j * 2 + k + 1; 
 			}
 		}
 	}
 	//Apply three steps of the smoother to approximately solve D x = v
+	
 	for (int i = 0; i < Ntest; i++) {
 		c_matrix zero = c_matrix(Ntot, c_vector(2, 0)); //Homogeneous Dirac equation
-		test_vectors[i] = bi_cgstab(GConf.Conf, zero, test_vectors[i], m0,3,1e-10,false); //The tolerance is not really relevant here
+		test_vectors[i] = bi_cgstab(GConf.Conf, zero, test_vectors[i], m0,1000,1e-10,true); //The tolerance is not really relevant here
 	}
 
     orthonormalize(); 
 	//Iterating over the multigrid to improve the test vectors
+	
+	/*Something with this iteration is causing trouble*/
+	/*
 	for(int n=0; n<Nit; n++){
 		std::vector<c_matrix> test_vectors_copy = test_vectors;
 		for(int i = 0; i < Ntest; i++){
-			test_vectors_copy[i] = TwoGrid(0,1,1,1e-10,test_vectors[i],test_vectors[i],false); 
-			normalize(test_vectors_copy[i]); //normalizing the test vectors
+			test_vectors_copy[i] = TwoGrid(0,2,1,1e-10,test_vectors[i],test_vectors[i],false); 
 		}
 		test_vectors = test_vectors_copy;
 		orthonormalize(); 
 	}
 	std::cout << "test vectors initialized" << std::endl;
-	
-	
+	*/
 	
 }
 
@@ -199,7 +159,7 @@ c_matrix AMG::Pt_v(const c_matrix& v) {
 }
 
 
-//Dc = P^T D P, dim(Dc) = Ntest Nagg x Ntest Nagg, dim(v) = Ntest Nagg, 
+//Dc = P^H D P, dim(Dc) = Ntest Nagg x Ntest Nagg, dim(v) = Ntest Nagg, 
 c_matrix AMG::Pt_D_P(const c_matrix& v){
 	return Pt_v(D_phi(GConf.Conf,P_v(v),m0));
 }
