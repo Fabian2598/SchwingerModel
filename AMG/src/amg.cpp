@@ -83,28 +83,22 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 			}
 		}
 	}
-	//Apply three steps of the smoother to approximately solve D x = v
-	
+	c_matrix zero = c_matrix(Ntot, c_vector(2, 0));
 	for (int i = 0; i < Ntest; i++) {
-		c_matrix zero = c_matrix(Ntot, c_vector(2, 0)); //Homogeneous Dirac equation
-		test_vectors[i] = bi_cgstab(GConf.Conf, zero, test_vectors[i], m0,1000,1e-10,true); //The tolerance is not really relevant here
+		test_vectors[i] = bi_cgstab(GConf.Conf, zero, test_vectors[i], m0, 10, 1e-10, true);
 	}
-
-    orthonormalize(); 
-	//Iterating over the multigrid to improve the test vectors
+	orthonormalize();
 	
-	/*Something with this iteration is causing trouble*/
-	/*
-	for(int n=0; n<Nit; n++){
+	for (int n = 0; n < Nit; n++) {
+		std::cout << "****** Nit " << n << " ******" << std::endl;
 		std::vector<c_matrix> test_vectors_copy = test_vectors;
-		for(int i = 0; i < Ntest; i++){
-			test_vectors_copy[i] = TwoGrid(0,2,1,1e-10,test_vectors[i],test_vectors[i],false); 
+		for (int i = 0; i < Ntest; i++) {
+			test_vectors_copy[i] = TwoGrid(0, 2, 40, 1e-12, test_vectors[i], zero, true);
 		}
 		test_vectors = test_vectors_copy;
-		orthonormalize(); 
+		orthonormalize();
 	}
-	std::cout << "test vectors initialized" << std::endl;
-	*/
+	
 	
 }
 
@@ -174,6 +168,7 @@ c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const int& max_iter, const
 	//max_iter --> maximum number of iterations
 	//tol --> tolerance
 	c_matrix x = x0;
+	c_matrix r;
 	double err = 1;
 	int k = 0;
 	while(k < max_iter && err > tol){
@@ -182,7 +177,9 @@ c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const int& max_iter, const
 		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
 		x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,10000,1e-10,false)); //The bi_cgstab here is for Dc
 		if (nu2>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu2,1e-10,false);}
-		err = std::real(dot(phi - D_phi(GConf.Conf,x,m0),phi - D_phi(GConf.Conf,x,m0)));
+		r = phi - D_phi(GConf.Conf, x, m0);
+		err = std::real(dot(r,r));
+		std::cout << "----***---Two-grid method iteration " << k + 1 << " " << " Error " << err << std::endl;
 		if (err < tol){
 			it_count = k + 1;
 			if (print_message == true){

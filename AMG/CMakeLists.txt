@@ -47,6 +47,7 @@ target_include_directories("SM_${NS}x${NT}"
         ${PROJECT_SOURCE_DIR}/include
 )
 target_compile_options("SM_${NS}x${NT}" PRIVATE
+            #-Wall
 			-O3
 			#-fopenmp
 )

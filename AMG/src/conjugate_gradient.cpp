@@ -37,11 +37,12 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
     return x;
 }
 
-//Bi_GCR for D^-1 phi
-//phi --> right-hand side
-//x0 --> initial guess  
-//U --> configuration
+
 c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
+    //Bi_GCR for D^-1 phi
+    //phi --> right-hand side
+    //x0 --> initial guess  
+    //U --> configuration
     int k = 0; //Iteration number
     double err = 1;
 
