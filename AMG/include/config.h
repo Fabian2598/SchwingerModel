@@ -1,10 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
-#define NS 16
-#define NT 16
-#define BLOCK_X 4
-#define BLOCK_T 4
-#define NTEST 10
-#define NAGG 32
+#define NS 4
+#define NT 4
+#define BLOCK_X 2
+#define BLOCK_T 2
+#define NTEST 2
+#define NAGG 8
 
 #endif

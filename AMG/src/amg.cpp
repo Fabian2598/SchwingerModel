@@ -85,21 +85,20 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	}
 	c_matrix zero = c_matrix(Ntot, c_vector(2, 0));
 	for (int i = 0; i < Ntest; i++) {
-		test_vectors[i] = bi_cgstab(GConf.Conf, zero, test_vectors[i], m0, 10, 1e-10, true);
+		test_vectors[i] = bi_cgstab(GConf.Conf, zero, test_vectors[i], m0, 100, 1e-10, true);
 	}
 	orthonormalize();
-	
+	/*
 	for (int n = 0; n < Nit; n++) {
 		std::cout << "****** Nit " << n << " ******" << std::endl;
 		std::vector<c_matrix> test_vectors_copy = test_vectors;
 		for (int i = 0; i < Ntest; i++) {
-			test_vectors_copy[i] = TwoGrid(0, 2, 40, 1e-12, test_vectors[i], zero, true);
+			test_vectors_copy[i] = TwoGrid(1, 1, 1, 1e-12, test_vectors[i], zero, true);
 		}
 		test_vectors = test_vectors_copy;
 		orthonormalize();
 	}
-	
-	
+	*/	
 }
 
 //x_i = P_ij v_j. dim(P) = 2 Ntot x Ntest Na, Na = block_x * block_t
@@ -172,14 +171,14 @@ c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const int& max_iter, const
 	double err = 1;
 	int k = 0;
 	while(k < max_iter && err > tol){
-		if (nu1>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu1,1e-10,false);}
-		//x = x + P*Dc^-1 * P^H * (phi-D*x); 
+		if (nu1>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu1,1e-10,true);}
+		//x = x + P*Dc^-1 * P^H * (phi-D*x);  Coarse grid correction
 		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
 		x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,10000,1e-10,false)); //The bi_cgstab here is for Dc
-		if (nu2>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu2,1e-10,false);}
+		if (nu2>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu2,1e-10,true);}
 		r = phi - D_phi(GConf.Conf, x, m0);
 		err = std::real(dot(r,r));
-		std::cout << "----***---Two-grid method iteration " << k + 1 << " " << " Error " << err << std::endl;
+		//std::cout << "----***---Two-grid method iteration " << k + 1 << " " << " Error " << err << std::endl;
 		if (err < tol){
 			it_count = k + 1;
 			if (print_message == true){
