@@ -16,8 +16,8 @@ set(SOURCES
     src/hmc.cpp
 )
 
-set(NS "32") 
-set(NT "32") 
+set(NS "8") 
+set(NT "8") 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 

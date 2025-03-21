@@ -17,6 +17,7 @@ inline c_double dot(const c_vector& x, const c_vector& y) {
 }
 
 //Complex dot product between vectors arranged like matrices (not matrix multiplication)
+// A.B = sum_i A_i conj(B_i) 
 inline c_double dot(const c_matrix& x, const c_matrix& y) {
     c_double z = 0;
     for (int i = 0; i < x.size(); i++) {
@@ -28,7 +29,7 @@ inline c_double dot(const c_matrix& x, const c_matrix& y) {
 }
 
 //Dot product between two vectors arranged like matrices (not matrix multiplication)
-// A.B = sum_i sum_j A_ij B_ij (not conjugate
+// A.B = sum_i sum_j A_ij B_ij (not conjugate)
 inline c_double dot_v2(const c_matrix& x, const c_matrix& y) {
     c_double z = 0;
     for (int i = 0; i < x.size(); i++) {

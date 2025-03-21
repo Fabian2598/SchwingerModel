@@ -83,9 +83,8 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 			}
 		}
 	}
-	c_matrix zero = c_matrix(Ntot, c_vector(2, 0));
 	for (int i = 0; i < Ntest; i++) {
-		test_vectors[i] = bi_cgstab(GConf.Conf, zero, test_vectors[i], m0, 100, 1e-10, true);
+		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0, 2, 1e-10, false);
 	}
 	orthonormalize();
 	/*
@@ -93,7 +92,7 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 		std::cout << "****** Nit " << n << " ******" << std::endl;
 		std::vector<c_matrix> test_vectors_copy = test_vectors;
 		for (int i = 0; i < Ntest; i++) {
-			test_vectors_copy[i] = TwoGrid(1, 1, 1, 1e-12, test_vectors[i], zero, true);
+			test_vectors_copy[i] = TwoGrid(0, 2, 1, 1e-12, test_vectors[i], zero, true);
 		}
 		test_vectors = test_vectors_copy;
 		orthonormalize();
@@ -171,13 +170,13 @@ c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const int& max_iter, const
 	double err = 1;
 	int k = 0;
 	while(k < max_iter && err > tol){
-		if (nu1>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu1,1e-10,true);}
+		if (nu1>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu1,1e-10,false);}
 		//x = x + P*Dc^-1 * P^H * (phi-D*x);  Coarse grid correction
 		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
 		x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,10000,1e-10,false)); //The bi_cgstab here is for Dc
-		if (nu2>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu2,1e-10,true);}
+		if (nu2>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu2,1e-10,false);}
 		r = phi - D_phi(GConf.Conf, x, m0);
-		err = std::real(dot(r,r));
+		err = sqrt(std::real(dot(r,r)));
 		//std::cout << "----***---Two-grid method iteration " << k + 1 << " " << " Error " << err << std::endl;
 		if (err < tol){
 			it_count = k + 1;
@@ -225,7 +224,7 @@ c_matrix AMG::bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matri
         Ad = Pt_D_P(d);  //A d_i 
         alpha = rho_i / dot(Ad, r_tilde); //alpha_i = rho_{i-1} / (Ad_i, r_tilde)
         s = r - alpha * Ad; //s = r_{i-1} - alpha_i * Ad_i
-        err = std::real(dot(s, s));
+        err = sqrt(std::real(dot(s, s)));
         if (err < tol) {
             x = x + alpha * d;
 			if (print_message == true) {

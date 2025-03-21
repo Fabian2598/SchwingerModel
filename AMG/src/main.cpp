@@ -16,88 +16,88 @@ static std::string format(const double& number) {
     return str;
 }
 
-
 int main() {
-    srand(0);//srand(time(0));
+    srand(time(0));//srand(0); //srand(time(0));
     initialize_matrices(); //Initialize gamma matrices, identity and unit vectors
     Coordinates(); //Vectorized coordinates
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    Aggregates(); //Aggregates
     std::cout << "Ns = " << Ns << " Nt = " << Nt << std::endl;
     std::cout << "block_x = " << block_x << " block_t = " << block_t << std::endl;
     std::cout << "x_elements = " << x_elements << " t_elements = " << t_elements << std::endl;
+    Aggregates(); //Aggregates
     std::cout << "Number of test vectors = " << Ntest << std::endl;
-	std::cout << "Dirac matrix dimension = " << (2*Ntot) << std::endl;
-    std::cout << "Dc dimension = " << Ntest*Nagg << std::endl;
+    std::cout << "Dirac matrix dimension = " << (2 * Ntot) << std::endl;
+    std::cout << "Dc dimension = " << Ntest * Nagg << std::endl;
+
 
     GaugeConf GConf = GaugeConf(Ns, Nt);
-    GConf.initialization(); //Initialize the gauge configuration
-    PrintAggregates();
-    double m0 = -1;
+    //GConf.initialization(); //Initialize the gauge configuration
+    int nu1 = 0, nu2 = 1;
+    std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
 
-    AMG amg = AMG(GConf, Ns, Nt, Ntest, m0);
-    amg.tv_init(1, 3); //test vectors intialization
-    for (int i = 0; i < Ntest; i++) {
-		std::cout << "------tv" << i << "------" << std::endl;
-        PrintVector(amg.test_vectors[i]);
-    }
-	
-	c_matrix P(2*Ntot,c_vector(Ntest*Nagg,0));
-    for (int col = 0; col < Ntest*Nagg; col++) {
-        c_matrix v = amg.P_v(canonical_vector(col, Ntest, Nagg));  //column
-        int count = 0;
-        for (int i = 0; i < v.size(); i++) {
-            for (int j = 0; j < v[i].size(); j++) {
-                P[count][col] = v[i][j];
-                count += 1;
+    double m0 = -0.6;
+    double beta = 1;
+    int n_conf = 50;
+    std::cout << "m0 " << m0 << " beta " << beta << std::endl;
+    std::vector<double> bi_cg_it(n_conf);
+    std::vector<double> multigrid_it(n_conf);
+    for (int n = 0; n < n_conf; n++) {
+        char NameData[500];
+        sprintf(NameData, "../confs/2D_U1_Ns%d_Nt%d_b%s_m%s_%d.txt", Ns, Nt, format(beta).c_str(), format(m0).c_str(), n);
+        std::ifstream infile(NameData);
+        if (!infile) {
+            std::cerr << "File not found" << std::endl;
+            return 1;
+        }
+        int x, t, mu;
+        double re, im;
+
+        while (infile >> x >> t >> mu >> re >> im) {
+            GConf.Conf[Coords[x][t]][mu] = c_double(re, im);
+        }
+        infile.close();
+
+        c_matrix PHI(Ntot, c_vector(2, 0));
+        for (int i = 0; i < Ntot; i++) {
+            for (int j = 0; j < 2; j++) {
+                PHI[i][j] = 1.0 * RandomU1();
             }
         }
-    }
-	std::cout << "------P------" << std::endl;
-	//PrintVector(P);
-	save_matrix(P, "P.dat");
-    c_matrix Pt(Ntest*Nagg, c_vector(2*Ntot,0));
-    for (int col = 0; col < 2 * Ntot; col++) {
-        c_matrix v = amg.Pt_v(canonical_vector(col, Ntot, 2));  //column
-        int count = 0;
-        for (int i = 0; i < v.size(); i++) {
-            for (int j = 0; j < v[i].size(); j++) {
-                Pt[count][col] = v[i][j];
-                count += 1;
+
+        //Store the matrix//
+        c_matrix D(2 * Ntot, c_vector(2 * Ntot, 0));
+        for (int col = 0; col < 2 * Ntot; col++) {
+            c_matrix v = canonical_vector(col, Ntot, 2);  //column
+            c_matrix Dv = D_phi(GConf.Conf, v, m0);
+            int count = 0;
+            for (int i = 0; i < Dv.size(); i++) {
+                for (int j = 0; j < Dv[i].size(); j++) {
+                    D[count][col] = Dv[i][j];
+                    count += 1;
+                }
             }
         }
-    }
-    std::cout << "------P^T------" << std::endl;
-    //PrintVector(Pt);
-	save_matrix(Pt, "Pt.dat");
+        char NameD[500], NamePhi[500];
+        sprintf(NameD, "D%d.dat", n);  sprintf(NamePhi, "Phi%d.dat", n);
+        save_matrix(D, NameD);
+		save_matrix(PHI, NamePhi);
 
-	c_matrix D(2*Ntot, c_vector(2 * Ntot, 0));
-    for (int col = 0; col < 2 * Ntot; col++) {
-		c_matrix v = canonical_vector(col, Ntot, 2);  //column
-		c_matrix Dv = D_phi(GConf.Conf, v, m0);
-		int count = 0;
-		for (int i = 0; i < Dv.size(); i++) {
-			for (int j = 0; j < Dv[i].size(); j++) {
-				D[count][col] = Dv[i][j];
-				count += 1;
-			}
-		}
+        std::cout << "##### Conf " << n << "#####" << std::endl;
+        std::cout << "--Bi-CGstab inversion--" << std::endl;
+        c_matrix X = bi_cgstab(GConf.Conf, PHI, PHI, m0, 100000, 1e-10, true);
+        bi_cg_it[n] = it_count;
+        std::cout << "-------Bi inversion done-------" << std::endl;
+        AMG amg = AMG(GConf, Ns, Nt, Ntest, m0);
+        amg.tv_init(1, 6); //test vectors intialization
+        std::cout << "Two-grid inversion" << std::endl;
+        c_matrix x0;
+        x0 = amg.TwoGrid(nu1, nu2, 200, 1e-10, PHI, PHI, true);
+        multigrid_it[n] = it_count;
     }
-    save_matrix(D, "D.dat");
 
-    c_matrix Dc(Ntest * Nagg, c_vector(Ntest * Nagg, 0));
-    for (int col = 0; col < Ntest * Nagg; col++) {
-        c_matrix v = amg.Pt_D_P(canonical_vector(col, Ntest, Nagg)); //column
-        int count = 0;
-        for (int i = 0; i < v.size(); i++) {
-            for (int j = 0; j < v[i].size(); j++) {
-                Dc[count][col] = v[i][j];
-                count += 1;
-            }
-        }
-    }
-    save_matrix(Dc, "Dc.dat");
-	PrintVector(Dc);
-   
+    std::cout << "Mean number of iterations for bi-cg " << mean(bi_cg_it) << " +- " << Jackknife_error(bi_cg_it, 5) << std::endl;
+    std::cout << "Mean number of iterations for two-grid " << mean(multigrid_it) << " +- " << Jackknife_error(multigrid_it, 5) << std::endl;
+
+
     return 0;
 }

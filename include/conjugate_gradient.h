@@ -2,6 +2,7 @@
 #define CONJUGATE_GRADIENT_H
 
 #include "matrix_operations.h"
+#include <cmath>
 #include <iostream>
 
 //Conjugate gradient for computing (DD^dagger)^-1 phi, where phi is a vector represented by a matrix

@@ -7,6 +7,7 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
     double tol = 1e-10; //maybe I lower the tolerance later
     int k = 0; //Iteration number
     double err = 1;
+    double err_sqr;
 
     //D_D_dagger_phi(U, phi, m0); //DD^dagger  
     c_matrix r(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
@@ -23,21 +24,23 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
         x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i
         r = r - alpha * Ad; //r_{i+1} = r_i - alpha*Ad_i
-        err = std::real(dot(r, r)); //err = (r_{i+1},r_{i+1})
+        err_sqr = std::real(dot(r, r)); //err_sqrt = (r_{i+1},r_{i+1})
+		//err = std::sqrt(err_sqr);
+        err = err_sqr;
         if (err < tol) {
             //std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
             return x;
         }
-        beta = err / r_norm2; //beta = (r_{i+1},r_{i+1})/(r_i,r_i)
+        beta = err_sqr / r_norm2; //beta = (r_{i+1},r_{i+1})/(r_i,r_i)
         d = r + beta * d; //d_{i+1} = r_{i+1} + beta*d_i        
-        r_norm2 = err;
+        r_norm2 = err_sqr;
         k++;
     }
     std::cout << "Did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
     return x;
 }
 
-
+// D x = phi
 c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
     //Bi_GCR for D^-1 phi
     //phi --> right-hand side
@@ -71,12 +74,15 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
         Ad = D_phi(U, d, m0);  //A d_i 
         alpha = rho_i / dot(Ad, r_tilde); //alpha_i = rho_{i-1} / (Ad_i, r_tilde)
         s = r - alpha * Ad; //s = r_{i-1} - alpha_i * Ad_i
-        err = std::real(dot(s, s));
+        err = sqrt(std::real(dot(s, s)));
+        if (print_message == true) {
+            std::cout << "Bi-CG-stab for D " << k + 1 << " iteration" << " Error " << err << std::endl;
+        }
         if (err < tol) {
             x = x + alpha * d;
             it_count = k+1;
             if (print_message == true) {
-                std::cout << "Bi-CG-stab converged in " << k+1 << " iterations" << " Error " << err << std::endl;
+                std::cout << "Bi-CG-stab for D converged in " << k+1 << " iterations" << " Error " << err << std::endl;
             }
             return x;
         }
@@ -89,7 +95,7 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
     }
     it_count = max_iter;
     if (print_message == true) {
-        std::cout << "Did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
+        std::cout << "Bi-CG-stab for D did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
     }
     return x;
 }

@@ -7,6 +7,7 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
     double tol = 1e-10; //maybe I lower the tolerance later
     int k = 0; //Iteration number
     double err = 1;
+    double err_sqr;
 
     //D_D_dagger_phi(U, phi, m0); //DD^dagger  
     c_matrix r(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
@@ -23,14 +24,15 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
         x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i
         r = r - alpha * Ad; //r_{i+1} = r_i - alpha*Ad_i
-        err = std::real(dot(r, r)); //err = (r_{i+1},r_{i+1})
+        err_sqr = std::real(dot(r, r)); //err_sqr = (r_{i+1},r_{i+1})
+		err = sqrt(err_sqr); // err = sqrt(err_sqr)
         if (err < tol) {
             //std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
             return x;
         }
-        beta = err / r_norm2; //beta = (r_{i+1},r_{i+1})/(r_i,r_i)
+        beta = err_sqr / r_norm2; //beta = (r_{i+1},r_{i+1})/(r_i,r_i)
         d = r + beta * d; //d_{i+1} = r_{i+1} + beta*d_i        
-        r_norm2 = err;
+        r_norm2 = err_sqr;
         k++;
     }
     std::cout << "Did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
