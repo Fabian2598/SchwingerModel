@@ -32,7 +32,7 @@ int main() {
 
     GaugeConf GConf = GaugeConf(Ns, Nt);
     //GConf.initialization(); //Initialize the gauge configuration
-    int nu1 = 0, nu2 = 1;
+    int nu1 = 0, nu2 = 2;
     std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
 
     double m0 = -0.6;
@@ -87,12 +87,19 @@ int main() {
         c_matrix X = bi_cgstab(GConf.Conf, PHI, PHI, m0, 100000, 1e-10, true);
         bi_cg_it[n] = it_count;
         std::cout << "-------Bi inversion done-------" << std::endl;
-        AMG amg = AMG(GConf, Ns, Nt, Ntest, m0);
+        //std::cout << "--Kaczmarz inversion--" << std::endl;
+        //c_matrix X_K = kaczmarz(GConf.Conf, PHI, PHI, m0, 100000, 1e-10, true);
+        //std::cout << "-------Kaczmarz inversion done-------" << std::endl;
+        //std::cout << "Comparison : bi-cg" << X[0][0] << "    Kaczmarz" << X_K[0][0] << std::endl;
+
+        std::cout << "-------Two-grid inversion with Kaczmarz as a smoother-------" << std::endl;
+        AMG amg = AMG(GConf, Ns, Nt, Ntest, m0,nu1,nu2);
         amg.tv_init(1, 6); //test vectors intialization
-        std::cout << "Two-grid inversion" << std::endl;
+        
         c_matrix x0;
-        x0 = amg.TwoGrid(nu1, nu2, 200, 1e-10, PHI, PHI, true);
+        x0 = amg.TwoGrid(200, 1e-10, PHI, PHI, true);
         multigrid_it[n] = it_count;
+        
     }
 
     std::cout << "Mean number of iterations for bi-cg " << mean(bi_cg_it) << " +- " << Jackknife_error(bi_cg_it, 5) << std::endl;

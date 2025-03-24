@@ -18,15 +18,6 @@ void PrintVector(const c_vector& v ){
     std::cout << std::endl;
 }
 
-
-c_matrix canonical_vector(const int& i, const int& N1, const int& N2) {
-	c_matrix e_i(N1, c_vector (N2,0.0));
-	int j = i / N2;
-	int k = i % N2;
-	e_i[j][k] = 1.0;
-	return e_i;
-}
-
 void normalize(c_matrix& v){
 	c_double norm = sqrt(std::real(dot(v,v))) + 0.0*I_number; 
 	v =  1.0/norm * v; 
@@ -83,21 +74,23 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 			}
 		}
 	}
+	std::cout << "Smoothing D x = v" << std::endl;
 	for (int i = 0; i < Ntest; i++) {
-		test_vectors[i] = bi_cgstab(GConf.Conf, test_vectors[i], test_vectors[i], m0, 2, 1e-10, false);
+		std::cout << "vector " << i << std::endl;
+		test_vectors[i] = kaczmarz(GConf.Conf, test_vectors[i], test_vectors[i], m0, 10, 1e-10, false);
 	}
+	std::cout << "Orthonormalization" << std::endl;
 	orthonormalize();
-	/*
+	
 	for (int n = 0; n < Nit; n++) {
 		std::cout << "****** Nit " << n << " ******" << std::endl;
 		std::vector<c_matrix> test_vectors_copy = test_vectors;
 		for (int i = 0; i < Ntest; i++) {
-			test_vectors_copy[i] = TwoGrid(0, 2, 1, 1e-12, test_vectors[i], zero, true);
+			test_vectors_copy[i] = TwoGrid(1, 1e-10, test_vectors[i], test_vectors[i], false);
 		}
 		test_vectors = test_vectors_copy;
 		orthonormalize();
 	}
-	*/	
 }
 
 //x_i = P_ij v_j. dim(P) = 2 Ntot x Ntest Na, Na = block_x * block_t
@@ -157,7 +150,7 @@ c_matrix AMG::Pt_D_P(const c_matrix& v){
 }
 
 //x = D^-1 phi
-c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const int& max_iter, const double& tol, const c_matrix& x0, 
+c_matrix AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0, 
 	const c_matrix& phi, const bool& print_message) {
 	//nu1 --> pre-smoothing steps
 	//nu2 --> post-smoothing steps
@@ -170,11 +163,11 @@ c_matrix AMG::TwoGrid(const int& nu1, const int& nu2, const int& max_iter, const
 	double err = 1;
 	int k = 0;
 	while(k < max_iter && err > tol){
-		if (nu1>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu1,1e-10,false);}
+		if (nu1>0){x = kaczmarz(GConf.Conf, phi,x,m0,nu1,1e-10,false);}
 		//x = x + P*Dc^-1 * P^H * (phi-D*x);  Coarse grid correction
 		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
 		x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,10000,1e-10,false)); //The bi_cgstab here is for Dc
-		if (nu2>0){x = bi_cgstab(GConf.Conf, phi,x,m0,nu2,1e-10,false);}
+		if (nu2>0){x = kaczmarz(GConf.Conf, phi,x,m0,nu2,1e-10,false);}
 		r = phi - D_phi(GConf.Conf, x, m0);
 		err = sqrt(std::real(dot(r,r)));
 		//std::cout << "----***---Two-grid method iteration " << k + 1 << " " << " Error " << err << std::endl;
