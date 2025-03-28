@@ -35,7 +35,7 @@ int main() {
     int nu1 = 0, nu2 = 2;
     std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
 
-    double m0 = -0.6;
+    double m0 = -0.8;
     double beta = 1;
     int n_conf = 50;
     std::cout << "m0 " << m0 << " beta " << beta << std::endl;
@@ -92,13 +92,13 @@ int main() {
         //std::cout << "-------Kaczmarz inversion done-------" << std::endl;
         //std::cout << "Comparison : bi-cg" << X[0][0] << "    Kaczmarz" << X_K[0][0] << std::endl;
 
-        std::cout << "-------Two-grid inversion with Kaczmarz as a smoother-------" << std::endl;
-        AMG amg = AMG(GConf, Ns, Nt, Ntest, m0,nu1,nu2);
-        amg.tv_init(1, 6); //test vectors intialization
+        //std::cout << "-------Two-grid inversion with Kaczmarz as a smoother-------" << std::endl;
+        //AMG amg = AMG(GConf, Ns, Nt, Ntest, m0,nu1,nu2);
+        //amg.tv_init(1, 6); //test vectors intialization
         
-        c_matrix x0;
-        x0 = amg.TwoGrid(200, 1e-10, PHI, PHI, true);
-        multigrid_it[n] = it_count;
+        //c_matrix x0;
+        //x0 = amg.TwoGrid(200, 1e-10, PHI, PHI, true);
+        //multigrid_it[n] = it_count;
         
     }
 
