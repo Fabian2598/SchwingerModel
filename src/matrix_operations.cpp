@@ -23,6 +23,7 @@ void initialize_matrices() {
 	hat_mu[1] = { 0, 1 }; //hat_x
 }
 
+//paralleeeel
 //D phi
 c_matrix D_phi(const c_matrix& U, const c_matrix& phi, const double& m0) {
 	int Ntot = Ns * Nt;
