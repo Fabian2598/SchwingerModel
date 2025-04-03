@@ -35,9 +35,9 @@ int main() {
     int nu1 = 0, nu2 = 2;
     std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
 
-    double m0 = -0.6;
+    double m0 = -0.65;
     double beta = 1;
-    int n_conf = 50;
+    int n_conf = 3;
     std::cout << "m0 " << m0 << " beta " << beta << std::endl;
     std::vector<double> bi_cg_it(n_conf);
     std::vector<double> multigrid_it(n_conf);
