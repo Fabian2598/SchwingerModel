@@ -41,8 +41,8 @@ target_compile_options("SM_${NS}x${NT}" PRIVATE
 			#-fopenmp
 )
 
-#find_package(OpenMP REQUIRED)
-#target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
+find_package(OpenMP REQUIRED)
+target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
 
 
 #PROJECT_SOURCE_DIR: it indicates where src is located

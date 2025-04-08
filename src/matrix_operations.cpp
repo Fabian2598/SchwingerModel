@@ -1,4 +1,5 @@
 #include "matrix_operations.h"
+#include <iostream>
 
 
 std::vector<c_matrix> gamma_mat(2,
@@ -23,7 +24,6 @@ void initialize_matrices() {
 	hat_mu[1] = { 0, 1 }; //hat_x
 }
 
-//paralleeeel
 //D phi
 c_matrix D_phi(const c_matrix& U, const c_matrix& phi, const double& m0) {
 	int Ntot = Ns * Nt;
@@ -101,4 +101,37 @@ std::vector<std::vector<double>> phi_dag_partialD_phi(const c_matrix& U,
 
 	return Dphi;
  }
+
+
+
+
+//Parallel version
+c_matrix D_phi_parallel(const c_matrix& U, const c_matrix& phi, const double& m0) {
+
+	int Ntot = Ns * Nt;
+	c_matrix Dphi(Ntot, c_vector(2, 0)); //Dphi[Ntot][2]
+	omp_set_num_threads(4); //Set number of threads
+	#pragma omp parallel
+	//std::cout << "number of threads " << omp_get_num_threads() << std::endl;
+
+	#pragma omp for 
+	for (int x = 0; x < Ns; x++) {
+		for (int t = 0; t < Nt; t++) {
+			int n = Coords[x][t];
+			for (int alf = 0; alf < 2; alf++) {
+				Dphi[n][alf] = (m0 + 2) * phi[n][alf];
+				for (int bet = 0; bet < 2; bet++) {
+					for (int mu = 0; mu < 2; mu++) {
+						Dphi[n][alf] += -0.5 * (
+							(Identity[alf][bet] - gamma_mat[mu][alf][bet]) * U[n][mu] * rfb(phi, x, t, mu, bet)
+							+ (Identity[alf][bet] + gamma_mat[mu][alf][bet]) * std::conj(U[LeftPB[x][t][mu]][mu]) * lfb(phi, x, t, mu, bet)
+							);
+					}
+				}
+			}
+		}
+	}
+	
+	return Dphi;
+}
 	

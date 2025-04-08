@@ -11,68 +11,61 @@ int main() {
     double beta_min, beta_max; //Beta range
     double trajectory_length; //HMC parameters
     int MD_steps;
-    double m0; //bare mass
+    double m0 = 0.1; //bare mass
 	int saveconf = 0; //Save configurations
-    //---Input data---//
-    std::cout << "----------------------------" << std::endl;
-    std::cout << "|  Two-flavor Schwinger model   |" << std::endl;
-    std::cout << "| Hybrid Monte Carlo simulation |" << std::endl;
-    std::cout << "----------------------------" << std::endl;
-    std::cout << "Ns " << Ns << " Nt " << Nt << std::endl;
-    std::cout << "m0: ";
-    std::cin >> m0;
-    std::cout << "Molecular dynamics steps: ";
-    std::cin >> MD_steps;
-    std::cout << "Trajectory length: ";
-    std::cin >> trajectory_length; 
-    std::cout << "beta min: ";
-    std::cin >> beta_min;
-    std::cout << "beta max: ";
-    std::cin >> beta_max;
-    std::cout << "Number of betas: ";
-    std::cin >> Nbeta;
-    std::cout << "Thermalization: ";
-    std::cin >> Ntherm;
-    std::cout << "Measurements: ";
-    std::cin >> Nmeas;
-    std::cout << "Step (sweeps between measurements): ";
-    std::cin >> Nsteps;
-    std::cout << "Save configurations yes/no (1 or 0): ";
-    std::cin >> saveconf;
-    std::cout << " " << std::endl;
-
-    std::vector<double> Betas(Nbeta);
+    
     initialize_matrices(); //Intialize gamma matrices, identity and unit vectors
 	Coordinates(); //Compute vectorized coordinates
     periodic_boundary(); //Compute right and left periodic boundary
     int Ntot = Ns * Nt;
 	GaugeConf GConf = GaugeConf(Ns, Nt);  //Gauge configuration
-    if (Nbeta == 1) {
-        Betas = { beta_min };
-    }
-    else {
-        Betas = linspace(beta_min, beta_max, Nbeta);
-    }
-    char NameData[500], Data_str[500];
-    sprintf(NameData, "2D_U1_Ns%d_Nt%d_Meas%d.txt", Ns, Nt, Nmeas);
+    GConf.initialization();
 
-    std::ofstream Datfile;
-    Datfile.open(NameData);
-    for (double beta : Betas) {
-        std::cout << "beta = " << beta << std::endl;
-        HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, Ns, Nt, Ntot, m0,saveconf);   
-        clock_t begin = clock();
-        hmc.HMC_algorithm();
-        clock_t end = clock();
-        sprintf(Data_str, "%-30.17g%-30.17g%-30.17g\n", beta, hmc.getEp(), hmc.getdEp());
-        std::cout << "Ep = " << hmc.getEp() << " dEp = " << hmc.getdEp() << std::endl;
-        Datfile << Data_str;
-        double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-        std::cout << "Time = " << elapsed_secs << " s" << std::endl;
-        std::cout << "------------------------------" << std::endl;
+    double beta = 1;
+    std::cout << "beta = " << beta << std::endl;
 
+
+    double start;
+    double end;
+    c_matrix chi = RandomChi();
+    c_matrix phi;
+    const int N = 100;
+    double serialTime[N];
+	double parallelTime[N];
+    for (int i = 0; i < N; i++) {
+        start = omp_get_wtime();
+        phi = D_phi(GConf.Conf, chi, m0);
+        end = omp_get_wtime();
+		serialTime[i] = end - start;
+        if (i == 10){
+            std::cout << "phi[0][0]= " << phi[0][0] << "  phi[0][1]= " << phi[0][1] << std::endl;
+        }
+       
+
+        start = omp_get_wtime();
+        phi = D_phi_parallel(GConf.Conf, chi, m0);
+        end = omp_get_wtime();
+		parallelTime[i] = end - start;
+        if (i == 10) {
+            std::cout << "phi[0][0]= " << phi[0][0] << "  phi[0][1]= " << phi[0][1] << std::endl;
+        }
     }
-    Datfile.close();
+
+	double serialSum = 0;
+	double parallelSum = 0;
+	for (int i = 0; i < N; i++) {
+		serialSum += serialTime[i];
+		parallelSum += parallelTime[i];
+	}
+	double serialAvg = serialSum / N;
+	double parallelAvg = parallelSum / N;
+	std::cout << "Serial average time: " << serialAvg << " seconds" << std::endl;
+	std::cout << "Parallel average time: " << parallelAvg << " seconds" << std::endl;
+    
+
+
+    
+
 
 	return 0;
 }

@@ -2,6 +2,7 @@
 #define MATRIX_OPERATIONS_INCLUDED
 #include <complex>
 #include "variables.h"
+#include <omp.h>
 #include "operator_overloads.h"
 
 constexpr int Ntot = Ns * Nt;
@@ -77,6 +78,7 @@ c_matrix D_phi(const c_matrix& U, const c_matrix& phi, const double& m0);
 c_matrix D_dagger_phi(const c_matrix& U, const c_matrix& phi, const double& m0);
 //D D^dagger phi
 c_matrix D_D_dagger_phi(const c_matrix& U, const c_matrix& phi, const double& m0);
+c_matrix D_phi_parallel(const c_matrix& U, const c_matrix& phi, const double& m0);
 
 
 //psi^dag \partial D / \partial omega(z) psi
