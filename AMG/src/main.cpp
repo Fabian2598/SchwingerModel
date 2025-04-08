@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iomanip>
 #include "amg.h"
+#include "gmres.h"
 #include "statistics.h"
 
 //Formats decimal numbers
@@ -35,11 +36,7 @@ int main() {
     int nu1 = 0, nu2 = 2;
     std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
 
-<<<<<<< HEAD
     double m0 = -0.65;
-=======
-    double m0 = -0.8;
->>>>>>> 8094757d66a13d7db717e2ad52936872cd3ebff7
     double beta = 1;
     int n_conf = 3;
     std::cout << "m0 " << m0 << " beta " << beta << std::endl;
@@ -87,12 +84,18 @@ int main() {
 		save_matrix(PHI, NamePhi);
 
         std::cout << "##### Conf " << n << "#####" << std::endl;
+        /*
         std::cout << "--Bi-CGstab inversion--" << std::endl;
         c_matrix X = bi_cgstab(GConf.Conf, PHI, PHI, m0, 100000, 1e-10, true);
         bi_cg_it[n] = it_count;
         std::cout << "-------Bi inversion done-------" << std::endl;
-        //std::cout << "--Kaczmarz inversion--" << std::endl;
-        //c_matrix X_K = kaczmarz(GConf.Conf, PHI, PHI, m0, 100000, 1e-10, true);
+        */
+        std::cout << "-------GMRES inversion-------" << std::endl;
+        
+        c_matrix X_GMRES = gmres(GConf.Conf, PHI, PHI, m0, 80, 50, 1e-10, true);
+        std::cout << "GMRES" << X_GMRES[0][0] << std::endl;
+
+        //std::cout << "Comparison : bi-cg" << X[0][0] << "    GMRES" << X_GMRES[0][0] << std::endl;
         //std::cout << "-------Kaczmarz inversion done-------" << std::endl;
         //std::cout << "Comparison : bi-cg" << X[0][0] << "    Kaczmarz" << X_K[0][0] << std::endl;
 
