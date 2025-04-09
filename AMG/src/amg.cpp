@@ -77,7 +77,8 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	std::cout << "Smoothing D x = v" << std::endl;
 	for (int i = 0; i < Ntest; i++) {
 		std::cout << "vector " << i << std::endl;
-		test_vectors[i] = kaczmarz(GConf.Conf, test_vectors[i], test_vectors[i], m0, 10, 1e-10, false);
+		//test_vectors[i] = kaczmarz(GConf.Conf, test_vectors[i], test_vectors[i], m0, 10, 1e-10, false);
+		test_vectors[i] = gmres(GConf.Conf, test_vectors[i], test_vectors[i], m0, 20, 20, 1e-10, false);
 	}
 	std::cout << "Orthonormalization" << std::endl;
 	orthonormalize();
@@ -162,16 +163,25 @@ c_matrix AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0
 	c_matrix r;
 	double err = 1;
 	int k = 0;
+	double norm = sqrt(std::real(dot(phi,phi)));
 	while(k < max_iter && err > tol){
-		if (nu1>0){x = kaczmarz(GConf.Conf, phi,x,m0,nu1,1e-10,false);}
+		//Pre-smoothing
+		if (nu1>0){
+			//x = kaczmarz(GConf.Conf, phi,x,m0,nu1,1e-10,false);
+			x = gmres(GConf.Conf, phi, x, m0, 20, nu1, 1e-10, false);
+		} 
 		//x = x + P*Dc^-1 * P^H * (phi-D*x);  Coarse grid correction
 		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
 		x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,10000,1e-10,false)); //The bi_cgstab here is for Dc
-		if (nu2>0){x = kaczmarz(GConf.Conf, phi,x,m0,nu2,1e-10,false);}
+		//Post-smoothing
+		if (nu2>0){
+			//x = kaczmarz(GConf.Conf, phi,x,m0,nu2,1e-10,false);
+			x = gmres(GConf.Conf, phi, x, m0, 20, nu2, 1e-10, false);
+		}
 		r = phi - D_phi(GConf.Conf, x, m0);
 		err = sqrt(std::real(dot(r,r)));
 		//std::cout << "----***---Two-grid method iteration " << k + 1 << " " << " Error " << err << std::endl;
-		if (err < tol){
+		if (err < tol*norm){
 			it_count = k + 1;
 			if (print_message == true){
 				std::cout << "Two-grid method converged in " << k+1 << " iterations" << " Error " << err << std::endl;

@@ -36,7 +36,7 @@ int main() {
     int nu1 = 0, nu2 = 2;
     std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
 
-    double m0 = -0.65;
+    double m0 = -0.6;
     double beta = 1;
     int n_conf = 3;
     std::cout << "m0 " << m0 << " beta " << beta << std::endl;
@@ -91,21 +91,35 @@ int main() {
         std::cout << "-------Bi inversion done-------" << std::endl;
         */
         std::cout << "-------GMRES inversion-------" << std::endl;
-        
-        c_matrix X_GMRES = gmres(GConf.Conf, PHI, PHI, m0, 80, 50, 1e-10, true);
+        int m = 80;
+        int restarts = 100;
+        std::cout << "iterations per restart = " << m << " restarts = " << restarts << std::endl;
+        clock_t begin = clock();
+        c_matrix X_GMRES = gmres(GConf.Conf, PHI, PHI, m0, m, restarts, 1e-10, true);
+        clock_t end = clock();
         std::cout << "GMRES" << X_GMRES[0][0] << std::endl;
+        double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+        std::cout << "GMRES total computing time = " << elapsed_secs << " s" << std::endl;
+        std::cout << "------------------------------" << std::endl;
 
         //std::cout << "Comparison : bi-cg" << X[0][0] << "    GMRES" << X_GMRES[0][0] << std::endl;
         //std::cout << "-------Kaczmarz inversion done-------" << std::endl;
         //std::cout << "Comparison : bi-cg" << X[0][0] << "    Kaczmarz" << X_K[0][0] << std::endl;
 
-        //std::cout << "-------Two-grid inversion with Kaczmarz as a smoother-------" << std::endl;
-        //AMG amg = AMG(GConf, Ns, Nt, Ntest, m0,nu1,nu2);
-        //amg.tv_init(1, 6); //test vectors intialization
+        std::cout << "-------Two-grid inversion with GMRES as a smoother-------" << std::endl;
+        AMG amg = AMG(GConf, Ns, Nt, Ntest, m0,nu1,nu2);
+        amg.tv_init(1, 6); //test vectors intialization
+
+        c_matrix x_ini(Ntot, c_vector(2, 0));
+        for (int j = 0; j < Ntot; j++) {
+			for (int k = 0; k < 2; k++) {
+				x_ini[j][k] = RandomU1();
+            }
+		}
         
-        //c_matrix x0;
-        //x0 = amg.TwoGrid(200, 1e-10, PHI, PHI, true);
-        //multigrid_it[n] = it_count;
+        c_matrix x0;
+        x0 = amg.TwoGrid(200, 1e-10, x_ini, PHI, true);
+        multigrid_it[n] = it_count;
         
     }
 

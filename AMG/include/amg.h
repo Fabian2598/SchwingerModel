@@ -3,6 +3,7 @@
 #include "gauge_conf.h"
 #include "conjugate_gradient.h"
 #include "operator_overloads.h"
+#include "gmres.h"
 #include <algorithm>
 #include <random>
 

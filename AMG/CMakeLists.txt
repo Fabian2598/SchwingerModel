@@ -18,8 +18,8 @@ set(SOURCES
 )
 
 #Lattice dimensions
-set(NS "16") 
-set(NT "16") 
+set(NS "20") 
+set(NT "20") 
 #Number of lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
 set(BLOCK_X "4")
@@ -51,11 +51,11 @@ target_include_directories("SM_${NS}x${NT}"
 target_compile_options("SM_${NS}x${NT}" PRIVATE
             #-Wall
 			-O3
-			#-fopenmp
+			-fopenmp
 )
 
-#find_package(OpenMP REQUIRED)
-#target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
+find_package(OpenMP REQUIRED)
+target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
 
 
 #PROJECT_SOURCE_DIR: it indicates where src is located

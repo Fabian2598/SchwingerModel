@@ -6,6 +6,7 @@
 #include "variables.h"
 #include <cmath>
 #include <iostream>
+#include <omp.h>
 
 
 //Implementation of GMRES for inverting D
