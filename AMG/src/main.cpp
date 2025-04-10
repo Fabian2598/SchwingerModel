@@ -36,9 +36,9 @@ int main() {
     int nu1 = 0, nu2 = 2;
     std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
 
-    double m0 = -0.7;
+    double m0 = -0.65;
     double beta = 1;
-    int n_conf = 3;
+    int n_conf = 10;
     std::cout << "m0 " << m0 << " beta " << beta << std::endl;
     std::vector<double> bi_cg_it(n_conf);
     std::vector<double> multigrid_it(n_conf);
@@ -83,9 +83,9 @@ int main() {
         save_matrix(D, NameD);
 		save_matrix(PHI, NamePhi);
 
-        std::cout << "##################### Conf " << n << "#####################" << std::endl;
+        std::cout << "########################################## Conf " << n << "##########################################" << std::endl;
         
-        std::cout << "--Bi-CGstab inversion--" << std::endl;
+        std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         clock_t begin = clock();
         c_matrix X = bi_cgstab(GConf.Conf, PHI, PHI, m0, 100000, 1e-10, false);
         clock_t end = clock();
@@ -93,7 +93,7 @@ int main() {
         std::cout << "Bi-CGstab total computing time = " << elapsed_secs << " s" << std::endl;
         bi_cg_it[n] = it_count;
 
-        std::cout << "-------GMRES inversion-------" << std::endl;
+        std::cout << "--------------GMRES inversion--------------" << std::endl;
         int m = 100;
         int restarts = 100;
         std::cout << "iterations per restart = " << m << " restarts = " << restarts << std::endl;
@@ -101,36 +101,34 @@ int main() {
         begin = clock();
         c_matrix X_GMRES = gmres(GConf.Conf, PHI, PHI, m0, m, restarts, 1e-10, true);
         end = clock();
-        std::cout << "GMRES" << X_GMRES[0][0] << std::endl;
+        
         elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
         std::cout << "GMRES total computing time = " << elapsed_secs << " s" << std::endl;
-        std::cout << "------------------------------" << std::endl;
-        
-
-
-        //std::cout << "-------Kaczmarz inversion done-------" << std::endl;
-        //std::cout << "Comparison : bi-cg" << X[0][0] << "    Kaczmarz" << X_K[0][0] << std::endl;
-
-        std::cout << "-------Two-grid inversion with GMRES as a smoother-------" << std::endl;
+    
+        std::cout << "--------------Two-grid inversion with GMRES as a smoother--------------" << std::endl;
         begin = clock();
-        AMG amg = AMG(GConf, Ns, Nt, Ntest, m0,nu1,nu2);
+        int rpc = 20; //restarts per GMRES cycle
+        std::cout << "restarts per GMRES cycle for AMG = " << rpc << std::endl;
+        AMG amg = AMG(GConf, Ns, Nt, Ntest, m0,nu1,nu2,rpc);
         amg.tv_init(1, 3); //test vectors intialization
 
         c_matrix x_ini(Ntot, c_vector(2, 0));
         for (int j = 0; j < Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
-				x_ini[j][k] = 1;//RandomU1();
+				x_ini[j][k] = RandomU1();
             }
 		}
         
         c_matrix x0;
-        x0 = amg.TwoGrid(100, 1e-10, x_ini, PHI, true);
+        x0 = amg.TwoGrid(100,rpc, 1e-10, x_ini, PHI, true);
         end = clock();
         elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
         std::cout << "Two-grid total computing time = " << elapsed_secs << " s" << std::endl;
-        std::cout << "------------------------------" << std::endl;
+        std::cout << "----------------------------------------------" << std::endl;
         multigrid_it[n] = it_count;
-        
+        std::cout << "Two-grid " << std::setprecision(10) << x0[0][0] << std::endl;
+        std::cout << "BiCGstab " << std::setprecision(10) << X[0][0] << std::endl;
+        std::cout << "GMRES" << X_GMRES[0][0] << std::endl;
     }
 
     std::cout << "Mean number of iterations for bi-cg " << mean(bi_cg_it) << " +- " << Jackknife_error(bi_cg_it, 5) << std::endl;

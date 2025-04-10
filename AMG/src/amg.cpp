@@ -69,27 +69,28 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
-				test_vectors[i][j][k] = c_double(cos(2*j+k+i),sin(2*j+k+i)); //eps * RandomU1();//i * Ntot * 2 + j * 2 + k + 1; 
+				test_vectors[i][j][k] = eps * RandomU1();//i * Ntot * 2 + j * 2 + k + 1; 
 			}
 		}
 	}
 
 	for (int i = 0; i < Ntest; i++) {
-		//test_vectors[i] = kaczmarz(GConf.Conf, test_vectors[i], test_vectors[i], m0, 10, 1e-10, false);
+		//20 restarts, 20 iterations per restart
 		test_vectors[i] = gmres(GConf.Conf, test_vectors[i], test_vectors[i], m0, 20, 20, 1e-10, false);
 	}
 
 	test_vectors_copy = test_vectors; //This step essentially assembles the inerpolator
-	orthonormalize(); //this modifies the test_vectors_copy used in the interpolator NOT test_vectors
-
+	orthonormalize(); //This modifies test_vectors_copy which is used in the interpolator NOT test_vectors
+	std::cout << "Improving interpolator" << std::endl;
 	for (int n = 0; n < Nit; n++) {
 		std::cout << "****** Nit " << n << " ******" << std::endl;
 		for (int i = 0; i < Ntest; i++) {
-			test_vectors[i] = TwoGrid(1, 1e-10, test_vectors[i], test_vectors[i], false); //Updates the test vectors with the current P
+			test_vectors[i] = TwoGrid(1,20, 1e-10, test_vectors[i], test_vectors[i], false); //Updates the test vectors with the current P
 		}
 		test_vectors_copy = test_vectors; //"Assemble" interpolator
-		orthonormalize();
+		orthonormalize();	
 	}
+
 }
 
 //x_i = P_ij v_j. dim(P) = 2 Ntot x Ntest Na, Na = block_x * block_t
@@ -149,7 +150,7 @@ c_matrix AMG::Pt_D_P(const c_matrix& v){
 }
 
 //x = D^-1 phi
-c_matrix AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0, 
+c_matrix AMG::TwoGrid(const int& max_iter, const int& rpc, const double& tol, const c_matrix& x0, 
 	const c_matrix& phi, const bool& print_message) {
 	//nu1 --> pre-smoothing steps
 	//nu2 --> post-smoothing steps
@@ -162,19 +163,22 @@ c_matrix AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0
 	double err = 1;
 	int k = 0;
 	double norm = sqrt(std::real(dot(phi,phi)));
-	while(k < max_iter && err > tol){
+	while(k < max_iter && err > tol*norm){
 		//Pre-smoothing
 		if (nu1>0){
 			//x = kaczmarz(GConf.Conf, phi,x,m0,nu1,1e-10,false);
-			x = gmres(GConf.Conf, phi, x, m0, 20, nu1, 1e-10, false);
+			x = gmres(GConf.Conf, phi, x, m0, rpc, nu1, 1e-10, false);
+
 		} 
 		//x = x + P*Dc^-1 * P^H * (phi-D*x);  Coarse grid correction
 		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
-		x = x + P_v(    bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,10000,1e-10,false)); //The bi_cgstab here is for Dc
+
+		x = x + P_v(bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,1000,1e-10,false)); //The bi_cgstab here is for Dc. This matrix is 
+		//highly ill-conditioned, but we don't need a very precise solution for the coarse system. 
+		
 		//Post-smoothing
 		if (nu2>0){
-			//x = kaczmarz(GConf.Conf, phi,x,m0,nu2,1e-10,false);
-			x = gmres(GConf.Conf, phi, x, m0, 20, nu2, 1e-10, false);
+			x = gmres(GConf.Conf, phi, x, m0, rpc, nu2, 1e-10, false);
 		}
 		r = phi - D_phi(GConf.Conf, x, m0);
 		err = sqrt(std::real(dot(r,r)));
@@ -216,7 +220,7 @@ c_matrix AMG::bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matri
     r = phi - Pt_D_P(x); //r = b - A*x 
     r_tilde = r;
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
-    while (k<max_iter && err>tol) {
+    while (k<max_iter && err>tol*norm_phi) {
         rho_i = dot(r, r_tilde); //r . r_dagger
         if (k == 0) {
             d = r; //d_1 = r_0

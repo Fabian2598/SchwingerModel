@@ -81,9 +81,9 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
         if (err < tol) {
             x = x + alpha * d;
             it_count = k+1;
-            if (print_message == true) {
+            //if (print_message == true) {
                 std::cout << "Bi-CG-stab for D converged in " << k+1 << " iterations" << " Error " << err << std::endl;
-            }
+            //}
             return x;
         }
         t = D_phi(U, s, m0);   //A s

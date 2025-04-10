@@ -14,7 +14,7 @@ void normalize(c_matrix& v);
 
 class AMG {
 public:
-	AMG(const GaugeConf & GConf,const int& Ns, const int& Nt, const int& Ntest, const double& m0, const int& nu1, const int& nu2) : GConf(GConf), 
+	AMG(const GaugeConf & GConf,const int& Ns, const int& Nt, const int& Ntest, const double& m0, const int& nu1, const int& nu2, const int& rpc) : GConf(GConf), 
 	Ns(Ns), Nt(Nt), Ntot(Ns*Nt), Ntest(Ntest), m0(m0), nu1(nu1), nu2(nu2) {	
 		test_vectors = std::vector<c_matrix>(Ntest,
 		c_matrix( Ntot, c_vector (2,0))); //test_vectors[Number of test vectors][Ns Nt][2], two spin directions, no color
@@ -22,11 +22,18 @@ public:
 			c_matrix( Ntot, c_vector (2,0))); 
 	}
 	~AMG() { };
-	//--CHECK LATER WHICH MEMBER FUNCTIONS WILL BE PRIVATE--//
 
 	void tv_init(const double& eps, const int& Nit);
-	c_matrix TwoGrid(const int& max_iter, const double& tol,
+	c_matrix TwoGrid(const int& max_iter, const int& rpc,const double& tol,
 		const c_matrix& x0, const c_matrix& phi,const bool& print_message);
+
+	
+private:
+	GaugeConf GConf;
+	double m0; 
+	int Ns, Nt, Ntest;
+	int Ntot;
+	int nu1, nu2; //pre and post smoothing iterations
 
 	c_matrix P_v(const c_matrix& v); //P v
 	c_matrix Pt_v(const c_matrix& v); // Pt v
@@ -39,12 +46,6 @@ public:
 	
 	std::vector<c_matrix> test_vectors; //test vectors[Ntest][Ntot][spin components]
 	std::vector<c_matrix> test_vectors_copy; 
-private:
-	GaugeConf GConf;
-	double m0; 
-	int Ns, Nt, Ntest;
-	int Ntot;
-	int nu1, nu2; //pre and post smoothing iterations
 };
 
 //These functions are provitioanl
