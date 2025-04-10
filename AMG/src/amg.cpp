@@ -26,7 +26,7 @@ void normalize(c_matrix& v){
 //Orthonormalize the P columns.
 void AMG::orthonormalize(){
 	//Gram-Schmidt orthonormalization
-	std::vector<c_matrix> test_vectors_copy(Ntest, c_matrix( Ntot, c_vector (2,0)));
+	std::vector<c_matrix> temp(Ntest, c_matrix( Ntot, c_vector (2,0)));
 	std::vector<c_matrix> v_chopped(Ntest*Nagg, c_matrix(Ntot, c_vector(2,0)));
 	for(int i = 0; i < Ntest*Nagg; i++){
 		c_matrix e_i = canonical_vector(i, Ntest, Nagg);
@@ -34,7 +34,7 @@ void AMG::orthonormalize(){
 	}
 
 	
-	clock_t begin = clock();
+	//clock_t begin = clock();
 	for (int i = 0; i < Nagg; i++) {
 		for (int nt = 0; nt < Ntest; nt++) {
 			for (int j = 0; j < nt; j++) {
@@ -44,22 +44,21 @@ void AMG::orthonormalize(){
 			normalize(v_chopped[nt*Nagg+i]);
 		}
 	}
-	clock_t end = clock();
-	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-	std::cout << "Time for orthonormalizing V_chopped with overload " << elapsed_secs << " s" << std::endl;
+	//clock_t end = clock();
+	//double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+	//std::cout << "Time for orthonormalizing V_chopped with overload " << elapsed_secs << " s" << std::endl;
 	
-	//Replacing test vectors
 	for(int i = 0; i < Ntest; i++){
 		for(int j = 0; j < Nagg; j++){
 			for(int n = 0; n < Ntot; n++){
 				for(int alf=0; alf<2; alf++){
-					test_vectors_copy[i][n][alf] += v_chopped[i*Nagg + j][n][alf]; 
+					temp[i][n][alf] += v_chopped[i*Nagg + j][n][alf]; 
 				}
 			}
 			
 		}
 	}
-	test_vectors = test_vectors_copy;
+	test_vectors_copy = temp;
 }; 
 
 //test vectors initialization
@@ -70,26 +69,25 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
-				test_vectors[i][j][k] = eps * RandomU1();//i * Ntot * 2 + j * 2 + k + 1; 
+				test_vectors[i][j][k] = c_double(cos(2*j+k+i),sin(2*j+k+i)); //eps * RandomU1();//i * Ntot * 2 + j * 2 + k + 1; 
 			}
 		}
 	}
-	std::cout << "Smoothing D x = v" << std::endl;
+
 	for (int i = 0; i < Ntest; i++) {
-		std::cout << "vector " << i << std::endl;
 		//test_vectors[i] = kaczmarz(GConf.Conf, test_vectors[i], test_vectors[i], m0, 10, 1e-10, false);
 		test_vectors[i] = gmres(GConf.Conf, test_vectors[i], test_vectors[i], m0, 20, 20, 1e-10, false);
 	}
-	std::cout << "Orthonormalization" << std::endl;
-	orthonormalize();
-	
+
+	test_vectors_copy = test_vectors; //This step essentially assembles the inerpolator
+	orthonormalize(); //this modifies the test_vectors_copy used in the interpolator NOT test_vectors
+
 	for (int n = 0; n < Nit; n++) {
 		std::cout << "****** Nit " << n << " ******" << std::endl;
-		std::vector<c_matrix> test_vectors_copy = test_vectors;
 		for (int i = 0; i < Ntest; i++) {
-			test_vectors_copy[i] = TwoGrid(1, 1e-10, test_vectors[i], test_vectors[i], false);
+			test_vectors[i] = TwoGrid(1, 1e-10, test_vectors[i], test_vectors[i], false); //Updates the test vectors with the current P
 		}
-		test_vectors = test_vectors_copy;
+		test_vectors_copy = test_vectors; //"Assemble" interpolator
 		orthonormalize();
 	}
 }
@@ -107,13 +105,13 @@ c_matrix AMG::P_v(const c_matrix& v) {
 			if (Nagg ==  block_x * block_t){
 				//Aggregation scheme 1
 				for (int alf = 0; alf < 2; alf++) {
-					x[Agg[a][i]][alf] += test_vectors[k][Agg[a][i]][alf] * v[k][a];
+					x[Agg[a][i]][alf] += test_vectors_copy[k][Agg[a][i]][alf] * v[k][a];
 				}
 			}
 			else{
 				//Aggregation scheme 2 
 				int x_coord = XCoord[Agg[a][i]], t_coord = TCoord[Agg[a][i]], s_coord = SCoord[Agg[a][i]];
-				x[Coords[x_coord][t_coord]][s_coord] += test_vectors[k][Coords[x_coord][t_coord]][s_coord] * v[k][a];		
+				x[Coords[x_coord][t_coord]][s_coord] += test_vectors_copy[k][Coords[x_coord][t_coord]][s_coord] * v[k][a];		
 			}
 		}
 	}
@@ -131,13 +129,13 @@ c_matrix AMG::Pt_v(const c_matrix& v) {
 			if (Nagg == block_x * block_t){
 				//Aggregation scheme 1
 				for (int alf = 0; alf < 2; alf++) {
-					x[k][a] += std::conj(test_vectors[k][Agg[a][j]][alf]) * v[Agg[a][j]][alf];
+					x[k][a] += std::conj(test_vectors_copy[k][Agg[a][j]][alf]) * v[Agg[a][j]][alf];
 				}
 			}
 			else{
 				//Aggregation scheme 2
 				int x_coord = XCoord[Agg[a][j]], t_coord = TCoord[Agg[a][j]], s_coord = SCoord[Agg[a][j]];
-				x[k][a] += std::conj(test_vectors[k][Coords[x_coord][t_coord]][s_coord]) * v[Coords[x_coord][t_coord]][s_coord];
+				x[k][a] += std::conj(test_vectors_copy[k][Coords[x_coord][t_coord]][s_coord]) * v[Coords[x_coord][t_coord]][s_coord];
 			}
 		}
 	}
@@ -180,7 +178,9 @@ c_matrix AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0
 		}
 		r = phi - D_phi(GConf.Conf, x, m0);
 		err = sqrt(std::real(dot(r,r)));
-		//std::cout << "----***---Two-grid method iteration " << k + 1 << " " << " Error " << err << std::endl;
+		if (print_message == true){
+			std::cout << "Two-grid method " << k+1 << " iterations" << " Error " << err << std::endl;
+		}
 		if (err < tol*norm){
 			it_count = k + 1;
 			if (print_message == true){
@@ -215,6 +215,7 @@ c_matrix AMG::bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matri
     x = x0; //initial solution
     r = phi - Pt_D_P(x); //r = b - A*x 
     r_tilde = r;
+	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
     while (k<max_iter && err>tol) {
         rho_i = dot(r, r_tilde); //r . r_dagger
         if (k == 0) {
@@ -228,7 +229,7 @@ c_matrix AMG::bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matri
         alpha = rho_i / dot(Ad, r_tilde); //alpha_i = rho_{i-1} / (Ad_i, r_tilde)
         s = r - alpha * Ad; //s = r_{i-1} - alpha_i * Ad_i
         err = sqrt(std::real(dot(s, s)));
-        if (err < tol) {
+        if (err < tol*norm_phi) {
             x = x + alpha * d;
 			if (print_message == true) {
 				std::cout << "Bi-CG-stab for Dc converged in " << k << " iterations" << " Error " << err << std::endl;

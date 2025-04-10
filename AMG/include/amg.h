@@ -18,6 +18,8 @@ public:
 	Ns(Ns), Nt(Nt), Ntot(Ns*Nt), Ntest(Ntest), m0(m0), nu1(nu1), nu2(nu2) {	
 		test_vectors = std::vector<c_matrix>(Ntest,
 		c_matrix( Ntot, c_vector (2,0))); //test_vectors[Number of test vectors][Ns Nt][2], two spin directions, no color
+		std::vector<c_matrix> test_vectors_copy = std::vector<c_matrix>(Ntest,
+			c_matrix( Ntot, c_vector (2,0))); 
 	}
 	~AMG() { };
 	//--CHECK LATER WHICH MEMBER FUNCTIONS WILL BE PRIVATE--//
@@ -36,6 +38,7 @@ public:
 		 const double& m0, const int& max_iter, const double& tol, const bool& print_message); //Dc^-1 phi
 	
 	std::vector<c_matrix> test_vectors; //test vectors[Ntest][Ntot][spin components]
+	std::vector<c_matrix> test_vectors_copy; 
 private:
 	GaugeConf GConf;
 	double m0; 

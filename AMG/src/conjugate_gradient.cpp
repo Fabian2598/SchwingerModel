@@ -94,9 +94,9 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
         k++;
     }
     it_count = max_iter;
-    if (print_message == true) {
+    //if (print_message == true) {
         std::cout << "Bi-CG-stab for D did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
-    }
+    //}
     return x;
 }
 
