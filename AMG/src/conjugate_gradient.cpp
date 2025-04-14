@@ -19,7 +19,8 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
     r = phi - D_D_dagger_phi(U, x, m0); //The initial solution can be a vector with zeros 
     d = r; //initial search direction
     c_double r_norm2 = dot(r, r);
-    while (k<max_iter && err>tol) {
+	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
+    while (k<max_iter && err>tol * norm_phi) {
         Ad = D_D_dagger_phi(U, d, m0); //DD^dagger*d 
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
         x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i
@@ -27,7 +28,7 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
         err_sqr = std::real(dot(r, r)); //err_sqrt = (r_{i+1},r_{i+1})
 		//err = std::sqrt(err_sqr);
         err = err_sqr;
-        if (err < tol) {
+        if (err < tol * norm_phi) {
             //std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
             return x;
         }
@@ -62,7 +63,8 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
     x = x0; //initial solution
     r = phi - D_phi(U, x, m0); //r = b - A*x
     r_tilde = r;
-    while (k<max_iter && err>tol) {
+	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
+    while (k<max_iter && err>tol* norm_phi) {
         rho_i = dot(r, r_tilde); //r . r_dagger
         if (k == 0) {
             d = r; //d_1 = r_0
@@ -78,7 +80,7 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
         if (print_message == true) {
             std::cout << "Bi-CG-stab for D " << k + 1 << " iteration" << " Error " << err << std::endl;
         }
-        if (err < tol) {
+        if (err < tol * norm_phi) {
             x = x + alpha * d;
             it_count = k+1;
             //if (print_message == true) {

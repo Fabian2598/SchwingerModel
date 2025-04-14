@@ -18,8 +18,8 @@ set(SOURCES
 )
 
 #Lattice dimensions
-set(NS "20") 
-set(NT "20") 
+set(NS "32") 
+set(NT "32") 
 #Number of lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
 set(BLOCK_X "4")

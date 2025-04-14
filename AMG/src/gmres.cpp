@@ -38,6 +38,7 @@ c_matrix gmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const
     double elapsed_secs; // double(end - begin) / CLOCKS_PER_SEC;
 
     r0 = phi - D_phi(U, x, m0); //r = b - A*x
+	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
     while (k < restarts) {
         beta = sqrt(std::real(dot(r0, r0))) + 0.0 * I_number;
         VmT[0] = 1.0 / beta * r0;
@@ -82,7 +83,8 @@ c_matrix gmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const
         //     std::cout << "GMRES for D " << k + 1 << " restart cycle" << " Error " << err << std::endl;
         // }
 
-         if (err < tol) {
+         if (err < tol* norm_phi) {
+			 it_count = k + 1;
              if (print_message == true) {
                  std::cout << "GMRES converged in " << k + 1 << " iterations" << " Error " << err << std::endl;
              }
