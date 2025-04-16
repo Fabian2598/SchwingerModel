@@ -95,7 +95,7 @@ int main() {
         
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         clock_t begin = clock();
-        x_bi = bi_cgstab(GConf.Conf, PHI, PHI, m0, 2, 1e-10, false);//bi_cgstab(GConf.Conf, PHI, PHI, m0, 100000, 1e-10, false);
+        x_bi = bi_cgstab(GConf.Conf, PHI, PHI, m0, 10000, 1e-10, false);//bi_cgstab(GConf.Conf, PHI, PHI, m0, 100000, 1e-10, false);
         clock_t end = clock();
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
         std::cout << "Bi-CGstab total computing time = " << elapsed_secs << " s" << std::endl;
@@ -103,8 +103,8 @@ int main() {
 		bi_extime[n] = elapsed_secs;
 
         std::cout << "--------------GMRES inversion--------------" << std::endl;
-        int m = 500;
-        int restarts = 5;
+        int m = 1000;
+        int restarts = 10;
         std::cout << "iterations per restart = " << m << " restarts = " << restarts << std::endl;
 
         begin = clock();
@@ -118,7 +118,7 @@ int main() {
 
         std::cout << "--------------Two-grid inversion with GMRES as a smoother--------------" << std::endl;
         begin = clock();
-        int rpc = 20; //restarts per GMRES cycle
+        int rpc = 1000; //restarts per GMRES cycle
         std::cout << "restarts per GMRES cycle for AMG = " << rpc << std::endl;
         AMG amg = AMG(GConf, Ns, Nt, Ntest, m0,nu1,nu2,rpc);
         amg.tv_init(1, 3); //test vectors intialization

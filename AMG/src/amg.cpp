@@ -173,7 +173,7 @@ c_matrix AMG::TwoGrid(const int& max_iter, const int& rpc, const double& tol, co
 		//x = x + P*Dc^-1 * P^H * (phi-D*x);  Coarse grid correction
 		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
 
-		x = x + P_v(bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,1000,1e-10,false)); //The bi_cgstab here is for Dc. This matrix is 
+		x = x + P_v(bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,1000,1e-10,true)); //The bi_cgstab here is for Dc. This matrix is 
 		//highly ill-conditioned, but we don't need a very precise solution for the coarse system. 
 		
 		//Post-smoothing
