@@ -18,14 +18,14 @@ set(SOURCES
 )
 
 #Lattice dimensions
-set(NS "64") 
-set(NT "64") 
+set(NS "16") 
+set(NT "16") 
 #Number of lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
 set(BLOCK_X "4")
 set(BLOCK_T "4")
 #Number of test vectors
-set(NTEST "20") 
+set(NTEST "10") 
 set(NAGG "32") #BlockX * BlockT for aggregation scheme 1 and 2 * BlockX * BlockT for scheme 2
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 

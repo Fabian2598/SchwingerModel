@@ -38,10 +38,10 @@ int main() {
     int nu1 = 0, nu2 = 2;
     std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
 
-    double m0 = -0.6;
+    double m0 = -0.7;
     double beta = 1;
     int n_conf = 10;
-    std::cout << "m0 " << m0 << " beta " << beta << std::endl;
+    std::cout << "m0 = " << m0 << " beta = " << beta << std::endl;
     std::vector<double> bi_cg_it(n_conf), bi_extime(n_conf);
     std::vector<double> multigrid_it(n_conf), amg_extime(n_conf);
     std::vector<double> gmres_it(n_conf), gmres_extime(n_conf);
@@ -103,8 +103,8 @@ int main() {
 		bi_extime[n] = elapsed_secs;
 
         std::cout << "--------------GMRES inversion--------------" << std::endl;
-        int m = 1000;
-        int restarts = 10;
+        int m = 100;
+        int restarts = 100;
         std::cout << "iterations per restart = " << m << " restarts = " << restarts << std::endl;
 
         begin = clock();
@@ -118,7 +118,7 @@ int main() {
 
         std::cout << "--------------Two-grid inversion with GMRES as a smoother--------------" << std::endl;
         begin = clock();
-        int rpc = 1000; //restarts per GMRES cycle
+        int rpc = 20; //restarts per GMRES cycle
         std::cout << "restarts per GMRES cycle for AMG = " << rpc << std::endl;
         AMG amg = AMG(GConf, Ns, Nt, Ntest, m0,nu1,nu2,rpc);
         amg.tv_init(1, 3); //test vectors intialization

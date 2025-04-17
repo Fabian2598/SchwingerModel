@@ -26,7 +26,6 @@ public:
 	void tv_init(const double& eps, const int& Nit);
 	c_matrix TwoGrid(const int& max_iter, const int& rpc,const double& tol,
 		const c_matrix& x0, const c_matrix& phi,const bool& print_message);
-
 	
 private:
 	GaugeConf GConf;
@@ -41,11 +40,18 @@ private:
 
 	void orthonormalize(); //Orthonormalize the test vectors
 
+	//These are the same iterative methods I defined for D^-1 phi. In principle I should be a able to pass
+	//the matrix-vector operation as a function pointer. However, this is not so straightforward for 
+	//member functions
 	c_matrix bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matrix& x0,
 		 const double& m0, const int& max_iter, const double& tol, const bool& print_message); //Dc^-1 phi
+	c_matrix gmres_Dc(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message);
+
+		
 	
 	std::vector<c_matrix> test_vectors; //test vectors[Ntest][Ntot][spin components]
 	std::vector<c_matrix> test_vectors_copy; 
+	
 };
 
 //These functions are provitioanl
