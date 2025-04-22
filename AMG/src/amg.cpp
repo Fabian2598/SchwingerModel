@@ -174,7 +174,7 @@ c_matrix AMG::TwoGrid(const int& max_iter, const int& rpc, const double& tol, co
 		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
 
 		//x = x + P_v(bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,1000,1e-10,false)); 
-		x = x + P_v(gmres_Dc(GConf.Conf, Pt_r, Pt_r, m0,200,10,1e-10,true)); 
+		x = x + P_v(gmres_Dc(GConf.Conf, Pt_r, Pt_r, m0,250,10,1e-10,false)); 
 
 		
 		//Post-smoothing
@@ -346,9 +346,9 @@ c_matrix AMG::gmres_Dc(const c_matrix& U, const c_matrix& phi, const c_matrix& x
          r0 = r;
          k++;
     }
-    if (print_message == true) {
+    //if (print_message == true) {
         std::cout << "GMRES for Dc did not converge in " << restarts << " restarts" << " Error " << err << std::endl;
-    }
+    //}
     return x;
 }
 

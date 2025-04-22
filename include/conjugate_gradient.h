@@ -9,4 +9,7 @@
 //phi[Ntot][2]
 c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double& m0); 
 
+//Bi conjugate gradient for inverting D 
+c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0,const double& m0, const int& max_iter, const double& tol, const bool& print_message); //D^-1 phi
+
 #endif

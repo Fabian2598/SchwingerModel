@@ -11,6 +11,7 @@ build
 CGcpp.cpython-39-x86_64-linux-gnu.so
 AMG/build
 AMG/confs
+confs
 bi_gcstab.cpp
 conjugate_gradient_test.cpp
 gmres.ipynb
