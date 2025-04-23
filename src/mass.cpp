@@ -9,16 +9,18 @@
 std::vector<c_matrix> Confs; //Confs[conf][coordinate][spin]
 
 int nconf; //This could be an input parameter from terminal
-double m0;
+double m0, beta; //Mass and coupling constant
+
 int max_iter = 10000;
 std::vector<std::vector<double>> CorrMat; //Correlation function for each conf.
-std::vector<double> Corr(Nt,0), dCorr(Nt,0); //Correlation function for each conf.
+std::vector<double> Corr(Nt,0), dCorr(Nt,0); //Correlation function averaged over configurations and its error
 
-c_matrix source;
+c_matrix source; //source vector
 c_matrix Dcol; //D^-1 source 
 c_matrix x0(Ntot, c_vector(2,1)); //Initial solution for inverting Dirac matrix
 int coord;
-double beta;
+
+std::string listFilePath;
 
 
 c_matrix canonical_vector(const int& i, const int& N1, const int& N2) {
@@ -39,11 +41,12 @@ static std::string format(const double& number) {
 }
 
 
-void read_confs(const int& nconf){
+void read_confs(const int& nconf,std::vector<std::string>& filePaths){
     int x, t, mu;
     double re, im;
     for(int conf=0; conf<nconf; conf++){
         //Check how I actually want to do this part in general ...
+        /*
         std::ostringstream formattedName;
         formattedName << "../confs/b1_16x16/2D_U1_Ns" << Ns
                     << "_Nt" << Nt
@@ -52,9 +55,11 @@ void read_confs(const int& nconf){
                     << "_" << conf << ".txt";
 
         std::string fileName = formattedName.str();
-        std::ifstream file(fileName);
+        */
+
+        std::ifstream file(filePaths[conf]);
         if (!file.is_open()) {
-            std::cerr << "Error opening file " << fileName << std::endl;
+            std::cerr << "Error opening file " << filePaths[conf] << std::endl;
             return;
         }
         while (file >> x >> t >> mu >> re >> im) {
@@ -80,40 +85,69 @@ void write(const std::vector<double>& data,const std::vector<double>& error, con
    
 
 int main(){
-
-
     // Input parameters
-    /*
+    //beta = 1.0; m0=0.1; nconf=1000; listFilePath = "confs.txt"; 
+    // dir/s/b *.txt > confs.txt
+    
     std::cout << "beta: ";
     std::cin >> beta;
     std::cout << "m0: ";
     std::cin >> m0;
-    std::cout << "Enter number of configurations (nconf): ";
+    std::cout << "Number of configurations (nconf): ";
     std::cin >> nconf;
+    std::cout << "List of confs: ";
+    std::cin >> listFilePath;
     std::cout << " " << std::endl;
-    */
+    
 
-    beta = 1.0; m0=0.1; nconf=1000;
+    // Read the list of file paths from the specified file
+    std::ifstream listFile(listFilePath);
 
-    //These calls are necessary to use D_phi
+    if (!listFile.is_open()) {
+        std::cerr << "Error: Could not open the file containing the list of paths: " << listFilePath << std::endl;
+        return 1;
+    }
+
+    std::vector<std::string> filePaths;
+    std::string filePath;
+
+    //Read each file path from the list
+    while (std::getline(listFile, filePath)) {
+        filePaths.push_back(filePath);
+        //std::cout << "File path: " << filePath << std::endl; // Print the file path
+    }
+    listFile.close();
+
+
+
+    //------These calls are necessary to use D_phi------//
     initialize_matrices(); //Intialize gamma matrices, identity and unit vectors
     Coordinates(); //Compute vectorized coordinates
     periodic_boundary(); //Compute right and left periodic boundary
-    //---------------------------------------------//
+    //--------------------------------------------------//
 
     Confs.resize(nconf, c_matrix(Ns * Nt, c_vector(2, 0))); //Resize Confs
     CorrMat.resize(Nt, std::vector<double>(nconf, 0)); // Resize CorrMat
 
     std::cout << "Reading configurations...";
-    read_confs(nconf); //Read configurations and store them in Confs
+    read_confs(nconf,filePaths); //Read configurations and store them in Confs
     std::cout << " Done!" << std::endl;
     //--------Compute c(nt) for the pion--------//
     for(int conf = 0; conf<nconf; conf++){
         for (int bet=0; bet<2; bet++){
             source = canonical_vector(bet, Ntot, 2); 
-            Dcol = bi_cgstab(Confs[conf], source, x0, m0, max_iter, 1e-10, false); //D^-1 source
+            if (conf%100 == 0){
+                std::cout << "####Computing c(nt) for conf#### " << conf << std::endl;
+                Dcol = bi_cgstab(Confs[conf], source, x0, m0, max_iter, 1e-10, true); //D^-1 source 
+            }
+            else{
+                Dcol = bi_cgstab(Confs[conf], source, x0, m0, max_iter, 1e-10, false);
+            }
+           
+            
             for(int t=0; t<Nt; t++){
                 for(int alf=0; alf<2; alf++){  
+                    //Coords[x][t] = x*Nt + t. For x=0, t Coords[0][t] = t
                     CorrMat[t][conf] -= std::real(Dcol[t][alf] * std::conj(Dcol[t][alf])); //|D^-1 (nt,0)_{alpha,beta}|^2  Dcol is a column of the dirac matrix
                 }
             }
