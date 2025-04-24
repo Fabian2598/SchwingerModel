@@ -25,8 +25,8 @@ std::string listFilePath;
 
 c_matrix canonical_vector(const int& i, const int& N1, const int& N2) {
 	c_matrix e_i(N1, c_vector (N2,0.0));
-	int j = i / N2;
-	int k = i % N2;
+	int j = i / N2; //Lattice sitece
+	int k = i % N2; //spin
 	e_i[j][k] = 1.0;
 	return e_i;
 }
@@ -34,7 +34,7 @@ c_matrix canonical_vector(const int& i, const int& N1, const int& N2) {
 //Formats decimal numbers
 static std::string format(const double& number) {
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(4) << number;
+    oss << std::fixed << std::setprecision(2) << number;
     std::string str = oss.str();
     str.erase(str.find('.'), 1); //Removes decimal dot 
     return str;
@@ -134,22 +134,20 @@ int main(){
     std::cout << " Done!" << std::endl;
     //--------Compute c(nt) for the pion--------//
     for(int conf = 0; conf<nconf; conf++){
+        if (conf % 100 == 0) { std::cout << "--------Computing c(nt) for conf " << conf << "--------" << std::endl;} 
         for (int bet=0; bet<2; bet++){
-            source = canonical_vector(bet, Ntot, 2); 
-            if (conf%100 == 0){
-                std::cout << "####Computing c(nt) for conf#### " << conf << std::endl;
-                Dcol = bi_cgstab(Confs[conf], source, x0, m0, max_iter, 1e-10, true); //D^-1 source 
-            }
-            else{
-                Dcol = bi_cgstab(Confs[conf], source, x0, m0, max_iter, 1e-10, false);
-            }
-           
+            source = canonical_vector(bet, Ntot, 2); //Source indexed by bet (spin component of (nx,nt=0,0) )   
+            Dcol = bi_cgstab(Confs[conf], source, x0, m0, max_iter, 1e-10, false); //D^-1 source = Dcol((nx,nt),alpha)
             
             for(int t=0; t<Nt; t++){
                 for(int alf=0; alf<2; alf++){  
-                    //Coords[x][t] = x*Nt + t. For x=0, t Coords[0][t] = t
-                    CorrMat[t][conf] -= std::real(Dcol[t][alf] * std::conj(Dcol[t][alf])); //|D^-1 (nt,0)_{alpha,beta}|^2  Dcol is a column of the dirac matrix
+                    for(int x=0; x<Ns; x++){
+                        coord = Coords[x][t]; //x*Nt + t
+                        CorrMat[t][conf] += std::real(Dcol[coord][alf] * std::conj(Dcol[coord][alf])); //D^-1 (nt,0)_{alpha,beta} Confs is a column of the dirac matrix
+                    }
+                
                 }
+                CorrMat[t][conf] *= 1.0/std::sqrt(Ns); //Average over spatial coordinates
             }
         }
     }    
@@ -165,10 +163,9 @@ int main(){
     } 
     
     std::ostringstream Name;
-    Name << "2D_U1_Ns" << Ns << "_Nt" << Nt << "_b" << beta << "_m" << m0 << "_" << "corr" << ".txt";
+    Name << "2D_U1_Ns" << Ns << "_Nt" << Nt << "_b" << beta << "_m" << format(m0) << "_" << "corr" << ".txt";
     write(Corr, dCorr, Name.str());
-    
-    
+
 
     return 0;
 }
