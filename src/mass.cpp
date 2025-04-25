@@ -14,9 +14,10 @@ double m0, beta; //Mass and coupling constant
 int max_iter = 10000;
 std::vector<std::vector<double>> CorrMat; //Correlation function for each conf.
 std::vector<double> Corr(Nt,0), dCorr(Nt,0); //Correlation function averaged over configurations and its error
+c_matrix Dinv(2*Ntot, c_vector(2*Ntot,0)); //Correlation function for each conf.
 
-c_matrix source; //source vector
-c_matrix Dcol; //D^-1 source 
+c_matrix source1, source2; //source vector
+c_matrix Dcol1, Dcol2; //D^-1 source 
 c_matrix x0(Ntot, c_vector(2,1)); //Initial solution for inverting Dirac matrix
 int coord;
 
@@ -135,23 +136,26 @@ int main(){
     //--------Compute c(nt) for the pion--------//
     for(int conf = 0; conf<nconf; conf++){
         if (conf % 100 == 0) { std::cout << "--------Computing c(nt) for conf " << conf << "--------" << std::endl;} 
-        for (int bet=0; bet<2; bet++){
-            source = canonical_vector(bet, Ntot, 2); //Source indexed by bet (spin component of (nx,nt=0,0) )   
-            Dcol = bi_cgstab(Confs[conf], source, x0, m0, max_iter, 1e-10, false); //D^-1 source = Dcol((nx,nt),alpha)
-            
-            for(int t=0; t<Nt; t++){
-                for(int alf=0; alf<2; alf++){  
-                    for(int x=0; x<Ns; x++){
-                        coord = Coords[x][t]; //x*Nt + t
-                        CorrMat[t][conf] += std::real(Dcol[coord][alf] * std::conj(Dcol[coord][alf])); //D^-1 (nt,0)_{alpha,beta} Confs is a column of the dirac matrix
-                    }
-                
-                }
-                CorrMat[t][conf] *= 1.0/std::sqrt(Ns); //Average over spatial coordinates
+        //We only need two sources, equivalent to extracting the first two columns of D^-1
+        source1 = canonical_vector(0, Ntot, 2); 
+        source2 = canonical_vector(1, Ntot, 2); 
+        Dcol1 = bi_cgstab(Confs[conf], source1, x0, m0, max_iter, 1e-10, false); //D^-1 source = D^-1((nx,nt),0)
+        Dcol2 = bi_cgstab(Confs[conf], source2, x0, m0, max_iter, 1e-10, false); //D^-1 source = D^-1((nx,nt),1)
+        
+        for(int t=0; t<Nt; t++){
+            CorrMat[t][conf] = 0;
+            for(int x=0; x<Ns; x++){
+                coord = Coords[x][t]; //x*Nt + t
+                CorrMat[t][conf] += std::real(Dcol1[coord][0] * std::conj(Dcol1[coord][0]))
+                + std::real(Dcol1[coord][1] * std::conj(Dcol1[coord][1]))  
+                + std::real(Dcol2[coord][0] * std::conj(Dcol2[coord][0]))
+                + std::real(Dcol2[coord][1] * std::conj(Dcol2[coord][1])); 
             }
-        }
-    }    
+            CorrMat[t][conf] *= 1.0/std::sqrt(Ns); //Average over spatial coordinates
+        }            
+    }
     
+        
     //Write c(nt) and its error into a file
     for(int t=0; t<Nt; t++){
         for(int conf=0; conf<nconf; conf++){
@@ -165,7 +169,6 @@ int main(){
     std::ostringstream Name;
     Name << "2D_U1_Ns" << Ns << "_Nt" << Nt << "_b" << beta << "_m" << format(m0) << "_" << "corr" << ".txt";
     write(Corr, dCorr, Name.str());
-
 
     return 0;
 }
