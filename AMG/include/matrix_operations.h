@@ -75,9 +75,4 @@ std::vector<std::vector<std::complex<double>>> D_dagger_phi(const std::vector<st
 //D D^dagger phi
 std::vector<std::vector<std::complex<double>>> D_D_dagger_phi(const std::vector<std::vector<std::complex<double>>>& U, const std::vector<std::vector<std::complex<double>>>& phi, const double& m0);
 
-
-//psi^dag \partial D / \partial omega(z) psi
-std::vector<std::vector<double>> phi_dag_partialD_phi(const std::vector<std::vector<std::complex<double>>>& U,
- const std::vector<std::vector<std::complex<double>>>& left, const std::vector<std::vector<std::complex<double>>>& right);
-
 #endif

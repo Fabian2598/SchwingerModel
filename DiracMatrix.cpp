@@ -80,6 +80,7 @@ inline c_double rfb(const c_matrix& phi, const int& x, const int& t, const int& 
     if (mu == 0) {
         if (t == Nt - 1) {
             return -phi[Coords[x][0]][bet];
+            //return phi[Coords[x][0]][bet];
         }
         else {
             return phi[Coords[x][t + 1]][bet];
@@ -97,6 +98,7 @@ inline c_double lfb(const c_matrix& phi, const int& x, const int& t, const int& 
     if (mu == 0) {
         if (t == 0) {
             return -phi[Coords[x][Nt - 1]][bet];
+            //return phi[Coords[x][Nt - 1]][bet];
         }
         else {
             return phi[Coords[x][t - 1]][bet];
@@ -199,7 +201,7 @@ int main() {
     std::cout << "Ns = " << Ns << " Nt = " << Nt << std::endl;
     std::cout << "Dirac matrix dimension = " << (2 * Ntot) << " X " << (2 * Ntot) << std::endl;
     //These parameter have to be same as in the simulation
-    double m0 = -0.16; 
+    double m0 = -0.81; 
     double beta = 2;
     std::cout << "m0 " << m0 << " beta " << beta << std::endl;
     int n;// = 1; //Configuration number (this has to match the data file name)
@@ -207,9 +209,9 @@ int main() {
     char PATH[500];
     //Path to the configuration
 
-    for(n=0; n<1000; n++) {
+    for(n=0; n<1; n++) {
     std::cout << "Configuration number  " << n << std::endl;
-    sprintf(PATH, "b2_16x16/m-016/2D_U1_Ns%d_Nt%d_b%s_m%s_%d.txt", Ns, Nt, format(beta).c_str(), format(m0).c_str(), n);
+    sprintf(PATH, "b2_16x16/m-016/2D_U1_Ns%d_Nt%d_b%s_m%s_%d.txt", Ns, Nt, format(beta).c_str(), format(-0.16).c_str(), n);
     std::cout << "Reading configuration from " << PATH << std::endl;
     std::ifstream infile(PATH);
     if (!infile) {

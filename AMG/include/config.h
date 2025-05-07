@@ -6,5 +6,7 @@
 #define BLOCK_T 4
 #define NTEST 10
 #define NAGG 32
+#define SAP_BLOCK_X 4
+#define SAP_BLOCK_T 4
 
 #endif

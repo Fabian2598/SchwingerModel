@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include "sap.h"
 #include "amg.h"
 #include "gmres.h"
 #include "statistics.h"
@@ -24,11 +25,24 @@ int main() {
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
     std::cout << "Ns = " << Ns << " Nt = " << Nt << std::endl;
-    std::cout << "block_x = " << block_x << " block_t = " << block_t << std::endl;
-    std::cout << "x_elements = " << x_elements << " t_elements = " << t_elements << std::endl;
+    std::cout << "Lattice dimension = " << (Ns * Nt) << std::endl;
+    std::cout << "Dirac matrix dimension = " << (2 * Ns * Nt) << std::endl;
+    std::cout << "-----------------------------------" << std::endl;
+    std::cout << "| Lattice blocking for the aggregates" << std::endl;
+    std::cout << "| block_x = " << block_x << " block_t = " << block_t << std::endl;
+    std::cout << "| x_elements = " << x_elements << " t_elements = " << t_elements << std::endl;
+    std::cout << "| Each aggregate has x_elements * t_elements = " <<  x_elements * t_elements << " elements" << std::endl;
+    std::cout << "| Number of aggregates = " << Nagg << std::endl;
     Aggregates(); //Aggregates
+    std::cout << "-----------------------------------" << std::endl;
+    std::cout << "| Variable blocking for SAP" << std::endl;
+    std::cout << "| sap_block_x = " << sap_block_x << " sap_block_t = " << sap_block_t << std::endl;
+    std::cout << "| sap_x_elements = " << sap_x_elements << " sap_t_elements = " << sap_t_elements << std::endl;
+    std::cout << "| Each Schwarz block has 2 * sap_x_elements * sap_t_elements = " <<  2 * sap_x_elements * sap_t_elements << " elements" << std::endl;
+    std::cout << "| Number of Schwarz blocks = " << N_sap_blocks << std::endl;
+    SchwarzBlocks(); //Builds the blocks for the Schwarz alternating method
+    CheckBlocks(); //Check blocks dimensions
     std::cout << "Number of test vectors = " << Ntest << std::endl;
-    std::cout << "Dirac matrix dimension = " << (2 * Ntot) << std::endl;
     std::cout << "Dc dimension = " << Ntest * Nagg << std::endl;
     std::cout << "*****************************************************************************************************" << std::endl;
 
@@ -104,7 +118,7 @@ int main() {
 
         std::cout << "--------------GMRES inversion--------------" << std::endl;
         int m = 200;
-        int restarts = 100;
+        int restarts = 10;
         std::cout << "iterations per restart = " << m << " restarts = " << restarts << std::endl;
 
         begin = clock();

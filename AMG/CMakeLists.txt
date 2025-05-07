@@ -11,6 +11,7 @@ set(SOURCES
     src/gauge_conf.cpp
     src/matrix_operations.cpp
     src/conjugate_gradient.cpp
+    src/sap.cpp
     src/amg.cpp
     src/main.cpp  
     src/statistics.cpp
@@ -20,10 +21,17 @@ set(SOURCES
 #Lattice dimensions
 set(NS "32") 
 set(NT "32") 
+
 #Number of lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
 set(BLOCK_X "4")
 set(BLOCK_T "4")
+
+#Blocks for Schwarz alternating method. They don't need to be the same as BLOCK_X and BLOCK_T
+set(SAP_BLOCK_X "4")
+set(SAP_BLOCK_T "4")
+#N_i / SAP_BLOCK_i has to be an integer number
+
 #Number of test vectors
 set(NTEST "10") 
 set(NAGG "32") #BlockX * BlockT for aggregation scheme 1 and 2 * BlockX * BlockT for scheme 2
@@ -37,6 +45,7 @@ add_executable("SM_${NS}x${NT}" ${SOURCES} "include/matrix_operations.h"
  "include/gauge_conf.h" 
  "include/conjugate_gradient.h"
  "include/amg.h"
+ "include/sap.h"
  "include/operator_overloads.h" 
  "include/statistics.h"
  "include/gmres.h"
