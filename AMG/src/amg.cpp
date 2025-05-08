@@ -6,6 +6,7 @@ void PrintVector(const c_matrix& v ){
         for(int j = 0; j < v[i].size(); j++){
             std::cout << v[i][j] << " ";
         }
+		std::cout << std::endl;
     }
     std::cout << std::endl;
 }

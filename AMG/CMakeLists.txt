@@ -19,22 +19,23 @@ set(SOURCES
 )
 
 #Lattice dimensions
-set(NS "32") 
-set(NT "32") 
+set(NS "4") 
+set(NT "4") 
 
 #Number of lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
-set(BLOCK_X "4")
-set(BLOCK_T "4")
+set(BLOCK_X "2")
+set(BLOCK_T "2")
 
-#Blocks for Schwarz alternating method. They don't need to be the same as BLOCK_X and BLOCK_T
-set(SAP_BLOCK_X "4")
-set(SAP_BLOCK_T "4")
+#Lattice blocks for Schwarz alternating method. They don't need to be the same as BLOCK_X and BLOCK_T
+set(SAP_BLOCK_X "2")
+set(SAP_BLOCK_T "2")
 #N_i / SAP_BLOCK_i has to be an integer number
+#One block of variables contains 2 * N_x / SAP_BLOCK_x * N_t / SAP_BLOCK_t  
 
 #Number of test vectors
 set(NTEST "10") 
-set(NAGG "32") #BlockX * BlockT for aggregation scheme 1 and 2 * BlockX * BlockT for scheme 2
+set(NAGG "8") #BlockX * BlockT for aggregation scheme 1 and 2 * BlockX * BlockT for scheme 2
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 

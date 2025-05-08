@@ -26,7 +26,7 @@ int main() {
     std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
     std::cout << "Ns = " << Ns << " Nt = " << Nt << std::endl;
     std::cout << "Lattice dimension = " << (Ns * Nt) << std::endl;
-    std::cout << "Dirac matrix dimension = " << (2 * Ns * Nt) << std::endl;
+    std::cout << "Number of entries of the Dirac matrix = (" << (2 * Ns * Nt) << ")^2 = " << (2 * Ns * Nt) * (2 * Ns * Nt) << std::endl;
     std::cout << "-----------------------------------" << std::endl;
     std::cout << "| Lattice blocking for the aggregates" << std::endl;
     std::cout << "| block_x = " << block_x << " block_t = " << block_t << std::endl;
@@ -37,137 +37,75 @@ int main() {
     std::cout << "-----------------------------------" << std::endl;
     std::cout << "| Variable blocking for SAP" << std::endl;
     std::cout << "| sap_block_x = " << sap_block_x << " sap_block_t = " << sap_block_t << std::endl;
-    std::cout << "| sap_x_elements = " << sap_x_elements << " sap_t_elements = " << sap_t_elements << std::endl;
-    std::cout << "| Each Schwarz block has 2 * sap_x_elements * sap_t_elements = " <<  2 * sap_x_elements * sap_t_elements << " elements" << std::endl;
+    std::cout << "| Lattice sites in the x direction = " << sap_x_elements<< " and in the t direction = " << sap_t_elements<< std::endl;
+    std::cout << "| Each Schwarz block has " <<  sap_lattice_sites_per_block << " lattice points and " << sap_variables_per_block << " variables" << std::endl;
+    std::cout << "| D restricted to each block has (" << 2 * sap_lattice_sites_per_block << ")^2 = " << sap_variables_per_block*sap_variables_per_block << " entries" << std::endl;
     std::cout << "| Number of Schwarz blocks = " << N_sap_blocks << std::endl;
-    SchwarzBlocks(); //Builds the blocks for the Schwarz alternating method
     CheckBlocks(); //Check blocks dimensions
+    SchwarzBlocks(); //Builds the blocks for the Schwarz alternating method
+     
     std::cout << "Number of test vectors = " << Ntest << std::endl;
     std::cout << "Dc dimension = " << Ntest * Nagg << std::endl;
     std::cout << "*****************************************************************************************************" << std::endl;
 
 
     GaugeConf GConf = GaugeConf(Ns, Nt);
-    //GConf.initialization(); //Initialize a random gauge configuration
+    GConf.initialization(); //Initialize a random gauge configuration
     int nu1 = 0, nu2 = 2;
     std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
 
-    double m0 = -0.6;
+    double m0 = -0.1;
     double beta = 1;
     int n_conf = 10;
     std::cout << "m0 = " << m0 << " beta = " << beta << std::endl;
-    std::vector<double> bi_cg_it(n_conf), bi_extime(n_conf);
-    std::vector<double> multigrid_it(n_conf), amg_extime(n_conf);
-    std::vector<double> gmres_it(n_conf), gmres_extime(n_conf);
-	c_matrix x_bi, x_gmres, x_multigrid;
-    for (int n = 0; n < n_conf; n++) {
-        //***Open Conf File***//
-        char NameData[500];
-        sprintf(NameData, "../confs/2D_U1_Ns%d_Nt%d_b%s_m%s_%d.txt", Ns, Nt, format(beta).c_str(), format(m0).c_str(), n);
-        std::ifstream infile(NameData);
-        if (!infile) {
-            std::cerr << "File not found" << std::endl;
-            return 1;
-        }
-        int x, t, mu;
-        double re, im;
+    
+   
 
-        while (infile >> x >> t >> mu >> re >> im) {
-            GConf.Conf[Coords[x][t]][mu] = c_double(re, im);
-        }
-        infile.close();
-
-		//***Generate random right hand side***//
-        c_matrix PHI(Ntot, c_vector(2, 0));
-        for (int i = 0; i < Ntot; i++) {
-            for (int j = 0; j < 2; j++) {
-                PHI[i][j] = 1.0 * RandomU1(); //Each element with norm=1
+    //Assemble matrix for checking Schwarz decomposition. Only try with small latices.
+    /*
+    c_matrix D(2 * Ntot, c_vector(2 * Ntot, 0));
+    for (int col = 0; col < 2 * Ntot; col++) {
+        c_matrix v = canonical_vector(col, Ntot, 2); 
+        c_matrix Dv = D_phi(GConf.Conf, v, m0);
+        int count = 0;
+        for (int i = 0; i < Dv.size(); i++) {
+            for (int j = 0; j < Dv[i].size(); j++) {
+                D[count][col] = Dv[i][j];
+                count += 1;
             }
         }
-
-        //****Assemble the matrix****// This is only necessary for comparing with python ...
-        /*
-        c_matrix D(2 * Ntot, c_vector(2 * Ntot, 0));
-        for (int col = 0; col < 2 * Ntot; col++) {
-            c_matrix v = canonical_vector(col, Ntot, 2); 
-            c_matrix Dv = D_phi(GConf.Conf, v, m0);
-            int count = 0;
-            for (int i = 0; i < Dv.size(); i++) {
-                for (int j = 0; j < Dv[i].size(); j++) {
-                    D[count][col] = Dv[i][j];
-                    count += 1;
-                }
-            }
-        }
-        char NameD[500], NamePhi[500];
-        sprintf(NameD, "D%d.dat", n);  sprintf(NamePhi, "Phi%d.dat", n);
-        save_matrix(D, NameD);
-		save_matrix(PHI, NamePhi);
-        */
-
-        std::cout << "########################################## Conf " << n << " ##########################################" << std::endl;
-        
-        std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
-        clock_t begin = clock();
-        x_bi = bi_cgstab(GConf.Conf, PHI, PHI, m0, 10000, 1e-10, false);//bi_cgstab(GConf.Conf, PHI, PHI, m0, 100000, 1e-10, false);
-        clock_t end = clock();
-        double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-        std::cout << "Bi-CGstab total computing time = " << elapsed_secs << " s" << std::endl;
-        bi_cg_it[n] = it_count;
-		bi_extime[n] = elapsed_secs;
-
-        std::cout << "--------------GMRES inversion--------------" << std::endl;
-        int m = 200;
-        int restarts = 10;
-        std::cout << "iterations per restart = " << m << " restarts = " << restarts << std::endl;
-
-        begin = clock();
-        x_gmres = gmres(GConf.Conf, PHI, PHI, m0, m, restarts, 1e-10, true);
-        end = clock();
-        
-        elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-        std::cout << "GMRES total computing time = " << elapsed_secs << " s" << std::endl;
-		gmres_it[n] = it_count;
-		gmres_extime[n] = elapsed_secs;
-
-        std::cout << "--------------Two-grid inversion with GMRES as a smoother--------------" << std::endl;
-        begin = clock();
-        int rpc = 20; //iterations per GMRES cycle
-        std::cout << "iterations per GMRES cycle for AMG = " << rpc << std::endl;
-        AMG amg = AMG(GConf, Ns, Nt, Ntest, m0,nu1,nu2,rpc);
-        amg.tv_init(1, 3); //test vectors intialization
-
-        c_matrix x_ini(Ntot, c_vector(2, 0));
-        for (int j = 0; j < Ntot; j++) {
-			for (int k = 0; k < 2; k++) {
-				x_ini[j][k] = RandomU1();
-            }
-		}
-        
-        c_matrix x0;
-        x_multigrid = amg.TwoGrid(100,rpc, 1e-10, x_ini, PHI, true);
-        end = clock();
-        elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-        std::cout << "Two-grid total computing time = " << elapsed_secs << " s" << std::endl;
-        std::cout << "----------------------------------------------" << std::endl;
-        multigrid_it[n] = it_count;
-		amg_extime[n] = elapsed_secs;
-        std::cout << "Two-grid " << std::setprecision(10) << x_multigrid[0][0] << std::endl;
-        std::cout << "BiCGstab " << std::setprecision(10) << x_bi[0][0] << std::endl;
-        std::cout << "GMRES " << std::setprecision(10) << x_gmres[0][0] << std::endl;
     }
 
-    std::cout << "Mean number of iterations for bi-cg " << mean(bi_cg_it) << " +- " << Jackknife_error(bi_cg_it, 2) << std::endl;
-    std::cout << "Mean execution time for bi-cg " << mean(bi_extime) << " +- " << Jackknife_error(bi_extime, 2) << std::endl;
-    std::cout << " " << std::endl;
+    std::cout << "#### Dirac Matrix ####" << std::endl;
+    PrintVector(D);
+    */
 
-    std::cout << "Mean number of iterations for gmres " << mean(gmres_it) << " +- " << Jackknife_error(gmres_it, 2) << std::endl;
-    std::cout << "Mean execution time for gmres " << mean(gmres_extime) << " +- " << Jackknife_error(gmres_extime, 2) << std::endl;
-    std::cout << " " << std::endl;
 
-    std::cout << "Mean number of iterations for two-grid " << mean(multigrid_it) << " +- " << Jackknife_error(multigrid_it, 2) << std::endl;
-    std::cout << "Mean execution time for two-grid " << mean(amg_extime) << " +- " << Jackknife_error(amg_extime, 2) << std::endl;
-    std::cout << " " << std::endl;
+
+    
+ 
+    c_matrix rhs(Ntot, c_vector(2, 0)); //random right hand side 
+    c_matrix x_B(Ntot, c_vector(2, 0)); //solution vector on the original lattice
+    for(int i = 0; i < sap_variables_per_block; i++) {
+        rhs[i][0] = RandomU1();
+        rhs[i][1] = RandomU1();
+    }
+    //Default values in variables.cpp
+    sap_gmres_restart_length = 5; //GMRES restart length for the Schwarz blocks. Set to 20 by default
+    sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
+    sap_gmres_tolerance = 1e-10; //GMRES tolerance for the Schwarz blocks
+    for(int block = 0; block<N_sap_blocks; block++){
+        x_B = I_D_B_1_It(GConf.Conf, rhs, m0,block);
+        std::cout << "right-hand side rhs[0][0] = " << rhs[0][0] << "  rhs[0][1] = " << rhs[0][1]  << std::endl;
+        std::cout << "solution" << std::endl;
+        for(int i = 0; i < Ntot; i++) {
+            std::cout << "x_B[" << i << "][0] = " << x_B[i][0] << "  ";
+            std::cout << "x_B[" << i << "][1] = " << x_B[i][1];
+            std::cout << std::endl;
+        }
+        std::cout << "**********************" << std::endl;
+    }
+    
 
     return 0;
 }

@@ -15,7 +15,7 @@ void AggregatesV1(){
 		for (int t = 0; t < block_t; t++) {
 			int x0 = x * x_elements, t0 = t * t_elements;
 			int x1 = (x + 1) * x_elements, t1 = (t + 1) * t_elements;
-			int aggregate = x * block_x + t;
+			int aggregate = x * block_t + t;
 			int count = 0;
 			//x and t are redefined in the following loop
 			for (int x = x0; x < x1; x++) {
