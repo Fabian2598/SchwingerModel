@@ -1,21 +1,5 @@
 #include "sap.h"
 
-//Verify that input dimensions are correct
-bool checkSize(const c_matrix& v, const int& N1, const int& N2) {
-    int size1 = v.size(), size2 = v[0].size();
-    if (size1!=  N1) {
-        std::cout << "Error: v.size() is" << size1 << " and v[0].size is " << size2 << std::endl;
-        std::cout << "v.size() has to be " << N1 << ". Instead it is " << size1 << std::endl;
-        return true;
-    }
-    if (size2 != N2) {
-        std::cout << "Error: v.size() is" << size1 << " and v[0].size is " << size2 << std::endl;
-        std::cout << "v[0].size() has to be " << N2 << ". Instead it is " << size2 << std::endl;
-        return true;
-    }
-    return false;
-}
-
 void SchwarzBlocks(){
     schwarz_blocks = true; //Schwarz blocks are initialized
     int count, block;
@@ -58,75 +42,78 @@ void SchwarzBlocks(){
 
 //x = I_B^T v --> Restriction of the vector v to the block B
 //dim(v) = 2 Ntot, dim(x) = 2 * sap_lattice_sites_per_block
-c_matrix It_B_v(const c_matrix& v, const int& block){
+void It_B_v(const c_matrix& v, c_matrix& x, const int& block){
     //Schwarz blocks have to be initialized first before calling this function
     if (!schwarz_blocks){
         std::cout << "Error: Schwarz blocks not initialized" << std::endl;
         exit(1);
     }
     //Checking dimensions
-    if ( checkSize(v, Ntot, 2)== true ){
+    if ( checkSize(v, Ntot, 2)== true || checkSize(x, sap_lattice_sites_per_block, 2) == true){
         std::cout << "Error with vector dimensions in It_B_v" << std::endl;
         exit(1);
     } 
-    
-    c_matrix x(sap_lattice_sites_per_block, c_vector(2, 0)); 
+    set_zeros(x,sap_lattice_sites_per_block,2); //Initialize x to zero
+
     for (int j = 0; j < sap_lattice_sites_per_block; j++){
         x[j][0] = v[SAP_Blocks[block][j]][0];
         x[j][1] = v[SAP_Blocks[block][j]][1];
     }
-    return x;
 }
 
 // x = I_B v --> Interpolation of the vector v to the original lattice
 //dim(v) = 2 * sap_lattice_sites_per_block, dim(x) = 2 Ntot
-c_matrix I_B_v(const c_matrix& v, const int& block){
+void I_B_v(const c_matrix& v, c_matrix& x,const int& block){
     //Schwarz blocks have to be initialized first before calling this function
     if (!schwarz_blocks){
         std::cout << "Error: Schwarz blocks not initialized" << std::endl;
         exit(1);
     }
-    if ( checkSize(v, sap_lattice_sites_per_block, 2) == true ){
+    if ( checkSize(v, sap_lattice_sites_per_block, 2) == true ||  checkSize(x, Ntot, 2) == true ){
         std::cout << "Error with dimensions in I_B_v" << std::endl;
         exit(1);
     } 
-
-    c_matrix x(Ntot, c_vector(2, 0)); 
+    set_zeros(x,Ntot,2); //Initialize x to zero
     for (int j = 0; j < sap_lattice_sites_per_block; j++){
         x[SAP_Blocks[block][j]][0] += v[j][0];
         x[SAP_Blocks[block][j]][1] += v[j][1];
     }
-    return x;
+
 }
 
 //Restriction of the Dirac operator to the block B
 //D_B v = I_B^T D I_B v  
 //dim(v) = 2 * sap_lattice_sites_per_block, dim(x) = 2 * sap_lattice_sites_per_block
-c_matrix D_B(const c_matrix& U, const c_matrix& v, const double& m0,const int& block){
-    if (checkSize(v, sap_lattice_sites_per_block, 2)==true){
+void D_B(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0,const int& block){
+    if (checkSize(v, sap_lattice_sites_per_block, 2)==true || checkSize(x, sap_lattice_sites_per_block, 2) == true){
         std::cout << "Error with vector dimensions in D_B" << std::endl;
         exit(1);
     }
-    return It_B_v( D_phi(U,I_B_v(v,block), m0),  block); 
+    c_matrix temp(Ntot, c_vector(2, 0)); //I_B v
+    I_B_v(v,temp,block); 
+    It_B_v( D_phi(U,temp, m0), x, block); //It_B_v sets x to zero first
 }
 
 //Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B 
-c_matrix gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& m, const int& restarts, const double& tol, const int& block,const bool& print_message) {
+int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matrix& x,
+    const double& m0, const int& m, const int& restarts, const double& tol, const int& block,
+    const bool& print_message) {
     //GMRES for D^-1 phi
     //phi --> right-hand side
     //x0 --> initial guess  
+    //x --> solution
     //U --> configuration
     //restarts --> number of restarts
     //m --> number of iterations per cycle
     std::cout << "------------------------------------------" << std::endl;
     std::cout << "|GMRES for D_B (block " << block << ") " << std::endl;
     std::cout << "|Restart length " << m << ". Restarts = " << restarts << std::endl;
-    if (checkSize(phi, sap_lattice_sites_per_block, 2) == true){
+    if (checkSize(phi, sap_lattice_sites_per_block, 2) == true || checkSize(x, sap_lattice_sites_per_block, 2) == true || checkSize(x, sap_lattice_sites_per_block, 2) == true){
         std::cout << "Error with vector dimensions in gmres_D_B" << std::endl;
         exit(1);
     } 
     if (m> sap_variables_per_block) {
-        std::cout << "Error: restart length > sap_variables_sites_per_block" << std::endl;
+        std::cout << "Error: restart length > sap_variables_per_block" << std::endl;
         exit(1);
     }
     
@@ -149,30 +136,27 @@ c_matrix gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
 
 
     c_matrix w(sap_lattice_sites_per_block, c_vector(2, 0)); //D*d
-    c_matrix x = x0; //initial solution
+    x = x0; //initial solution
     c_double beta; //not 1/g^2
 
-	
-    r0 = phi - D_B(U, phi, m0, block); //r = b - A*x
+	c_matrix temp(sap_lattice_sites_per_block, c_vector(2, 0)); //I_B v
+    D_B(U, phi,temp, m0, block);
+    r0 = phi - temp; //r = b - A*x
 	
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
+    std::cout << "||phi|| * tol = " << norm_phi * tol << std::endl;
     while (k < restarts) {
         beta = sqrt(std::real(dot(r0, r0))) + 0.0 * I_number;
         VmT[0] = 1.0 / beta * r0;
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
-            w = D_B(U, VmT[j], m0, block); //w = D v_j 
-            //This for loop is the most time consuming part ...
-            //For the values of m that I will use, parallelizing is not really useful due to the overhead
-            //#pragma omp parallel for
+            D_B(U, VmT[j], w,m0, block); //w = D v_j  
+
             for (int i = 0; i <= j; i++) {
                 Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
-                //#pragma omp critical
                 w = w -  Hm[i][j] * VmT[i];
             }
-            //i.e. the Gramm Schmidt part is highly inefficient. 
-            //Could a better implementation of the dot product improve the execution time?
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
             if (std::real(Hm[j + 1][j]) > 0) {
                 VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
@@ -195,7 +179,8 @@ c_matrix gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
             }
         }
         //Compute the residual
-        r = phi - D_B(U, x, m0, block); 
+        D_B(U, x,temp, m0, block); //D_B x
+        r = phi - temp; 
         err = sqrt(std::real(dot(r, r)));
         //if (print_message == true) {
         //    std::cout << "GMRES for D_B (block " << block << ") "<< k + 1 << " restart cycle" << " Error " << err << std::endl;
@@ -207,7 +192,7 @@ c_matrix gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
                  std::cout << "|GMRES for D_B (block " << block << ") converged in " << k + 1 << " restarts." << " Error " << err << std::endl;
              }
              std::cout << "------------------------------------------" << std::endl;
-             return x;
+             return 1;
              
          }
          r0 = r;
@@ -217,20 +202,89 @@ c_matrix gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
         std::cout << "|GMRES for D_B (block " << block << ") did not converge in " << restarts << " restarts." << " Error " << err << std::endl;
     //
     std::cout << "------------------------------------------" << std::endl;
-    return x;
+    return 0;
 }
 
-//I_B * D_B^-1 * I_B^T v --> Extrapolation of D_B^-1 to the original lattice.
+//A_B = I_B * D_B^-1 * I_B^T v --> Extrapolation of D_B^-1 to the original lattice.
 //dim(v) = 2 * Ntot, dim(x) = 2 Ntot
-c_matrix I_D_B_1_It(const c_matrix& U, const c_matrix& v, const double& m0,const int& block){
-    bool print_message = true; //good for testing
-    if (checkSize(v, Ntot, 2) == true){
+//v: input, x: output
+void I_D_B_1_It(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0,const int& block){
+    bool print_message = true; //good for testing GMRES     
+    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
         std::cout << "Error with vector dimensions in I_D_B_1_It" << std::endl;
         exit(1);
     } 
-    return I_B_v( 
-        gmres_D_B(U, It_B_v(v,block), It_B_v(v,block), m0, sap_gmres_restart_length, sap_gmres_restarts, sap_gmres_tolerance, block, print_message),
-        block); 
+    c_matrix temp(sap_lattice_sites_per_block, c_vector(2, 0)); 
+    c_matrix temp2(sap_lattice_sites_per_block, c_vector(2, 0)); 
+    It_B_v(v,temp,block); //temp = I_B^T v
+    gmres_D_B(U, temp, temp,temp2, m0, 
+        sap_gmres_restart_length, sap_gmres_restarts, sap_gmres_tolerance, 
+        block, print_message);  //temp2 = D_B^-1 I_B^T v 
+    I_B_v(temp2,x,block); //x = I_B D_B^-1 I_B^T v 
+}
+
+//K matrix A_black (I - D A_red) + A_red
+//dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
+void K_SAP(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0){
+    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
+        std::cout << "Error with vector dimensions in K_SAP" << std::endl;
+        exit(1);
+    } 
+
+    c_matrix v_red(Ntot, c_vector(2, 0));
+    c_matrix temp(Ntot, c_vector(2, 0)); 
+    c_matrix temp2(Ntot, c_vector(2, 0));
+    set_zeros(x,Ntot,2); //Initialize x to zero
+    //This part has to be parallelized eventually for all the blocks of same color
+    // A_red v
+    for (auto block : SAP_RedBlocks){
+        I_D_B_1_It(U,v,temp,m0,block);
+        v_red = v_red + temp; //Restriction of the vector to the red blocks
+    }
+
+    //(I- D A_red) v
+    temp = v - D_phi(U, v_red, m0); //x = v - D A_red v
+
+    // A_black v
+    //This loop also has to be parallelized 
+    for (auto block : SAP_BlackBlocks){
+        I_D_B_1_It(U,temp,temp2,m0,block);
+        x = x + temp2; //Restriction of the (v-D v_red) to the black blocks
+    }
+
+    x = x + v_red; 
+    //x = A_black (I - D A_red) v + A_red v
+}
+
+//(I-K D) v 
+//dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
+void I_KD(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0){
+    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
+        std::cout << "Error with vector dimensions in I_KD" << std::endl;
+        exit(1);
+    }  
+    K_SAP(U, D_phi(U,v,m0), x, m0); //x = K D v
+    x = v - x; //x = v - K D v
+}
+
+//M_SAP^(nu) v = sum_l=0^nu-1 (I - K D)^(l) K v
+//dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
+void M_SAP(const c_matrix& U, const c_matrix& v, c_matrix& x,const double& m0,const int& nu){
+    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
+        std::cout << "Error with vector dimensions in I_KD" << std::endl;
+        exit(1);
+    }  
+
+    c_matrix temp(Ntot, c_vector(2, 0)); 
+    c_matrix temp2(Ntot, c_vector(2, 0));
+    K_SAP(U, v, temp, m0);  //temp = K v
+    x = temp; //x = K v
+    for(int i = 1; i < nu; i++){
+        std::cout << "M_SAP iteration " << i << std::endl;
+        I_KD(U, temp,temp2, m0) ; //This is overwriting the input and output ...
+        temp = temp2; 
+        x = x + temp; //x = x + K (I - K D)^(l-1) K v
+    }
 }
 
 

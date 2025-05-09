@@ -9,4 +9,6 @@
 #define SAP_BLOCK_X 2
 #define SAP_BLOCK_T 2
 
+#define DEBUG
+
 #endif

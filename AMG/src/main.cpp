@@ -9,6 +9,7 @@
 #include "gmres.h"
 #include "statistics.h"
 
+
 //Formats decimal numbers
 static std::string format(const double& number) {
     std::ostringstream oss;
@@ -51,61 +52,44 @@ int main() {
 
     GaugeConf GConf = GaugeConf(Ns, Nt);
     GConf.initialization(); //Initialize a random gauge configuration
-    int nu1 = 0, nu2 = 2;
-    std::cout << "Pre-smoothing steps " << nu1 << " Post-smoothing steps " << nu2 << std::endl;
 
     double m0 = -0.1;
     double beta = 1;
-    int n_conf = 10;
     std::cout << "m0 = " << m0 << " beta = " << beta << std::endl;
-    
-   
+        
+     //Default values in variables.cpp
+    sap_gmres_restart_length = 8; //GMRES restart length for the Schwarz blocks. Set to 20 by default
+    sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
+    sap_gmres_tolerance = 1e-10; //GMRES tolerance for the Schwarz blocks
 
-    //Assemble matrix for checking Schwarz decomposition. Only try with small latices.
-    /*
-    c_matrix D(2 * Ntot, c_vector(2 * Ntot, 0));
-    for (int col = 0; col < 2 * Ntot; col++) {
-        c_matrix v = canonical_vector(col, Ntot, 2); 
-        c_matrix Dv = D_phi(GConf.Conf, v, m0);
-        int count = 0;
-        for (int i = 0; i < Dv.size(); i++) {
-            for (int j = 0; j < Dv[i].size(); j++) {
-                D[count][col] = Dv[i][j];
-                count += 1;
-            }
-        }
-    }
-
-    std::cout << "#### Dirac Matrix ####" << std::endl;
-    PrintVector(D);
-    */
-
-
-
-    
- 
     c_matrix rhs(Ntot, c_vector(2, 0)); //random right hand side 
-    c_matrix x_B(Ntot, c_vector(2, 0)); //solution vector on the original lattice
-    for(int i = 0; i < sap_variables_per_block; i++) {
+    c_matrix x(Ntot, c_vector(2, 0)); //solution vector 
+    for(int i = 0; i < Ntot; i++) {
         rhs[i][0] = RandomU1();
         rhs[i][1] = RandomU1();
     }
-    //Default values in variables.cpp
-    sap_gmres_restart_length = 5; //GMRES restart length for the Schwarz blocks. Set to 20 by default
-    sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
-    sap_gmres_tolerance = 1e-10; //GMRES tolerance for the Schwarz blocks
-    for(int block = 0; block<N_sap_blocks; block++){
-        x_B = I_D_B_1_It(GConf.Conf, rhs, m0,block);
-        std::cout << "right-hand side rhs[0][0] = " << rhs[0][0] << "  rhs[0][1] = " << rhs[0][1]  << std::endl;
-        std::cout << "solution" << std::endl;
-        for(int i = 0; i < Ntot; i++) {
-            std::cout << "x_B[" << i << "][0] = " << x_B[i][0] << "  ";
-            std::cout << "x_B[" << i << "][1] = " << x_B[i][1];
-            std::cout << std::endl;
-        }
-        std::cout << "**********************" << std::endl;
+    c_matrix D_x(Ntot, c_vector(2, 0)); //This should be the rhs again
+    int nu_sap = 20;
+    M_SAP(GConf.Conf, rhs, x, m0, nu_sap);
+    /*
+    for(int i = 0; i < Ntot; i++) {
+        std::cout << "x_B[" << i << "][0] = " << x[i][0] << "  ";
+        std::cout << "x_B[" << i << "][1] = " << x[i][1];
+        std::cout << std::endl;
     }
+    */
+    D_x = D_phi(GConf.Conf, x, m0);
+    std::cout << "-------------------------" << std::endl;
+    for(int i = 0; i < Ntot; i++) {
+        std::cout << "rhs[" << i << "][0] = " << rhs[i][0] << " | ";
+        std::cout  << D_x[i][0]  << " = D x_B[" << i << "][0]" << std::endl;
+        std::cout << "rhs[" << i << "][1] = " << rhs[i][1] << " | ";
+        std::cout  << D_x[i][1]  << " = D x_B[" << i << "][0]" << std::endl;
+        std::cout << std::endl;
+    }
+    std::cout << "**********************" << std::endl;
+    std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
+    bi_cgstab(GConf.Conf, rhs, rhs, m0, 10000, 1e-10, false);
     
-
     return 0;
 }

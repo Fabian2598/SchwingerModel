@@ -31,7 +31,7 @@ set(BLOCK_T "2")
 set(SAP_BLOCK_X "2")
 set(SAP_BLOCK_T "2")
 #N_i / SAP_BLOCK_i has to be an integer number
-#One block of variables contains 2 * N_x / SAP_BLOCK_x * N_t / SAP_BLOCK_t  
+#One block contains 2 * N_x / SAP_BLOCK_x * N_t / SAP_BLOCK_t variables 
 
 #Number of test vectors
 set(NTEST "10") 
