@@ -63,5 +63,5 @@ target_compile_options("mass_${NS}x${NT}" PRIVATE
 
 #PROJECT_SOURCE_DIR: it indicates where src is located
 #cmake -G "MinGW Makefiles" -DCMAKE_CXX_COMPILER="C:/msys64/ucrt64/bin/g++.exe" -DCMAKE_C_COMPILER="C:/msys64/ucrt64/bin/gcc.exe" ../
-
+#dir/s/b *.txt > confs.txt
 

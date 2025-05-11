@@ -19,15 +19,16 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
     r = phi - D_D_dagger_phi(U, x, m0); //The initial solution can be a vector with zeros 
     d = r; //initial search direction
     c_double r_norm2 = dot(r, r);
-    while (k<max_iter && err>tol) {
+    double phi_norm2 = sqrt(std::real(dot(phi, phi)));
+    while (k<max_iter && err>tol*phi_norm2) {
         Ad = D_D_dagger_phi(U, d, m0); //DD^dagger*d 
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
         x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i
         r = r - alpha * Ad; //r_{i+1} = r_i - alpha*Ad_i
         err_sqr = std::real(dot(r, r)); //err_sqr = (r_{i+1},r_{i+1})
 		err = sqrt(err_sqr); // err = sqrt(err_sqr)
-        if (err < tol) {
-            //std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
+        if (err < tol*phi_norm2) {
+            std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
             return x;
         }
         beta = err_sqr / r_norm2; //beta = (r_{i+1},r_{i+1})/(r_i,r_i)

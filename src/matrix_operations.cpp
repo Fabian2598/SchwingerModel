@@ -69,13 +69,13 @@ c_matrix D_dagger_phi(const c_matrix& U, const c_matrix& phi, const double& m0) 
 	return Dphi;
 }
 
-//D D^dagger phi //The other way around ...
+//D D^dagger phi 
 c_matrix D_D_dagger_phi(const c_matrix& U, const c_matrix& phi, const double& m0) {
 	return D_phi(U, D_dagger_phi(U, phi, m0), m0);
 }
 
 
-//2* Re ( left^dag \partial D / \partial omega(z) right ) --> 2* Re ( left^dag \partial D^dagg / \partial omega(z) right )
+//2* Re ( left^dag \partial D / \partial omega(z) right )
 std::vector<std::vector<double>> phi_dag_partialD_phi(const c_matrix& U,
  const c_matrix& left,const c_matrix& right){
 	int Ntot = Ns * Nt;

@@ -25,14 +25,6 @@ void HMC::Force(GaugeConf& GConfig,const c_matrix& phi) {
     c_matrix psi;
     psi = conjugate_gradient(GConfig.Conf, phi, m0);  //(DD^dagger)^-1 phi
     Forces = phi_dag_partialD_phi(GConfig.Conf,psi,D_dagger_phi(GConfig.Conf, psi, m0)); //psi^dagger partial D / partial omega(n) D psi
-    for (int x = 0; x < Ns; x++) {
-		for (int t = 0; t < Nt; t++) {
-			int i = Coords[x][t];
-			for (int mu = 0; mu < 2; mu++) {
-				Forces[i][mu] *= beta; 
-			}
-		}
-    }
     Force_G(GConfig); //Gauge force 
 }
 
@@ -83,17 +75,15 @@ void HMC::Leapfrog(const c_matrix& phi){
 
 double HMC::Action(GaugeConf& GConfig, const c_matrix& phi) {
     double action = 0;
-    c_matrix phi_dagg(Ntot, c_vector(2, 0)); //phi^dagger
     GConfig.Compute_Plaquette01();
     //Gauge contribution
 	for (int i = 0; i < Ntot; i++) {
         action += beta * std::real(1.0-GConfig.Plaquette01[i]);
-		phi_dagg[i][0] = std::conj(phi[i][0]);
-        phi_dagg[i][1] = std::conj(phi[i][1]);
 	}
     //Fermions contribution
     //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
-	action += beta*std::real( dot(phi, conjugate_gradient(GConfig.Conf, phi, m0))); 
+	//action += std::real( dot( conjugate_gradient(GConfig.Conf, phi, m0), phi)); 
+    action += std::real( dot( phi,conjugate_gradient(GConfig.Conf, phi, m0))); 
     return action;
 }
 
@@ -115,6 +105,7 @@ void HMC::HMC_Update() {
 	PConf = RandomMomentum(); //random momentum conf sampled from a normal distribution
     //pseudofermions phi = D chi, where chi is normaly sampled
     c_matrix chi = RandomChi();
+    //c_matrix phi = RandomChi(); 
     c_matrix phi = D_phi(GConf.Conf, chi, m0);
     Leapfrog(phi); //Evolve [Pi] and [U] 
     double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
@@ -122,6 +113,9 @@ void HMC::HMC_Update() {
     if (r <= exp(-deltaH)) {
         //Accept the new configuration
         GConf = GConf_copy;
+        if (therm == true) {
+            acceptance_rate += 1.0;
+        }
     }
     //Else configuration is not modified.
 }
@@ -137,11 +131,14 @@ static std::string format(const double& number) {
 
 void HMC::HMC_algorithm(){
     std::vector<double> SpVector(Nmeas);
+    std::vector<double> gAction(Nmeas);
 	GConf.initialization(); //Initialize the gauge configuration
     for(int i = 0; i < Ntherm; i++) {HMC_Update();} //Thermalization
+    therm = true; //Set the flag to true
     for(int i = 0; i < Nmeas; i++) {
         HMC_Update();
         SpVector[i] = GConf.MeasureSp_HMC(); //Plaquettes are computed when the action is called
+        gAction[i] = GConf.Compute_gaugeAction(beta); //Gauge action
 		if (saveconf == 1) {
 			char NameData[500];
             sprintf(NameData, "2D_U1_Ns%d_Nt%d_b%s_m%s_%d.txt", Ns, Nt, format(beta).c_str(), format(m0).c_str(), i); 
@@ -150,6 +147,7 @@ void HMC::HMC_algorithm(){
 		for (int j = 0; j < Nsteps; j++) { HMC_Update(); } //Decorrelation
     }
     Ep = mean(SpVector) / (Ntot * 1.0); dEp = Jackknife_error(SpVector, 20) / (Ntot * 1.0); //Average Plaquette Value
+    gS = mean(gAction) / (Ntot * 1.0); dgS = Jackknife_error(gAction, 20) / (Ntot * 1.0);
 } 
 
 

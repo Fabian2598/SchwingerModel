@@ -65,7 +65,11 @@ int main() {
         hmc.HMC_algorithm();
         clock_t end = clock();
         sprintf(Data_str, "%-30.17g%-30.17g%-30.17g\n", beta, hmc.getEp(), hmc.getdEp());
-        std::cout << "Ep = " << hmc.getEp() << " dEp = " << hmc.getdEp() << std::endl;
+        sprintf(Data_str, "%-30.17g%-30.17g\n", hmc.getgS(), hmc.getdgS());
+        std::cout << "Average plaquette value / volume: Ep = " << hmc.getEp() << " dEp = " << hmc.getdEp() << std::endl;
+        std::cout << "Average gauge action / volume: gS = " << hmc.getgS() << " dgS = " << hmc.getdgS() << std::endl;
+        std::cout << "beta/Vol - beta * Ep = " << beta * (1-hmc.getEp()) << std::endl;
+        std::cout << "Acceptance rate: " << hmc.getacceptance_rate() << std::endl;
         Datfile << Data_str;
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
         std::cout << "Time = " << elapsed_secs << " s" << std::endl;

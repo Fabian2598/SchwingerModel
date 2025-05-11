@@ -108,3 +108,10 @@ double GaugeConf::MeasureSp_HMC() {
 }
 
 
+double GaugeConf::Compute_gaugeAction(const double& beta) {
+	double action = 0;
+	for (int i = 0; i < Ntot; i++) {
+        action += beta * std::real(1.0-Plaquette01[i]);
+	}
+	return action;
+}

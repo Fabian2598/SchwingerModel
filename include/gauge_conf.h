@@ -41,6 +41,7 @@ public:
 	void Compute_Staple(); //Computes staples
 	void Compute_Plaquette01(); //Computes plaquettes
 	double MeasureSp_HMC();
+	double Compute_gaugeAction(const double& beta); //Computes the gauge action
 private:
 	int Ns, Nt, Ntot;
 };

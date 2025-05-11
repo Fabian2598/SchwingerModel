@@ -16,6 +16,7 @@ public:
 		PConf_copy = std::vector<std::vector<double>>(Ntot, std::vector<double>(2, 0));//Momenta PI copy
 		Forces = std::vector<std::vector<double>>(Ntot, std::vector<double>(2, 0)); //Forces
 		Ep = 0; dEp = 0;
+		acceptance_rate = 0;
 		//std::cout << "HMC constructor" << std::endl;
 	}
 	~HMC() {} //std::cout << "HMC destructor" << std::endl;	
@@ -23,6 +24,9 @@ public:
 	void HMC_algorithm();
 	double getEp() { return Ep; }
 	double getdEp() { return dEp; }
+	double getgS() { return gS; }
+	double getdgS() { return dgS; }
+	double getacceptance_rate() { return acceptance_rate/((Nmeas+Nsteps*Nmeas)*1.0); }
 
 private:
 	int Ns, Nt, Ntot;
@@ -32,6 +36,9 @@ private:
 	double beta;
 	double m0;
 	double Ep, dEp;
+	double gS, dgS;
+	double acceptance_rate;
+	bool therm = false;
 	std::vector<std::vector<double>> PConf;
 	std::vector<std::vector<double>> PConf_copy;
 	std::vector<std::vector<double>> Forces;
@@ -92,7 +99,7 @@ inline c_matrix RandomChi() {
 	c_matrix RandPI(Ns * Nt, c_vector(2, 0));
 	for (int i = 0; i < Ns * Nt; i++) {
 		for (int mu = 0; mu < 2; mu++) {
-			RandPI[i][mu] = 1.0 * distribution(generator) + 0 * (0, 1);
+			RandPI[i][mu] = 1.0 * distribution(generator) + I_number * 0.0;//distribution(generator);
 
 		}
 	}
