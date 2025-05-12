@@ -24,6 +24,7 @@ bool schwarz_blocks = false; //Schwarz blocks are not initialized by default
 int sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
 int sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
 double sap_gmres_tolerance = 1e-10; //GMRES tolerance for the Schwarz blocks
+double sap_tolerance = 1e-10; //Tolerance for the SAP method
 
 
 void CheckBlocks(){

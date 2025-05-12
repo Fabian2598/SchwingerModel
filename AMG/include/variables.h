@@ -16,7 +16,7 @@ constexpr int x_elements = Ns/block_x; //Number of elements in the x direction
 constexpr int t_elements = Nt/block_t; //Number of elements in the t direction
 constexpr int Nagg = NAGG;//2*block_x * block_t; //Number of aggregates (one spin per aggregate)
 
-//Schwarz alternating procedure parameters//
+//------------Schwarz alternating procedure parameters--------------//
 constexpr int sap_block_x = SAP_BLOCK_X; //We extract this value from config.h
 constexpr int sap_block_t = SAP_BLOCK_T; //We extract this value from config.h
 constexpr int sap_x_elements = Ns/sap_block_x; //Number of lattice points in the x direction (without the spin index)
@@ -29,7 +29,8 @@ extern bool schwarz_blocks; //True if the Schwarz blocks are initialized
 extern int sap_gmres_restart_length; //GMRES restart length for the Schwarz blocks.
 extern int sap_gmres_restarts; //GMRES iterations for the Schwarz blocks
 extern double sap_gmres_tolerance; //GMRES tolerance for the Schwarz blocks
-
+extern double sap_tolerance; //tolerance for the SAP method
+//---------------------------------------------------------------//
 
 constexpr int Ntest = NTEST; //Number of test vectors
 constexpr int Ntot = Ns*Nt; //Total number of lattice points

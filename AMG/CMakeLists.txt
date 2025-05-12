@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 project(Schwinger_model VERSION 1.0)
 
 # Create a sources variable with a link to all cpp files to compile
-set(SOURCES
+set(SRC_FILES 
     src/variables.cpp
     src/gauge_conf.cpp
     src/matrix_operations.cpp
@@ -17,10 +17,11 @@ set(SOURCES
     src/statistics.cpp
     src/gmres.cpp
 )
+#file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR} src/*.cpp)
 
 #Lattice dimensions
-set(NS "4") 
-set(NT "4") 
+set(NS "64") 
+set(NT "64") 
 
 #Number of lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
@@ -28,8 +29,8 @@ set(BLOCK_X "2")
 set(BLOCK_T "2")
 
 #Lattice blocks for Schwarz alternating method. They don't need to be the same as BLOCK_X and BLOCK_T
-set(SAP_BLOCK_X "2")
-set(SAP_BLOCK_T "2")
+set(SAP_BLOCK_X "4")
+set(SAP_BLOCK_T "4")
 #N_i / SAP_BLOCK_i has to be an integer number
 #One block contains 2 * N_x / SAP_BLOCK_x * N_t / SAP_BLOCK_t variables 
 
@@ -41,16 +42,7 @@ configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/inclu
 
 
 # Add an executable with the above sources
-add_executable("SM_${NS}x${NT}" ${SOURCES} "include/matrix_operations.h" 
- "include/variables.h" 
- "include/gauge_conf.h" 
- "include/conjugate_gradient.h"
- "include/amg.h"
- "include/sap.h"
- "include/operator_overloads.h" 
- "include/statistics.h"
- "include/gmres.h"
-)
+add_executable("SM_${NS}x${NT}" ${SRC_FILES})
 
 # Set the directories that should be included in the build command for this target
 # when running g++ these will be included as -I/directory/path/
@@ -58,12 +50,15 @@ target_include_directories("SM_${NS}x${NT}"
         PUBLIC 
         ${PROJECT_SOURCE_DIR}/include
 )
+
 target_compile_options("SM_${NS}x${NT}" PRIVATE
             #-Wall
 			-O3
 			#-fopenmp
 )
 
+find_package(MPI REQUIRED)
+target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
 #find_package(OpenMP REQUIRED)
 #target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
 

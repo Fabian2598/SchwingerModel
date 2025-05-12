@@ -2,6 +2,7 @@
 #ifndef SAP_H
 #define SAP_H
 #include "gmres.h"
+#include "mpi.h"
 
 //Build the blocks for the Schwarz alternating method
 void SchwarzBlocks();
@@ -53,6 +54,12 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
 //v: input, x: output
 void I_D_B_1_It(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0,const int& block);
 
+//dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
+int SAP(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const int& nu);
+
+int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const int& nu,const int& blocks_per_proc);
+
+
 //K matrix B_black (I - D B_red) + B_red
 //dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
 void K_SAP(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0);
@@ -63,7 +70,10 @@ void I_KD(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0);
 
 //M_SAP^(nu) v = sum_l=0^nu-1 (I - K D)^(l) K v
 //dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
-void M_SAP(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const int& nu);
+int SAP_V2(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const int& nu);
+//This version of SAP implements the M_SAP^(nu) matrix, but 
+//according to: Lüscher, M. (2003). Solution of the Dirac equation 
+//in lattice QCD using a domain decomposition method, that is not optimal.
 
 
 

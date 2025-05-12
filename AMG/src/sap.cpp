@@ -105,9 +105,11 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
     //U --> configuration
     //restarts --> number of restarts
     //m --> number of iterations per cycle
-    std::cout << "------------------------------------------" << std::endl;
-    std::cout << "|GMRES for D_B (block " << block << ") " << std::endl;
-    std::cout << "|Restart length " << m << ". Restarts = " << restarts << std::endl;
+    if (print_message == true){
+        std::cout << "------------------------------------------" << std::endl;
+        std::cout << "|GMRES for D_B (block " << block << ") " << std::endl;
+        std::cout << "|Restart length " << m << ". Restarts = " << restarts << std::endl;
+    }
     if (checkSize(phi, sap_lattice_sites_per_block, 2) == true || checkSize(x, sap_lattice_sites_per_block, 2) == true || checkSize(x, sap_lattice_sites_per_block, 2) == true){
         std::cout << "Error with vector dimensions in gmres_D_B" << std::endl;
         exit(1);
@@ -144,7 +146,7 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
     r0 = phi - temp; //r = b - A*x
 	
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
-    std::cout << "||phi|| * tol = " << norm_phi * tol << std::endl;
+    if (print_message == true){std::cout << "||phi|| * tol = " << norm_phi * tol << std::endl;}
     while (k < restarts) {
         beta = sqrt(std::real(dot(r0, r0))) + 0.0 * I_number;
         VmT[0] = 1.0 / beta * r0;
@@ -182,16 +184,14 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
         D_B(U, x,temp, m0, block); //D_B x
         r = phi - temp; 
         err = sqrt(std::real(dot(r, r)));
-        //if (print_message == true) {
-        //    std::cout << "GMRES for D_B (block " << block << ") "<< k + 1 << " restart cycle" << " Error " << err << std::endl;
-        //}
 
          if (err < tol * norm_phi) {
 			 it_count = k + 1;
              if (print_message == true) {
                  std::cout << "|GMRES for D_B (block " << block << ") converged in " << k + 1 << " restarts." << " Error " << err << std::endl;
-             }
-             std::cout << "------------------------------------------" << std::endl;
+                 std::cout << "------------------------------------------" << std::endl;
+            }
+             
              return 1;
              
          }
@@ -209,7 +209,7 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
 //dim(v) = 2 * Ntot, dim(x) = 2 Ntot
 //v: input, x: output
 void I_D_B_1_It(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0,const int& block){
-    bool print_message = true; //good for testing GMRES     
+    bool print_message = false; //good for testing GMRES     
     if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
         std::cout << "Error with vector dimensions in I_D_B_1_It" << std::endl;
         exit(1);
@@ -222,6 +222,146 @@ void I_D_B_1_It(const c_matrix& U, const c_matrix& v, c_matrix& x, const double&
         block, print_message);  //temp2 = D_B^-1 I_B^T v 
     I_B_v(temp2,x,block); //x = I_B D_B^-1 I_B^T v 
 }
+
+
+int SAP(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const int& nu){
+    /*
+    Solves D x = v using the SAP method
+    */
+    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
+        std::cout << "Error with vector dimensions in I_KD" << std::endl;
+        exit(1);
+    }  
+    double err;
+    double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
+
+    c_matrix temp(Ntot, c_vector(2, 0)); 
+    c_matrix r(Ntot, c_vector(2, 0)); //residual
+    set_zeros(x,Ntot,2); //Initialize x to zero
+    r = v - D_phi(U, x, m0); //r = v - D x
+    for (int i = 0; i< nu; i++){
+        for (auto block : SAP_RedBlocks){
+            I_D_B_1_It(U,r,temp,m0,block);
+            x = x + temp; //x = x + D_B^-1 r
+        }
+        
+        r = v - D_phi(U, x, m0); //r = v - D x
+        for (auto block : SAP_BlackBlocks){
+            I_D_B_1_It(U,r,temp,m0,block);
+            x = x + temp; //x = x + D_B^-1 r
+        }
+        r = v - D_phi(U, x, m0); //r = v - D x
+
+        err = sqrt(std::real(dot(r, r))); 
+        if (err < sap_tolerance * v_norm) {
+            std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
+            return 1;
+        }
+    }
+    std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
+    return 0; //Not converged
+}
+
+int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const int& nu,const int& blocks_per_proc){
+    /*
+    Solves D x = v using the SAP method
+    */
+   int size, rank;
+   MPI_Comm_size(MPI_COMM_WORLD, &size);
+   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
+        std::cout << "Error with vector dimensions in I_KD" << std::endl;
+        exit(1);
+    }  
+    if (blocks_per_proc * size != sap_coloring_blocks) {
+        std::cout << "blocks_per_proc * no_of_mpi_processes /= sap_coloring_blocks" << std::endl;
+        std::cout << "The number of mpi processes times the number of blocks per process " << std::endl;
+        std::cout << "should be equal to the total number of blocks of the same color" << std::endl;
+        exit(1);
+    }
+
+
+    double err;
+    double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
+
+    //Divide SAP_RedBlocks among processes
+    //Red blocks size equal to 
+    int start = rank * blocks_per_proc;
+    int end = std::min(start + blocks_per_proc, sap_coloring_blocks);
+
+    c_matrix temp(Ntot, c_vector(2, 0)); 
+    c_matrix r(Ntot, c_vector(2, 0)); //residual
+    set_zeros(x,Ntot,2); //Initialize x to zero
+
+    r = v - D_phi(U, x, m0); //r = v - D x
+
+    c_matrix local_x(Ntot, c_vector(2, 0)); // Local result for this process
+    c_matrix global_x(Ntot, c_vector(2, 0));
+    /*
+    c_matrix y(Ntot, c_vector(2, rank)); // Local result for this process
+    for (int b = start; b < end; b++) {
+       // int block = SAP_RedBlocks[b];
+       // I_D_B_1_It(U, r, temp, m0, block);
+        local_x = local_x + y; // Local computation
+    }
+
+    //MPI_Allreduce(&local_x[0][0], &global_x[0][0], 1, MPI_DOUBLE_COMPLEX, MPI_SUM,MPI_COMM_WORLD); 
+
+    for(int i = 0; i < Ntot; i++){
+        MPI_Allreduce(&local_x[i][0], &global_x[i][0], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(&local_x[i][1], &global_x[i][1], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+    }
+    
+    std::cout << "local_x " << local_x[0][0] << "  global_x " << global_x[0][0] << std::endl;
+    std::cout << "local_x " << local_x[5][0] << "  global_x " << global_x[5][0] << std::endl;
+    */
+
+    for (int i = 0; i< nu; i++){  
+        set_zeros(local_x,Ntot,2); //Initialize local_x to zero
+        for (int b = start; b < end; b++) {
+            int block = SAP_RedBlocks[b];
+            I_D_B_1_It(U, r, temp, m0, block);
+            local_x = local_x + temp; // Local computation
+        }
+
+        //Find a way of doing this in one step, otherwise I am communicating too much
+        for(int n = 0; n < Ntot; n++){
+            MPI_Allreduce(&local_x[n][0], &global_x[n][0], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+            MPI_Allreduce(&local_x[n][1], &global_x[n][1], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+        }
+
+        x = x + global_x;
+        r = v - D_phi(U, x, m0); //r = v - D x
+
+        set_zeros(local_x,Ntot,2); //Initialize local_x to zero
+
+        for (int b = start; b < end; b++) {
+            int block = SAP_BlackBlocks[b];
+            I_D_B_1_It(U, r, temp, m0, block);
+            local_x = local_x + temp; // Local computation
+        }
+
+        for(int n = 0; n < Ntot; n++){
+            MPI_Allreduce(&local_x[n][0], &global_x[n][0], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+            MPI_Allreduce(&local_x[n][1], &global_x[n][1], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+        }
+
+       
+        x =  x + global_x;
+        r = v - D_phi(U, x, m0); //r = v - D x
+
+        err = sqrt(std::real(dot(r, r))); 
+        if (err < sap_tolerance * v_norm) {
+            std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
+            return 1;
+        }
+    }
+    std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
+    
+    return 0; //Not converged
+}
+
+
 
 //K matrix A_black (I - D A_red) + A_red
 //dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
@@ -269,7 +409,7 @@ void I_KD(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0){
 
 //M_SAP^(nu) v = sum_l=0^nu-1 (I - K D)^(l) K v
 //dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
-void M_SAP(const c_matrix& U, const c_matrix& v, c_matrix& x,const double& m0,const int& nu){
+int SAP_V2(const c_matrix& U, const c_matrix& v, c_matrix& x,const double& m0,const int& nu){
     if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
         std::cout << "Error with vector dimensions in I_KD" << std::endl;
         exit(1);
@@ -277,14 +417,25 @@ void M_SAP(const c_matrix& U, const c_matrix& v, c_matrix& x,const double& m0,co
 
     c_matrix temp(Ntot, c_vector(2, 0)); 
     c_matrix temp2(Ntot, c_vector(2, 0));
+    c_matrix r(Ntot, c_vector(2, 0)); //Residual
     K_SAP(U, v, temp, m0);  //temp = K v
     x = temp; //x = K v
+    double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
+
+    r = v - D_phi(U, x, m0);
+    double err = sqrt(std::real(dot(r, r))); 
     for(int i = 1; i < nu; i++){
-        std::cout << "M_SAP iteration " << i << std::endl;
+        //std::cout << "SAP iteration " << i << std::endl;
         I_KD(U, temp,temp2, m0) ; //This is overwriting the input and output ...
         temp = temp2; 
         x = x + temp; //x = x + K (I - K D)^(l-1) K v
+        r = v - D_phi(U, x, m0);
+        err = sqrt(std::real(dot(r, r))); 
+        if (err < sap_tolerance * v_norm) {
+            std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
+            return 1;
+        }
     }
+    std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
+    return 0; //Not converged
 }
-
-
