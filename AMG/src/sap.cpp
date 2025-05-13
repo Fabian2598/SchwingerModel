@@ -209,7 +209,13 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
 //dim(v) = 2 * Ntot, dim(x) = 2 Ntot
 //v: input, x: output
 void I_D_B_1_It(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0,const int& block){
-    bool print_message = false; //good for testing GMRES     
+    bool print_message = false; //good for testing GMRES   
+    int rank; 
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank == 0){
+        print_message = false;
+    }
+    
     if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
         std::cout << "Error with vector dimensions in I_D_B_1_It" << std::endl;
         exit(1);
@@ -297,25 +303,12 @@ int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double&
 
     c_matrix local_x(Ntot, c_vector(2, 0)); // Local result for this process
     c_matrix global_x(Ntot, c_vector(2, 0));
-    /*
-    c_matrix y(Ntot, c_vector(2, rank)); // Local result for this process
-    for (int b = start; b < end; b++) {
-       // int block = SAP_RedBlocks[b];
-       // I_D_B_1_It(U, r, temp, m0, block);
-        local_x = local_x + y; // Local computation
-    }
 
-    //MPI_Allreduce(&local_x[0][0], &global_x[0][0], 1, MPI_DOUBLE_COMPLEX, MPI_SUM,MPI_COMM_WORLD); 
+    //Prepare buffers for MPI communication
+    std::vector<c_double> local_buffer(Ntot * 2);
+    std::vector<c_double> global_buffer(Ntot * 2);
 
-    for(int i = 0; i < Ntot; i++){
-        MPI_Allreduce(&local_x[i][0], &global_x[i][0], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-        MPI_Allreduce(&local_x[i][1], &global_x[i][1], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-    }
     
-    std::cout << "local_x " << local_x[0][0] << "  global_x " << global_x[0][0] << std::endl;
-    std::cout << "local_x " << local_x[5][0] << "  global_x " << global_x[5][0] << std::endl;
-    */
-
     for (int i = 0; i< nu; i++){  
         set_zeros(local_x,Ntot,2); //Initialize local_x to zero
         for (int b = start; b < end; b++) {
@@ -324,15 +317,23 @@ int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double&
             local_x = local_x + temp; // Local computation
         }
 
-        //Find a way of doing this in one step, otherwise I am communicating too much
-        for(int n = 0; n < Ntot; n++){
-            MPI_Allreduce(&local_x[n][0], &global_x[n][0], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-            MPI_Allreduce(&local_x[n][1], &global_x[n][1], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+        //------MPI communication for red blocks------//
+        //1D array for MPI communication
+        for (int n = 0; n < Ntot; ++n) {
+            local_buffer[2*n]     = local_x[n][0];
+            local_buffer[2*n + 1] = local_x[n][1];
         }
+        // Perform single allreduce
+        MPI_Allreduce(local_buffer.data(), global_buffer.data(), Ntot * 2, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+        // Unpack back into global_x
+        for (int n = 0; n < Ntot; ++n) {
+            global_x[n][0] = global_buffer[2*n];
+            global_x[n][1] = global_buffer[2*n + 1];
+        }
+        //---------------------------------------------//
 
         x = x + global_x;
         r = v - D_phi(U, x, m0); //r = v - D x
-
         set_zeros(local_x,Ntot,2); //Initialize local_x to zero
 
         for (int b = start; b < end; b++) {
@@ -341,12 +342,18 @@ int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double&
             local_x = local_x + temp; // Local computation
         }
 
-        for(int n = 0; n < Ntot; n++){
-            MPI_Allreduce(&local_x[n][0], &global_x[n][0], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-            MPI_Allreduce(&local_x[n][1], &global_x[n][1], 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+        //------MPI communication for black blocks------//
+        for (int n = 0; n < Ntot; ++n) {
+            local_buffer[2*n]     = local_x[n][0];
+            local_buffer[2*n + 1] = local_x[n][1];
         }
-
-       
+        MPI_Allreduce(local_buffer.data(), global_buffer.data(), Ntot * 2, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+        for (int n = 0; n < Ntot; ++n) {
+            global_x[n][0] = global_buffer[2*n];
+            global_x[n][1] = global_buffer[2*n + 1];
+        }
+        //---------------------------------------------//
+        
         x =  x + global_x;
         r = v - D_phi(U, x, m0); //r = v - D x
 
@@ -361,81 +368,3 @@ int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double&
     return 0; //Not converged
 }
 
-
-
-//K matrix A_black (I - D A_red) + A_red
-//dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
-void K_SAP(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0){
-    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
-        std::cout << "Error with vector dimensions in K_SAP" << std::endl;
-        exit(1);
-    } 
-
-    c_matrix v_red(Ntot, c_vector(2, 0));
-    c_matrix temp(Ntot, c_vector(2, 0)); 
-    c_matrix temp2(Ntot, c_vector(2, 0));
-    set_zeros(x,Ntot,2); //Initialize x to zero
-    //This part has to be parallelized eventually for all the blocks of same color
-    // A_red v
-    for (auto block : SAP_RedBlocks){
-        I_D_B_1_It(U,v,temp,m0,block);
-        v_red = v_red + temp; //Restriction of the vector to the red blocks
-    }
-
-    //(I- D A_red) v
-    temp = v - D_phi(U, v_red, m0); //x = v - D A_red v
-
-    // A_black v
-    //This loop also has to be parallelized 
-    for (auto block : SAP_BlackBlocks){
-        I_D_B_1_It(U,temp,temp2,m0,block);
-        x = x + temp2; //Restriction of the (v-D v_red) to the black blocks
-    }
-
-    x = x + v_red; 
-    //x = A_black (I - D A_red) v + A_red v
-}
-
-//(I-K D) v 
-//dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
-void I_KD(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0){
-    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
-        std::cout << "Error with vector dimensions in I_KD" << std::endl;
-        exit(1);
-    }  
-    K_SAP(U, D_phi(U,v,m0), x, m0); //x = K D v
-    x = v - x; //x = v - K D v
-}
-
-//M_SAP^(nu) v = sum_l=0^nu-1 (I - K D)^(l) K v
-//dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
-int SAP_V2(const c_matrix& U, const c_matrix& v, c_matrix& x,const double& m0,const int& nu){
-    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
-        std::cout << "Error with vector dimensions in I_KD" << std::endl;
-        exit(1);
-    }  
-
-    c_matrix temp(Ntot, c_vector(2, 0)); 
-    c_matrix temp2(Ntot, c_vector(2, 0));
-    c_matrix r(Ntot, c_vector(2, 0)); //Residual
-    K_SAP(U, v, temp, m0);  //temp = K v
-    x = temp; //x = K v
-    double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
-
-    r = v - D_phi(U, x, m0);
-    double err = sqrt(std::real(dot(r, r))); 
-    for(int i = 1; i < nu; i++){
-        //std::cout << "SAP iteration " << i << std::endl;
-        I_KD(U, temp,temp2, m0) ; //This is overwriting the input and output ...
-        temp = temp2; 
-        x = x + temp; //x = x + K (I - K D)^(l-1) K v
-        r = v - D_phi(U, x, m0);
-        err = sqrt(std::real(dot(r, r))); 
-        if (err < sap_tolerance * v_norm) {
-            std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
-            return 1;
-        }
-    }
-    std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
-    return 0; //Not converged
-}

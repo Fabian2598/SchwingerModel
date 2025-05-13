@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     initialize_matrices(); //Initialize gamma matrices, identity and unit vectors
     Coordinates(); //Vectorized coordinates
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    double m0 = -0.2;
+    double m0 = -0.6;
     double beta = 1;
     if (rank == 0){
         std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
@@ -73,10 +73,10 @@ int main(int argc, char **argv) {
     GConf.initialization(); //Initialize a random gauge configuration
 
 
-     //Default values in variables.cpp
+    //Default values in variables.cpp
     sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
-    sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
-    sap_gmres_tolerance = 1e-6; //GMRES tolerance for the Schwarz blocks
+    sap_gmres_restarts = 30; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
+    sap_gmres_tolerance = 1e-3; //GMRES tolerance for the Schwarz blocks
     sap_tolerance = 1e-10; //Tolerance for the SAP method
     c_matrix rhs(Ntot, c_vector(2, 0)); //random right hand side 
     c_matrix x(Ntot, c_vector(2, 0)); //solution vector 
@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
         rhs[i][1] = RandomU1();
     }
     c_matrix D_x(Ntot, c_vector(2, 0)); //This should be the rhs again
-    int nu_sap = 20;
+    int nu_sap = 3;
 
     clock_t start, end;
     double elapsed_time;
@@ -98,24 +98,11 @@ int main(int argc, char **argv) {
         std::cout << "Elapsed time for sequential SAP = " << elapsed_time << " seconds" << std::endl;
     }
     
-    /*
-    D_x = D_phi(GConf.Conf, xv1, m0);
-    std::cout << "-------------------------" << std::endl;
-    for(int i = 0; i < 10; i++) {
-        std::cout << "rhs[" << i << "][0] = " << rhs[i][0] << " | ";
-        std::cout  << D_x[i][0]  << " = D x_B[" << i << "][0]" << std::endl;
-        std::cout << "rhs[" << i << "][1] = " << rhs[i][1] << " | ";
-        std::cout  << D_x[i][1]  << " = D x_B[" << i << "][0]" << std::endl;
-        std::cout << std::endl;
-    }
-    */
-
    double startT, endT;
-
    MPI_Barrier(MPI_COMM_WORLD);
    startT = MPI_Wtime();
    SAP_parallel(GConf.Conf, rhs, x, m0, nu_sap,1);
-   MPI_Barrier(MPI_COMM_WORLD);
+   //MPI_Barrier(MPI_COMM_WORLD);
    endT = MPI_Wtime();
 
    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
@@ -124,7 +111,8 @@ int main(int argc, char **argv) {
         std::cout << "**********************" << std::endl;
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
-        c_matrix x_bi = bi_cgstab(GConf.Conf, rhs, rhs, m0, 10000, 1e-10, false);
+        c_matrix x0(Ntot, c_vector(2, 0)); //Initial guess
+        c_matrix x_bi = bi_cgstab(GConf.Conf, rhs, x0, m0, 10000, 1e-10, false);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;
@@ -135,6 +123,11 @@ int main(int argc, char **argv) {
             std::cout  << x_bi[i][1]  << " = x_bi[" << i << "][1]" << std::endl;
             std::cout << std::endl;
         }
+        start = clock();
+        bi_cgstab(GConf.Conf, rhs, x, m0, 10000, 1e-10, false);
+        end = clock();
+        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+        std::cout << "Elapsed time for Bi-CGstab with SAP = " << elapsed_time << " seconds" << std::endl;
     }
     
 
