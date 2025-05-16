@@ -30,24 +30,6 @@ inline c_double dot(const c_matrix& x, const c_matrix& y) {
     return z;
 }
 
-/*
-inline c_double dot_parallel(const c_matrix& x, const c_matrix& y) {
-    c_double z = 0;
-    double real_part = 0.0;
-    double imag_part = 0.0;
-    int n = x.size();
-    int m = x[0].size();
-    #pragma omp parallel for reduction(+:real_part, imag_part)
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < m; j++) {
-            c_double temp = x[i][j] * std::conj(y[i][j]);
-            real_part += std::real(temp);
-            imag_part += std::imag(temp);
-        }
-    }
-    return c_double(real_part, imag_part);
-}
-*/
 
 //Dot product between two vectors arranged like matrices (not matrix multiplication)
 // A.B = sum_i sum_j A_ij B_ij (not conjugate)

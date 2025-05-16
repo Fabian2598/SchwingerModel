@@ -199,9 +199,9 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
          k++;
     }
     //if (print_message == true) {
-        std::cout << "|GMRES for D_B (block " << block << ") did not converge in " << restarts << " restarts." << " Error " << err << std::endl;
+      //  std::cout << "|GMRES for D_B (block " << block << ") did not converge in " << restarts << " restarts." << " Error " << err << std::endl;
     //
-    std::cout << "------------------------------------------" << std::endl;
+    //std::cout << "------------------------------------------" << std::endl;
     return 0;
 }
 
@@ -260,11 +260,11 @@ int SAP(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const
 
         err = sqrt(std::real(dot(r, r))); 
         if (err < sap_tolerance * v_norm) {
-            std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
+            //std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
             return 1;
         }
     }
-    std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
+    //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
     return 0; //Not converged
 }
 
@@ -276,13 +276,16 @@ int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double&
    MPI_Comm_size(MPI_COMM_WORLD, &size);
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
-        std::cout << "Error with vector dimensions in I_KD" << std::endl;
+        std::cout << "Error with vector dimensions in SAP" << std::endl;
         exit(1);
     }  
     if (blocks_per_proc * size != sap_coloring_blocks) {
         std::cout << "blocks_per_proc * no_of_mpi_processes /= sap_coloring_blocks" << std::endl;
-        std::cout << "The number of mpi processes times the number of blocks per process " << std::endl;
-        std::cout << "should be equal to the total number of blocks of the same color" << std::endl;
+        std::cout << "The workload on the processes is not the same. Some processors invert more SAP blocks" << std::endl;
+        exit(1);
+    }
+    if (size > sap_coloring_blocks) {
+        std::cout << "Error: number of processes > number of blocks" << std::endl;
         exit(1);
     }
 
@@ -359,11 +362,11 @@ int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double&
 
         err = sqrt(std::real(dot(r, r))); 
         if (err < sap_tolerance * v_norm) {
-            std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
+           // std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
             return 1;
         }
     }
-    std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
+    //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
     
     return 0; //Not converged
 }

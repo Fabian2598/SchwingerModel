@@ -16,6 +16,7 @@ set(SRC_FILES
     src/main.cpp  
     src/statistics.cpp
     src/gmres.cpp
+    src/fgmres.cpp
 )
 #file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR} src/*.cpp)
 
@@ -29,7 +30,7 @@ set(BLOCK_X "2")
 set(BLOCK_T "2")
 
 #Lattice blocks for Schwarz alternating method. They don't need to be the same as BLOCK_X and BLOCK_T
-set(SAP_BLOCK_X "2")
+set(SAP_BLOCK_X "4")
 set(SAP_BLOCK_T "4")
 #N_i / SAP_BLOCK_i has to be an integer number
 #One block contains 2 * N_x / SAP_BLOCK_x * N_t / SAP_BLOCK_t variables 

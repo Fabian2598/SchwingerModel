@@ -43,12 +43,9 @@ c_matrix gmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
             w = D_phi(U, VmT[j], m0); //w = D v_j
-            //This for loop is the most time consuming part ...
-            //For the values of m that I will use, parallelizing is not really useful due to the overhead
-            //#pragma omp parallel for
+  
             for (int i = 0; i <= j; i++) {
                 Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
-                //#pragma omp critical
                 w = w -  Hm[i][j] * VmT[i];
             }
             //i.e. the Gramm Schmidt part is highly inefficient. 

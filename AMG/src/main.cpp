@@ -8,6 +8,7 @@
 #include "amg.h"
 #include "gmres.h"
 #include "statistics.h"
+#include "fgmres.h"
 #include "mpi.h"
 
 //Formats decimal numbers
@@ -27,12 +28,12 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    //srand(time(0));
-    srand(0);
+    srand(time(0));
+    //srand(0);
     initialize_matrices(); //Initialize gamma matrices, identity and unit vectors
     Coordinates(); //Vectorized coordinates
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    double m0 = -0.6;
+    double m0 = -0.59;
     double beta = 1;
     if (rank == 0){
         std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
@@ -75,7 +76,7 @@ int main(int argc, char **argv) {
 
     //Default values in variables.cpp
     sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
-    sap_gmres_restarts = 30; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
+    sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
     sap_gmres_tolerance = 1e-3; //GMRES tolerance for the Schwarz blocks
     sap_tolerance = 1e-10; //Tolerance for the SAP method
     c_matrix rhs(Ntot, c_vector(2, 0)); //random right hand side 
@@ -85,28 +86,34 @@ int main(int argc, char **argv) {
         rhs[i][1] = RandomU1();
     }
     c_matrix D_x(Ntot, c_vector(2, 0)); //This should be the rhs again
-    int nu_sap = 3;
+    int nu_sap = 1;
 
     clock_t start, end;
     double elapsed_time;
+   /* 
     if (rank == 0){
-        std::cout << "SAP Serial version" << std::endl;
+        std::cout << "SAP sequential version" << std::endl;
         start = clock();
         SAP(GConf.Conf, rhs, x, m0, nu_sap);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for sequential SAP = " << elapsed_time << " seconds" << std::endl;
+        std::cout << "************************************************" << std::endl;
     }
-    
+    */
    double startT, endT;
+   /*
    MPI_Barrier(MPI_COMM_WORLD);
    startT = MPI_Wtime();
    SAP_parallel(GConf.Conf, rhs, x, m0, nu_sap,1);
-   //MPI_Barrier(MPI_COMM_WORLD);
+   MPI_Barrier(MPI_COMM_WORLD);
    endT = MPI_Wtime();
+   
 
    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
    MPI_Barrier(MPI_COMM_WORLD);
+   */
+   double gmres_restarts = 50, gmres_restart_length = 20;
     if (rank == 0){
         std::cout << "**********************" << std::endl;
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
@@ -116,6 +123,7 @@ int main(int argc, char **argv) {
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;
+        /*
         for(int i = 0; i < 10; i++) {
             std::cout << "x[" << i << "][0] = " << x[i][0] << " | ";
             std::cout  << x_bi[i][0]  << " = x_bi[" << i << "][0]" << std::endl;
@@ -123,13 +131,30 @@ int main(int argc, char **argv) {
             std::cout  << x_bi[i][1]  << " = x_bi[" << i << "][1]" << std::endl;
             std::cout << std::endl;
         }
+        */
+        std::cout << "--------------GMRES invertion--------------" << std::endl;
         start = clock();
-        bi_cgstab(GConf.Conf, rhs, x, m0, 10000, 1e-10, false);
+        gmres(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for Bi-CGstab with SAP = " << elapsed_time << " seconds" << std::endl;
+        std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl;
+
+        //std::cout << "--------------Flexible GMRES with SAP preconditioning--------------" << std::endl;
+        //start = clock();
+        //fgmres(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
+        //end = clock();
+        //elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+        //std::cout << "Elapsed time for FGMRES = " << elapsed_time << " seconds" << std::endl;
     }
-    
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    std::cout << "--------------Flexible GMRES with SAP preconditioning PARALLEL--------------" << std::endl;   
+    startT = MPI_Wtime();
+    fgmresParallel(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
+    //MPI_Barrier(MPI_COMM_WORLD);
+    endT = MPI_Wtime();
+    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
+
 
     MPI_Finalize();
     return 0;
