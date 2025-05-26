@@ -36,7 +36,7 @@ set(SAP_BLOCK_T "4")
 #One block contains 2 * N_x / SAP_BLOCK_x * N_t / SAP_BLOCK_t variables 
 
 #Number of test vectors
-set(NTEST "10") 
+set(NTEST "20") 
 set(NAGG "8") #BlockX * BlockT for aggregation scheme 1 and 2 * BlockX * BlockT for scheme 2
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 

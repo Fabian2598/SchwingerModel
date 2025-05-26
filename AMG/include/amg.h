@@ -4,6 +4,7 @@
 #include "conjugate_gradient.h"
 #include "operator_overloads.h"
 #include "gmres.h"
+#include "sap.h"
 #include <algorithm>
 #include <random>
 

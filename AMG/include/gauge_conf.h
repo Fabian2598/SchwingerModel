@@ -33,6 +33,7 @@ public:
 	~GaugeConf() {}; //Destructor
 
 	void initialization(); //Random initialization of the gauge configuration
+	void set_gconf(const std::vector<std::vector<std::complex<double>>>& CONF) {Conf = CONF;}
 	int getNs() const { return Ns; }
 	int getNt() const { return Nt; }
 

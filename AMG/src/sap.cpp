@@ -243,7 +243,7 @@ int SAP(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const
 
     c_matrix temp(Ntot, c_vector(2, 0)); 
     c_matrix r(Ntot, c_vector(2, 0)); //residual
-    set_zeros(x,Ntot,2); //Initialize x to zero
+    //set_zeros(x,Ntot,2); //Initialize x to zero
     r = v - D_phi(U, x, m0); //r = v - D x
     for (int i = 0; i< nu; i++){
         for (auto block : SAP_RedBlocks){
@@ -300,7 +300,7 @@ int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double&
 
     c_matrix temp(Ntot, c_vector(2, 0)); 
     c_matrix r(Ntot, c_vector(2, 0)); //residual
-    set_zeros(x,Ntot,2); //Initialize x to zero
+    //set_zeros(x,Ntot,2); //Initialize x to zero
 
     r = v - D_phi(U, x, m0); //r = v - D x
 
@@ -362,11 +362,11 @@ int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double&
 
         err = sqrt(std::real(dot(r, r))); 
         if (err < sap_tolerance * v_norm) {
-           // std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
+            //std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
             return 1;
         }
     }
-    //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
+   //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
     
     return 0; //Not converged
 }

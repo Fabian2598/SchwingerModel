@@ -77,7 +77,11 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 
 	for (int i = 0; i < Ntest; i++) {
 		//20 restarts, 20 iterations per restart
-		test_vectors[i] = gmres(GConf.Conf, test_vectors[i], test_vectors[i], m0, 20, 20, 1e-10, false);
+		//test_vectors[i] = gmres(GConf.Conf, test_vectors[i], test_vectors[i], m0, 20, 20, 1e-10, false);
+		c_matrix v0 = test_vectors[i]; //Initial guess
+		//Using 0 as right-hand side
+		//c_matrix v0(Ntot, c_vector(2, 0)); //Initial guess
+		SAP(GConf.Conf, v0, test_vectors[i], m0, 2);
 	}
 
 	test_vectors_copy = test_vectors; //This step essentially assembles the inerpolator
@@ -167,9 +171,8 @@ c_matrix AMG::TwoGrid(const int& max_iter, const int& rpc, const double& tol, co
 	while(k < max_iter && err > tol*norm){
 		//Pre-smoothing
 		if (nu1>0){
-			//x = kaczmarz(GConf.Conf, phi,x,m0,nu1,1e-10,false);
-			x = gmres(GConf.Conf, phi, x, m0, rpc, nu1, 1e-10, false);
-
+			//x = gmres(GConf.Conf, phi, x, m0, rpc, nu1, 1e-10, false);
+			SAP(GConf.Conf, phi, x, m0, nu1);
 		} 
 		//x = x + P*Dc^-1 * P^H * (phi-D*x);  Coarse grid correction
 		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
@@ -180,7 +183,8 @@ c_matrix AMG::TwoGrid(const int& max_iter, const int& rpc, const double& tol, co
 		
 		//Post-smoothing
 		if (nu2>0){
-			x = gmres(GConf.Conf, phi, x, m0, rpc, nu2, 1e-10, false);
+			//x = gmres(GConf.Conf, phi, x, m0, rpc, nu2, 1e-10, false);
+			SAP(GConf.Conf, phi, x, m0, nu2);
 		}
 		r = phi - D_phi(GConf.Conf, x, m0);
 		err = sqrt(std::real(dot(r,r)));
