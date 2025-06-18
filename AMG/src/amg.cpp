@@ -1,34 +1,59 @@
 #include "amg.h"
 
-void PrintVector(const c_matrix& v ){
-	//for c_matrix
-    for(int i = 0; i < v.size(); i++){
-        for(int j = 0; j < v[i].size(); j++){
-            std::cout << v[i][j] << " ";
-        }
-		std::cout << std::endl;
-    }
-    std::cout << std::endl;
+//Aggregates A_j_0 = L_j x {0}, A_j_1 = L_j x {1}
+void Aggregates() {
+	using namespace LV;
+	for (int x = 0; x < block_x; x++) {
+		for (int t = 0; t < block_t; t++) {
+			for (int s = 0; s < 2; s++) {
+				//vectorize the coordinates of these three loops
+				int x0 = x * x_elements, t0 = t * t_elements;
+				int x1 = (x + 1) * x_elements, t1 = (t + 1) * t_elements;
+				int aggregate = x * block_t * 2 + t * 2 + s;
+				int count = 0;
+				//x and t are redefined in the following loop
+				for (int x = x0; x < x1; x++) {
+					for (int t = t0; t < t1; t++) {
+						int i = x * Nt * 2  + t * 2 + s;
+						XCoord[i] = x; TCoord[i] = t; SCoord[i] = s;
+						Agg[aggregate][count] = i;
+						count++;
+					}
+				}
+				if (count != x_elements * t_elements) {
+					std::cout << "Aggregate " << aggregate << " has " << count << " elements" << std::endl;
+				}
+				//Once the loops are finished count should be x_elements*t_elements
+			}	
+		}
+	}
+	aggregates_initialized = true; //Set aggregates as initialized
 }
 
-void PrintVector(const c_vector& v ){
-	//for c_vector
-    for(int i = 0; i < v.size(); i++){
-        std::cout << v[i] << " ";
-    }
-    std::cout << std::endl;
-}
 
 void normalize(c_matrix& v){
 	c_double norm = sqrt(std::real(dot(v,v))) + 0.0*I_number; 
 	v =  1.0/norm * v; 
 }
 
+
+//Print aggregates. Useful for debugging
+void PrintAggregates() {
+	for (int i = 0; i < Nagg; i++) {
+		std::cout << "-------Aggregate-----" << i << std::endl;
+		for (int j = 0; j < LV::x_elements * LV::t_elements; j++) {
+			std::cout << Agg[i][j] << " ";
+		}
+		std::cout << std::endl;
+	}
+}
+
+
 //Orthonormalize the P columns.
 void AMG::orthonormalize(){
 	//Gram-Schmidt orthonormalization
-	std::vector<c_matrix> temp(Ntest, c_matrix( Ntot, c_vector (2,0)));
-	std::vector<c_matrix> v_chopped(Ntest*Nagg, c_matrix(Ntot, c_vector(2,0)));
+	std::vector<c_matrix> temp(Ntest, c_matrix( LV::Ntot, c_vector (2,0)));
+	std::vector<c_matrix> v_chopped(Ntest*Nagg, c_matrix(LV::Ntot, c_vector(2,0)));
 	for(int i = 0; i < Ntest*Nagg; i++){
 		c_matrix e_i = canonical_vector(i, Ntest, Nagg);
 		v_chopped[i] = P_v(e_i); //Columns of the interpolator
@@ -51,7 +76,7 @@ void AMG::orthonormalize(){
 	
 	for(int i = 0; i < Ntest; i++){
 		for(int j = 0; j < Nagg; j++){
-			for(int n = 0; n < Ntot; n++){
+			for(int n = 0; n < LV::Ntot; n++){
 				for(int alf=0; alf<2; alf++){
 					temp[i][n][alf] += v_chopped[i*Nagg + j][n][alf]; 
 				}
@@ -68,7 +93,7 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	//Nit --> number of iterations for improving the interpolator
 	//Random initialization
 	for (int i = 0; i < Ntest; i++) {
-		for (int j = 0; j < Ntot; j++) {
+		for (int j = 0; j < LV::Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
 				test_vectors[i][j][k] = eps * RandomU1();//i * Ntot * 2 + j * 2 + k + 1; 
 			}
@@ -102,13 +127,13 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 //dim(v) = Ntest Na, dim(x) = 2 Ntot
 c_matrix AMG::P_v(const c_matrix& v) {
 	//Prolongation operator times vector
-	c_matrix x(Ntot, c_vector(2, 0));
+	c_matrix x(LV::Ntot, c_vector(2, 0));
 	//Loop over columns
 	for (int j = 0; j < Ntest * Nagg; j++) {
 		int k = j / Nagg; //Number of test vector
 		int a = j % Nagg; //Number of aggregate
 		for (int i = 0; i < Agg[a].size(); i++) {
-			if (Nagg ==  block_x * block_t){
+			if (Nagg ==  LV::block_x * LV::block_t){
 				//Aggregation scheme 1
 				for (int alf = 0; alf < 2; alf++) {
 					x[Agg[a][i]][alf] += test_vectors_copy[k][Agg[a][i]][alf] * v[k][a];
@@ -132,7 +157,7 @@ c_matrix AMG::Pt_v(const c_matrix& v) {
 		int k = i / Nagg; //number of test vector
 		int a = i % Nagg; //number of aggregate
 		for (int j = 0; j < Agg[a].size(); j++) {
-			if (Nagg == block_x * block_t){
+			if (Nagg == LV::block_x * LV::block_t){
 				//Aggregation scheme 1
 				for (int alf = 0; alf < 2; alf++) {
 					x[k][a] += std::conj(test_vectors_copy[k][Agg[a][j]][alf]) * v[Agg[a][j]][alf];

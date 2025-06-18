@@ -1,26 +1,24 @@
 #ifndef AMG_H_INCLUDED
 #define AMG_H_INCLUDED
 #include "gauge_conf.h"
-#include "conjugate_gradient.h"
+#include "bi_cgstab.h"
 #include "operator_overloads.h"
 #include "gmres.h"
 #include "sap.h"
 #include <algorithm>
 #include <random>
 
-void PrintVector(const c_matrix& v );
-void PrintVector(const c_vector& v );
-
-void normalize(c_matrix& v);
+void Aggregates(); //Aggregates A_j_0 = L_j x {0}, A_j_1 = L_j x {1}
+void PrintAggregates();
+void normalize(c_matrix& v); //Normalize a spinor ... 
 
 class AMG {
 public:
-	AMG(const GaugeConf & GConf,const int& Ns, const int& Nt, const int& Ntest, const double& m0, const int& nu1, const int& nu2, const int& rpc) : GConf(GConf), 
-	Ns(Ns), Nt(Nt), Ntot(Ns*Nt), Ntest(Ntest), m0(m0), nu1(nu1), nu2(nu2) {	
+	AMG(const GaugeConf & GConf, const double& m0, const int& nu1, const int& nu2) : GConf(GConf), m0(m0), nu1(nu1), nu2(nu2) {	
 		test_vectors = std::vector<c_matrix>(Ntest,
-		c_matrix( Ntot, c_vector (2,0))); //test_vectors[Number of test vectors][Ns Nt][2], two spin directions, no color
+		c_matrix( LV::Ntot, c_vector (2,0))); //test_vectors[Number of test vectors][Nx Nt][2], two spin directions, no color
 		std::vector<c_matrix> test_vectors_copy = std::vector<c_matrix>(Ntest,
-			c_matrix( Ntot, c_vector (2,0))); 
+			c_matrix( LV::Ntot, c_vector (2,0))); 
 	}
 	~AMG() { };
 
@@ -31,8 +29,6 @@ public:
 private:
 	GaugeConf GConf;
 	double m0; 
-	int Ns, Nt, Ntest;
-	int Ntot;
 	int nu1, nu2; //pre and post smoothing iterations
 
 	c_matrix P_v(const c_matrix& v); //P v

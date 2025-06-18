@@ -22,7 +22,7 @@ static std::string format(const double& number) {
 
 int main(int argc, char **argv) {
 
-
+    using namespace SAPV;
     MPI_Init(&argc, &argv);
     int rank, size; 
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -33,13 +33,13 @@ int main(int argc, char **argv) {
     initialize_matrices(); //Initialize gamma matrices, identity and unit vectors
     Coordinates(); //Vectorized coordinates
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    double m0 = -0.6;
+    double m0 = -0.7;
     double beta = 1;
     if (rank == 0){
         std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
-        std::cout << "Ns = " << Ns << " Nt = " << Nt << std::endl;
-        std::cout << "Lattice dimension = " << (Ns * Nt) << std::endl;
-        std::cout << "Number of entries of the Dirac matrix = (" << (2 * Ns * Nt) << ")^2 = " << (2 * Ns * Nt) * (2 * Ns * Nt) << std::endl;
+        std::cout << "Nx = " << Nx << " Nt = " << Nt << std::endl;
+        std::cout << "Lattice dimension = " << (Nx * Nt) << std::endl;
+        std::cout << "Number of entries of the Dirac matrix = (" << (2 * Nx * Nt) << ")^2 = " << (2 * Nx * Nt) * (2 * Nx * Nt) << std::endl;
         std::cout << "-----------------------------------" << std::endl;
         std::cout << "| Lattice blocking for the aggregates" << std::endl;
         std::cout << "| block_x = " << block_x << " block_t = " << block_t << std::endl;
@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
         std::cout << "-------------------------" << std::endl;    
     }
     
-    GaugeConf GConf = GaugeConf(Ns, Nt);
+    GaugeConf GConf = GaugeConf(Nx, Nt);
     GConf.initialization(); //Initialize a random gauge configuration
 
 
@@ -165,6 +165,14 @@ int main(int argc, char **argv) {
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for FGMRES = " << elapsed_time << " seconds" << std::endl;
+
+        std::cout << "--------------Flexible GMRES with SAP preconditioning--------------" << std::endl;
+        start = clock();
+        fgmres(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
+        end = clock();
+        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+        std::cout << "Elapsed time for FGMRES = " << elapsed_time << " seconds" << std::endl;
+        
     }
 
     MPI_Barrier(MPI_COMM_WORLD);

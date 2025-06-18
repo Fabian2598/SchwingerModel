@@ -10,7 +10,7 @@ set(SRC_FILES
     src/variables.cpp
     src/gauge_conf.cpp
     src/matrix_operations.cpp
-    src/conjugate_gradient.cpp
+    src/bi_cgstab.cpp
     src/sap.cpp
     src/amg.cpp
     src/main.cpp  
@@ -21,23 +21,24 @@ set(SRC_FILES
 #file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR} src/*.cpp)
 
 #Lattice dimensions
-set(NS "32") 
-set(NT "32") 
+set(NS "16") 
+set(NT "16") 
 
 #Number of lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
 set(BLOCK_X "2")
 set(BLOCK_T "2")
+#The number of aggregates is 2 * BlockX * BlockT (we consider the spin as well)
 
 #Lattice blocks for Schwarz alternating method. They don't need to be the same as BLOCK_X and BLOCK_T
 set(SAP_BLOCK_X "4")
 set(SAP_BLOCK_T "4")
 #N_i / SAP_BLOCK_i has to be an integer number
 #One block contains 2 * N_x / SAP_BLOCK_x * N_t / SAP_BLOCK_t variables 
+#For parallelization we need SAP_BLOCK_X * SAP_BLOCK_T / 2 cores to have one block per core
 
 #Number of test vectors
 set(NTEST "20") 
-set(NAGG "8") #BlockX * BlockT for aggregation scheme 1 and 2 * BlockX * BlockT for scheme 2
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 
@@ -59,7 +60,10 @@ target_compile_options("SM_${NS}x${NT}" PRIVATE
 )
 
 find_package(MPI REQUIRED)
-target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
+find_package(BLAS)
+include_directories(" /usr/include/cblas/")
+target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX ${BLAS_LIBRARIES})
+
 #find_package(OpenMP REQUIRED)
 #target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
 

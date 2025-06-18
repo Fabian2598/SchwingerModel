@@ -13,7 +13,7 @@ c_matrix fgmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, cons
     int k = 0; //Iteration number (restart cycle)
     double err = 1;
 
-
+    using namespace LV; //Use the lattice variables namespace
     c_matrix r(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
     c_matrix r0(Ntot, c_vector(2, 0));
 
@@ -104,7 +104,7 @@ c_matrix fgmresParallel(const c_matrix& U, const c_matrix& phi, const c_matrix& 
     //U --> configuration
     //restarts --> number of restarts
     //m --> number of iterations per cycle
-
+    using namespace LV; //Use the lattice variables namespace
     int k = 0; //Iteration number (restart cycle)
     double err = 1;
 
@@ -209,7 +209,7 @@ c_matrix fgmresAMG(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
     //U --> configuration
     //restarts --> number of restarts
     //m --> number of iterations per cycle
-
+    using namespace LV; //Use the lattice variables namespace
     int k = 0; //Iteration number (restart cycle)
     double err = 1;
 
@@ -241,9 +241,9 @@ c_matrix fgmresAMG(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
     //Intialize two-grid for FGMRES//
     int nu1 = 0, nu2 = 2; //pre and post smoothing iterations
     int rpc = 20;
-    GaugeConf Gconf = GaugeConf(Ns, Nt); //Gauge configuration
+    GaugeConf Gconf = GaugeConf(Nx, Nt); //Gauge configuration
     Gconf.set_gconf(U); //Set the gauge configuration
-    AMG amg = AMG(Gconf, Ns, Nt, Ntest, m0,nu1,nu2,rpc);  
+    AMG amg = AMG(Gconf, m0,nu1,nu2);  
     amg.tv_init(1, 3); //test vectors intialization
     
 

@@ -10,8 +10,7 @@
 
 
 //Implementation of GMRES for inverting D
-
-c_matrix gmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message);
+c_matrix gmres(const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message);
 
 //Rotations to transform Hessenberg matrix to upper triangular form
 void rotation(c_vector& cn, c_vector& sn, c_matrix& H, const int& j);

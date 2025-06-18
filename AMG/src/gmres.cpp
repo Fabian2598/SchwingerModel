@@ -2,14 +2,15 @@
 #include <iomanip>
 
 //Solves D psi = phi using GMRES
-c_matrix gmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message) {
+c_matrix gmres(const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message) {
     //GMRES for D^-1 phi
     //phi --> right-hand side
     //x0 --> initial guess  
     //U --> configuration
     //restarts --> number of restarts
     //m --> number of iterations per cycle
-
+    using namespace LV;
+    
     int k = 0; //Iteration number (restart cycle)
     double err = 1;
 

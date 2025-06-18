@@ -1,6 +1,7 @@
 #include "sap.h"
 
 void SchwarzBlocks(){
+    using namespace SAPV;
     schwarz_blocks = true; //Schwarz blocks are initialized
     int count, block;
     int x0, t0, x1, t1;
@@ -43,6 +44,7 @@ void SchwarzBlocks(){
 //x = I_B^T v --> Restriction of the vector v to the block B
 //dim(v) = 2 Ntot, dim(x) = 2 * sap_lattice_sites_per_block
 void It_B_v(const c_matrix& v, c_matrix& x, const int& block){
+    using namespace SAPV;
     //Schwarz blocks have to be initialized first before calling this function
     if (!schwarz_blocks){
         std::cout << "Error: Schwarz blocks not initialized" << std::endl;
@@ -64,6 +66,7 @@ void It_B_v(const c_matrix& v, c_matrix& x, const int& block){
 // x = I_B v --> Interpolation of the vector v to the original lattice
 //dim(v) = 2 * sap_lattice_sites_per_block, dim(x) = 2 Ntot
 void I_B_v(const c_matrix& v, c_matrix& x,const int& block){
+    using namespace SAPV;
     //Schwarz blocks have to be initialized first before calling this function
     if (!schwarz_blocks){
         std::cout << "Error: Schwarz blocks not initialized" << std::endl;
@@ -85,6 +88,7 @@ void I_B_v(const c_matrix& v, c_matrix& x,const int& block){
 //D_B v = I_B^T D I_B v  
 //dim(v) = 2 * sap_lattice_sites_per_block, dim(x) = 2 * sap_lattice_sites_per_block
 void D_B(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0,const int& block){
+    using namespace SAPV;
     if (checkSize(v, sap_lattice_sites_per_block, 2)==true || checkSize(x, sap_lattice_sites_per_block, 2) == true){
         std::cout << "Error with vector dimensions in D_B" << std::endl;
         exit(1);
@@ -105,6 +109,7 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
     //U --> configuration
     //restarts --> number of restarts
     //m --> number of iterations per cycle
+    using namespace SAPV;
     if (print_message == true){
         std::cout << "------------------------------------------" << std::endl;
         std::cout << "|GMRES for D_B (block " << block << ") " << std::endl;
@@ -209,6 +214,7 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
 //dim(v) = 2 * Ntot, dim(x) = 2 Ntot
 //v: input, x: output
 void I_D_B_1_It(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0,const int& block){
+    using namespace SAPV;
     bool print_message = false; //good for testing GMRES   
     int rank; 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -234,6 +240,7 @@ int SAP(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const
     /*
     Solves D x = v using the SAP method
     */
+   using namespace SAPV;
     if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
         std::cout << "Error with vector dimensions in I_KD" << std::endl;
         exit(1);
@@ -272,6 +279,7 @@ int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double&
     /*
     Solves D x = v using the SAP method
     */
+   using namespace SAPV;
    int size, rank;
    MPI_Comm_size(MPI_COMM_WORLD, &size);
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);

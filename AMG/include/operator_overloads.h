@@ -2,13 +2,17 @@
 #define OPERATOR_OVERLOADS_H
 #include <vector>
 #include <complex>
+#include <cblas.h>
 //#include <omp.h>
 
 typedef std::complex<double> c_double;
 typedef std::vector<c_double> c_vector;
 typedef std::vector<c_vector> c_matrix; 
+typedef std::vector<c_vector> spinor;
 
-//Complex dot product 
+
+
+//Complex dot product between two vectors 
 inline c_double dot(const c_vector& x, const c_vector& y) {
     c_double z = 0;
     for (int i = 0; i < x.size(); i++) {
@@ -18,9 +22,10 @@ inline c_double dot(const c_vector& x, const c_vector& y) {
 }
 
 
-//Complex dot product between vectors arranged like matrices (not matrix multiplication)
+//Complex dot product between spinors psi[ntot][2]
 // A.B = sum_i A_i conj(B_i) 
-inline c_double dot(const c_matrix& x, const c_matrix& y) {
+/*
+inline c_double dot(const spinor& x, const spinor& y) {
     c_double z = 0;
     for (int i = 0; i < x.size(); i++) {
         for (int j = 0; j < x[i].size(); j++) {
@@ -29,18 +34,27 @@ inline c_double dot(const c_matrix& x, const c_matrix& y) {
     }
     return z;
 }
+*/
 
-
-//Dot product between two vectors arranged like matrices (not matrix multiplication)
-// A.B = sum_i sum_j A_ij B_ij (not conjugate)
-inline c_double dot_v2(const c_matrix& x, const c_matrix& y) {
-    c_double z = 0;
-    for (int i = 0; i < x.size(); i++) {
-        for (int j = 0; j < x[i].size(); j++) {
-            z += x[i][j] * y[i][j];
+//I have to check if this is actually faster than the above version.
+inline c_double dot(const spinor& x, const spinor& y) {
+    // Flatten both spinors to 1D arrays (column-major order)
+    int rows = x.size();
+    int cols = x[0].size();
+    std::vector<c_double> flat_x(rows * cols), flat_y(rows * cols);
+    for (int j = 0; j < cols; ++j)
+        for (int i = 0; i < rows; ++i) {
+            flat_x[j * rows + i] = x[i][j];
+            flat_y[j * rows + i] = y[i][j];
         }
-    }
-    return z;
+
+    c_double result;
+    cblas_zdotc_sub(rows * cols,
+        reinterpret_cast<const void*>(flat_y.data()), 1,
+        reinterpret_cast<const void*>(flat_x.data()), 1,
+        reinterpret_cast<void*>(&result)
+    );
+    return result;
 }
 
 //Scalar times complex vector
@@ -81,6 +95,7 @@ inline c_vector operator*(const c_matrix& A, const c_vector& v) {
     return w;
 }
 
+
 //scalar multiplication of a matrix
 template <typename T>
 inline c_matrix operator*(const T& lambda, const c_matrix& A) {
@@ -113,6 +128,26 @@ inline c_matrix operator-(const c_matrix& A, const c_matrix& B) {
         }
     }
     return C;
+}
+
+//This also works for spinors.
+inline void PrintComplexMatrix(const c_matrix& v ){
+	//for c_matrix
+    for(int i = 0; i < v.size(); i++){
+        for(int j = 0; j < v[i].size(); j++){
+            std::cout << v[i][j] << " ";
+        }
+		std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+inline void PrintComplexVector(const c_vector& v ){
+	//for c_vector
+    for(int i = 0; i < v.size(); i++){
+        std::cout << v[i] << " ";
+    }
+    std::cout << std::endl;
 }
 
 #endif 
