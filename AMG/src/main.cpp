@@ -96,7 +96,6 @@ int main(int argc, char **argv) {
         rhs[i][0] = RandomU1();
         rhs[i][1] = RandomU1();
     }
-    int nu_sap = 1;
 
     clock_t start, end;
     double elapsed_time;
@@ -114,22 +113,14 @@ int main(int argc, char **argv) {
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;
         
-    
-        std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;
-        start = clock();
-        fgmresAMG(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for FGMRES = " << elapsed_time << " seconds" << std::endl;
-
+        /*
         std::cout << "--------------Flexible GMRES with SAP preconditioning--------------" << std::endl;
         start = clock();
         fgmres(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for FGMRES = " << elapsed_time << " seconds" << std::endl;
-
-
+        
         std::cout << "--------------GMRES--------------" << std::endl;
         start = clock();
         gmres(&D_phi,Ntot,2,
@@ -137,6 +128,7 @@ int main(int argc, char **argv) {
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl;
+        */
         
     }
 
@@ -147,6 +139,14 @@ int main(int argc, char **argv) {
     //MPI_Barrier(MPI_COMM_WORLD);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;
+    startT = MPI_Wtime();
+    fgmresAMG(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
+    endT = MPI_Wtime();
+    elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);  
 
     MPI_Finalize();
     return 0;

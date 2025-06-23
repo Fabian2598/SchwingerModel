@@ -21,13 +21,13 @@ set(SRC_FILES
 #file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR} src/*.cpp)
 
 #Lattice dimensions
-set(NS "32") 
-set(NT "32") 
+set(NS "16") 
+set(NT "16") 
 
 #Lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
-set(BLOCK_X "4")
-set(BLOCK_T "4")
+set(BLOCK_X "2")
+set(BLOCK_T "2")
 #The number of aggregates is 2 * BlockX * BlockT 
 
 #Lattice blocks for Schwarz alternating method. They don't need to be the same as BLOCK_X and BLOCK_T

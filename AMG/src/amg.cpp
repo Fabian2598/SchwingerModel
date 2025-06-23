@@ -105,6 +105,13 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 		//c_matrix v0(Ntot, c_vector(2, 0)); //Initial guess (zero as right hand side)
 
 		spinor v0 = test_vectors[i]; //Initial guess
+		//v0 = SAP*test_vectors[i]; //Initial guess
+        //set_zeros(v0, Ntot, 2); //Initialize ZmT[j] to zero //What happens If I don't do this?
+
+		//Is the result from these two the same?
+		//int blocks_per_proc = 1; //Number of blocks per process
+		//SAP_parallel(GConf.Conf, test_vectors[i], v0, m0, AMGV::SAP_test_vectors_iterations,blocks_per_proc); 
+
 		SAP(GConf.Conf, v0, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations);
 	}
 
@@ -183,7 +190,11 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0,
 		//Pre-smoothing
 		if (nu1>0){
 			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu1, 1e-10, false);
+			
 			SAP(GConf.Conf, phi, x, m0, nu1);
+			
+			//int blocks_per_proc = 1; //Number of blocks per process
+			//SAP_parallel(GConf.Conf, phi, x, m0, nu1,blocks_per_proc); 
 		} 
 		//x = x + P*Dc^-1 * P^H * (phi-D*x);  Coarse grid correction
 		spinor Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
@@ -196,7 +207,11 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0,
 		//Post-smoothing
 		if (nu2>0){
 			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu2, 1e-10, false);
+			
 			SAP(GConf.Conf, phi, x, m0, nu2);
+			
+			//int blocks_per_proc = 1; //Number of blocks per process
+			//SAP_parallel(GConf.Conf, phi, x, m0, nu2,blocks_per_proc); 
 		}
 		r = phi - D_phi(GConf.Conf, x, m0);
 		err = sqrt(std::real(dot(r,r)));
@@ -210,7 +225,6 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0,
 		}
 		k++;
 	}
-	it_count = max_iter;
 	if (print_message == true){
 		std::cout << "Two-grid did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
 	}
