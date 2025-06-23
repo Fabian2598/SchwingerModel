@@ -1,9 +1,9 @@
 #include "fgmres.h"
 
 
-//Solves D psi = phi using GMRES
-c_matrix fgmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message) {
-    //GMRES for D^-1 phi
+//Solves D psi = phi using FMGRES
+spinor fgmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message) {
+    //Flexible GMRES for D^-1 phi
     //phi --> right-hand side
     //x0 --> initial guess  
     //U --> configuration
@@ -11,13 +11,13 @@ c_matrix fgmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, cons
     //m --> number of iterations per cycle
 
     int k = 0; //Iteration number (restart cycle)
-    double err = 1;
+    double err;
 
     using namespace LV; //Use the lattice variables namespace
-    c_matrix r(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
-    c_matrix r0(Ntot, c_vector(2, 0));
+    spinor r(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
+    spinor r0(Ntot, c_vector(2, 0));
 
-    //VmT[column vector index][vector arrange in matrix form]
+    //VmT[column vector index][vector arranged in matrix form]
     std::vector<c_matrix> VmT(m+1, c_matrix(Ntot, c_vector(2, 0))); //V matrix transpose-->dimensions exchanged
     std::vector<c_matrix> ZmT(m, c_matrix(Ntot, c_vector(2, 0)));  //Z matrix transpose-->dimensions exchanged
 
@@ -30,8 +30,8 @@ c_matrix fgmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, cons
     c_vector eta(m, 0);
 
 
-    c_matrix w(Ntot, c_vector(2, 0)); //D*d
-    c_matrix x = x0; //initial solution
+    spinor w(Ntot, c_vector(2, 0)); //D*d
+    spinor x = x0; //initial solution
     c_double beta;
 
 
@@ -200,10 +200,9 @@ c_matrix fgmresParallel(const c_matrix& U, const c_matrix& phi, const c_matrix& 
 
 
 
-////Flexible GMRES for AMG////
-//Solves D psi = phi using GMRES
+//Flexible GMRES for AMG//
+//Solves D psi = phi 
 c_matrix fgmresAMG(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message) {
-    //GMRES for D^-1 phi
     //phi --> right-hand side
     //x0 --> initial guess  
     //U --> configuration
@@ -240,7 +239,6 @@ c_matrix fgmresAMG(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
 
     //Intialize two-grid for FGMRES//
     int nu1 = 0, nu2 = 2; //pre and post smoothing iterations
-    int rpc = 20;
     GaugeConf Gconf = GaugeConf(Nx, Nt); //Gauge configuration
     Gconf.set_gconf(U); //Set the gauge configuration
     AMG amg = AMG(Gconf, m0,nu1,nu2);  
@@ -254,7 +252,7 @@ c_matrix fgmresAMG(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
             set_zeros(ZmT[j], Ntot, 2); //Initialize ZmT[j] to zero
-            ZmT[j] = amg.TwoGrid(1,rpc, 1e-10, ZmT[j], VmT[j], false);
+            ZmT[j] = amg.TwoGrid(1, 1e-10, ZmT[j], VmT[j], false);
             //SAP(U, VmT[j], ZmT[j], m0, 1); //Preconditioner times VmT; // zm = M^-1. vm
             w = D_phi(U, ZmT[j], m0); //w = D v_j
   

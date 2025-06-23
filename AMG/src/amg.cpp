@@ -27,11 +27,11 @@ void Aggregates() {
 			}	
 		}
 	}
-	aggregates_initialized = true; //Set aggregates as initialized
+	AMGV::aggregates_initialized = true; //Set aggregates as initialized
 }
 
 
-void normalize(c_matrix& v){
+void normalize(spinor& v){
 	c_double norm = sqrt(std::real(dot(v,v))) + 0.0*I_number; 
 	v =  1.0/norm * v; 
 }
@@ -39,7 +39,7 @@ void normalize(c_matrix& v){
 
 //Print aggregates. Useful for debugging
 void PrintAggregates() {
-	for (int i = 0; i < Nagg; i++) {
+	for (int i = 0; i < AMGV::Nagg; i++) {
 		std::cout << "-------Aggregate-----" << i << std::endl;
 		for (int j = 0; j < LV::x_elements * LV::t_elements; j++) {
 			std::cout << Agg[i][j] << " ";
@@ -52,15 +52,15 @@ void PrintAggregates() {
 //Orthonormalize the P columns.
 void AMG::orthonormalize(){
 	//Gram-Schmidt orthonormalization
-	std::vector<c_matrix> temp(Ntest, c_matrix( LV::Ntot, c_vector (2,0)));
-	std::vector<c_matrix> v_chopped(Ntest*Nagg, c_matrix(LV::Ntot, c_vector(2,0)));
+	using namespace AMGV;
+	std::vector<spinor> temp(Ntest, spinor( LV::Ntot, c_vector (2,0)));
+	std::vector<spinor> v_chopped(Ntest*Nagg, spinor(LV::Ntot, c_vector(2,0)));
 	for(int i = 0; i < Ntest*Nagg; i++){
 		c_matrix e_i = canonical_vector(i, Ntest, Nagg);
 		v_chopped[i] = P_v(e_i); //Columns of the interpolator
 	}
 
-	
-	//clock_t begin = clock();
+
 	for (int i = 0; i < Nagg; i++) {
 		for (int nt = 0; nt < Ntest; nt++) {
 			for (int j = 0; j < nt; j++) {
@@ -70,9 +70,7 @@ void AMG::orthonormalize(){
 			normalize(v_chopped[nt*Nagg+i]);
 		}
 	}
-	//clock_t end = clock();
-	//double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-	//std::cout << "Time for orthonormalizing V_chopped with overload " << elapsed_secs << " s" << std::endl;
+
 	
 	for(int i = 0; i < Ntest; i++){
 		for(int j = 0; j < Nagg; j++){
@@ -92,21 +90,22 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	//eps --> the norm of the test vectors during random initialization
 	//Nit --> number of iterations for improving the interpolator
 	//Random initialization
+	using namespace AMGV;
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < LV::Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
-				test_vectors[i][j][k] = eps * RandomU1();//i * Ntot * 2 + j * 2 + k + 1; 
+				test_vectors[i][j][k] = eps * RandomU1();
 			}
 		}
 	}
 
 	for (int i = 0; i < Ntest; i++) {
-		//20 restarts, 20 iterations per restart
-		//test_vectors[i] = gmres(GConf.Conf, test_vectors[i], test_vectors[i], m0, 20, 20, 1e-10, false);
-		c_matrix v0 = test_vectors[i]; //Initial guess
-		//Using 0 as right-hand side
-		//c_matrix v0(Ntot, c_vector(2, 0)); //Initial guess
-		SAP(GConf.Conf, v0, test_vectors[i], m0, 2);
+		//test_vectors[i] = gmres(LV::Ntot,2,GConf.Conf, test_vectors[i], test_vectors[i], m0, 20, 20, 1e-10, false);
+
+		//c_matrix v0(Ntot, c_vector(2, 0)); //Initial guess (zero as right hand side)
+
+		spinor v0 = test_vectors[i]; //Initial guess
+		SAP(GConf.Conf, v0, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations);
 	}
 
 	test_vectors_copy = test_vectors; //This step essentially assembles the inerpolator
@@ -115,7 +114,7 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	for (int n = 0; n < Nit; n++) {
 		std::cout << "****** Nit " << n << " ******" << std::endl;
 		for (int i = 0; i < Ntest; i++) {
-			test_vectors[i] = TwoGrid(1,20, 1e-10, test_vectors[i], test_vectors[i], false); //Updates the test vectors with the current P
+			test_vectors[i] = TwoGrid(1,1e-10, test_vectors[i], test_vectors[i], false); //Updates the test vectors with the current P
 		}
 		test_vectors_copy = test_vectors; //"Assemble" interpolator
 		orthonormalize();	
@@ -125,25 +124,18 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 
 //x_i = P_ij v_j. dim(P) = 2 Ntot x Ntest Na, Na = block_x * block_t
 //dim(v) = Ntest Na, dim(x) = 2 Ntot
-c_matrix AMG::P_v(const c_matrix& v) {
-	//Prolongation operator times vector
-	c_matrix x(LV::Ntot, c_vector(2, 0));
+spinor AMG::P_v(const spinor& v) {
+	//Prolongation operator times a spinor
+	spinor x(LV::Ntot, c_vector(2, 0));
 	//Loop over columns
+	using namespace AMGV;
 	for (int j = 0; j < Ntest * Nagg; j++) {
 		int k = j / Nagg; //Number of test vector
 		int a = j % Nagg; //Number of aggregate
 		for (int i = 0; i < Agg[a].size(); i++) {
-			if (Nagg ==  LV::block_x * LV::block_t){
-				//Aggregation scheme 1
-				for (int alf = 0; alf < 2; alf++) {
-					x[Agg[a][i]][alf] += test_vectors_copy[k][Agg[a][i]][alf] * v[k][a];
-				}
-			}
-			else{
-				//Aggregation scheme 2 
-				int x_coord = XCoord[Agg[a][i]], t_coord = TCoord[Agg[a][i]], s_coord = SCoord[Agg[a][i]];
-				x[Coords[x_coord][t_coord]][s_coord] += test_vectors_copy[k][Coords[x_coord][t_coord]][s_coord] * v[k][a];		
-			}
+			int x_coord = XCoord[Agg[a][i]], t_coord = TCoord[Agg[a][i]], s_coord = SCoord[Agg[a][i]];
+			x[Coords[x_coord][t_coord]][s_coord] += test_vectors_copy[k][Coords[x_coord][t_coord]][s_coord] * v[k][a];		
+			
 		}
 	}
 	return x;
@@ -151,23 +143,16 @@ c_matrix AMG::P_v(const c_matrix& v) {
 
 //x_i = P^H_ij v_j. dim(P^H) =  Ntest Na x 2 Ntot, Nagg = block_x * block_t
 //dim(v) = 2 NTot, dim(x) = Ntest Nagg
-c_matrix AMG::Pt_v(const c_matrix& v) {
-	c_matrix x(Ntest, c_vector(Nagg, 0));
+spinor AMG::Pt_v(const spinor& v) {
+	//restriction operator times a spinor
+	using namespace AMGV;
+	spinor x(Ntest, c_vector(Nagg, 0));
 	for (int i = 0; i < Ntest*Nagg; i++) {
 		int k = i / Nagg; //number of test vector
 		int a = i % Nagg; //number of aggregate
 		for (int j = 0; j < Agg[a].size(); j++) {
-			if (Nagg == LV::block_x * LV::block_t){
-				//Aggregation scheme 1
-				for (int alf = 0; alf < 2; alf++) {
-					x[k][a] += std::conj(test_vectors_copy[k][Agg[a][j]][alf]) * v[Agg[a][j]][alf];
-				}
-			}
-			else{
-				//Aggregation scheme 2
-				int x_coord = XCoord[Agg[a][j]], t_coord = TCoord[Agg[a][j]], s_coord = SCoord[Agg[a][j]];
-				x[k][a] += std::conj(test_vectors_copy[k][Coords[x_coord][t_coord]][s_coord]) * v[Coords[x_coord][t_coord]][s_coord];
-			}
+			int x_coord = XCoord[Agg[a][j]], t_coord = TCoord[Agg[a][j]], s_coord = SCoord[Agg[a][j]];
+			x[k][a] += std::conj(test_vectors_copy[k][Coords[x_coord][t_coord]][s_coord]) * v[Coords[x_coord][t_coord]][s_coord];
 		}
 	}
 	return x;
@@ -175,49 +160,49 @@ c_matrix AMG::Pt_v(const c_matrix& v) {
 
 
 //Dc = P^H D P, dim(Dc) = Ntest Nagg x Ntest Nagg, dim(v) = Ntest Nagg, 
-c_matrix AMG::Pt_D_P(const c_matrix& v){
+spinor AMG::Pt_D_P(const spinor& v){
 	return Pt_v(D_phi(GConf.Conf,P_v(v),m0));
 }
 
+
 //x = D^-1 phi
-c_matrix AMG::TwoGrid(const int& max_iter, const int& rpc, const double& tol, const c_matrix& x0, 
-	const c_matrix& phi, const bool& print_message) {
+spinor AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0, 
+	const spinor& phi, const bool& print_message) {
 	//nu1 --> pre-smoothing steps
 	//nu2 --> post-smoothing steps
 	//x0 --> initial guess
 	//phi --> right hand side
 	//max_iter --> maximum number of iterations
 	//tol --> tolerance
-	c_matrix x = x0;
-	c_matrix r;
-	double err = 1;
+	spinor x = x0;
+	spinor r;
+	double err;
 	int k = 0;
 	double norm = sqrt(std::real(dot(phi,phi)));
-	while(k < max_iter && err > tol*norm){
+	while(k < max_iter){
 		//Pre-smoothing
 		if (nu1>0){
-			//x = gmres(GConf.Conf, phi, x, m0, rpc, nu1, 1e-10, false);
+			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu1, 1e-10, false);
 			SAP(GConf.Conf, phi, x, m0, nu1);
 		} 
 		//x = x + P*Dc^-1 * P^H * (phi-D*x);  Coarse grid correction
-		c_matrix Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
+		spinor Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
 
-		//x = x + P_v(bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,1000,1e-10,false)); 
-		x = x + P_v(gmres_Dc(GConf.Conf, Pt_r, Pt_r, m0,250,10,1e-10,false)); 
-
+		//-- Coarse grid solver --//
+		//x = x + P_v(bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,AMGV::bi_cgstab_Dc_iterations,AMGV::bi_cgstab_Dc_iterations_tol,false)); 
+		x = x + P_v(gmres(AMGV::Ntest,AMGV::Nagg,GConf.Conf, Pt_r, Pt_r, m0,
+			AMGV::gmres_restart_length_coarse_level,AMGV::gmres_restarts_coarse_level,AMGV::gmres_tol_coarse_level,false)); 
 		
 		//Post-smoothing
 		if (nu2>0){
-			//x = gmres(GConf.Conf, phi, x, m0, rpc, nu2, 1e-10, false);
+			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu2, 1e-10, false);
 			SAP(GConf.Conf, phi, x, m0, nu2);
 		}
 		r = phi - D_phi(GConf.Conf, x, m0);
 		err = sqrt(std::real(dot(r,r)));
-		if (print_message == true){
-			std::cout << "Two-grid method " << k+1 << " iterations" << " Error " << err << std::endl;
-		}
+
 		if (err < tol*norm){
-			it_count = k + 1;
+
 			if (print_message == true){
 				std::cout << "Two-grid method converged in " << k+1 << " iterations" << " Error " << err << std::endl;
 			}
@@ -233,19 +218,20 @@ c_matrix AMG::TwoGrid(const int& max_iter, const int& rpc, const double& tol, co
 }
 
 //Bi-cgstab for Dc^-1 phi = x
-c_matrix AMG::bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
+//Coarse grid solver 
+spinor AMG::bi_cgstab_Dc(const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
     //Dc^-1 phi = x
 	//Dc = P^T D P 
 	int k = 0; //Iteration number
     double err = 1;
-
-    c_matrix r(Ntest, c_vector(Nagg, 0));  //r[coordinate][spin] residual
-    c_matrix r_tilde(Ntest, c_vector(Nagg, 0));  //r[coordinate][spin] residual
-    c_matrix d(Ntest, c_vector(Nagg, 0)); //search direction
-    c_matrix s(Ntest, c_vector(Nagg, 0));
-    c_matrix t(Ntest, c_vector(Nagg, 0));
-    c_matrix Ad(Ntest, c_vector(Nagg, 0)); //DD^dagger*d
-    c_matrix x(Ntest, c_vector(Nagg, 0)); //solution
+	using namespace AMGV;
+    spinor r(Ntest, c_vector(Nagg, 0));  //r[coordinate][spin] residual
+    spinor r_tilde(Ntest, c_vector(Nagg, 0));  //r[coordinate][spin] residual
+    spinor d(Ntest, c_vector(Nagg, 0)); //search direction
+    spinor s(Ntest, c_vector(Nagg, 0));
+    spinor t(Ntest, c_vector(Nagg, 0));
+    spinor Ad(Ntest, c_vector(Nagg, 0)); //DD^dagger*d
+    spinor x(Ntest, c_vector(Nagg, 0)); //solution
     c_double alpha, beta, rho_i, omega, rho_i_2;
     x = x0; //initial solution
 	
@@ -285,8 +271,8 @@ c_matrix AMG::bi_cgstab_Dc(const c_matrix& U, const c_matrix& phi, const c_matri
     return x;
 }
 
-//Solves D psi = phi using GMRES
-c_matrix AMG::gmres_Dc(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message) {
+//Solves Dc or D psi = phi using GMRES
+spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message) {
     //GMRES for D^-1 phi
     //phi --> right-hand side
     //x0 --> initial guess  
@@ -298,13 +284,12 @@ c_matrix AMG::gmres_Dc(const c_matrix& U, const c_matrix& phi, const c_matrix& x
     double err = 1;
 
 
-    c_matrix r(Ntest, c_vector(Nagg, 0));  //r[coordinate][spin] residual
-    c_matrix r0(Ntest, c_vector(Nagg, 0));
-
+    spinor r(dim1, c_vector(dim2, 0));  //r[coordinate][spin] residual
+   
     //VmT[column vector index][vector arrange in matrix form]
-    std::vector<c_matrix> VmT(m+1, c_matrix(Ntest, c_vector(Nagg, 0))); //V matrix transpose-->dimensions exchanged
+    std::vector<spinor> VmT(m+1, spinor(dim1, c_vector(dim2, 0))); //V matrix transpose-->dimensions exchanged
 
-    c_matrix Hm(m+1 , c_vector(m, 0)); //H matrix (Hessenberg matrix)
+    spinor Hm(m+1 , c_vector(m, 0)); //H matrix (Hessenberg matrix)
     c_vector gm(m + 1, 0); 
 
     //Elements of rotation matrix |sn[i]|^2 + |cn[i]|^2 = 1
@@ -313,21 +298,21 @@ c_matrix AMG::gmres_Dc(const c_matrix& U, const c_matrix& phi, const c_matrix& x
     c_vector eta(m, 0);
 
 
-    c_matrix w(Ntest, c_vector(Nagg, 0)); //D*d
-    c_matrix x = x0; //initial solution
+    spinor w(dim1, c_vector(dim2, 0)); //D*d
+    spinor x = x0; //initial solution
     c_double beta;
 
+	r = (dim1 == LV::Ntot) ?  phi - D_phi(U,x,m0) : phi - Pt_D_P(x); //r = b - A*x
 	
-    r0 = phi - Pt_D_P(x); //r = b - A*x
 	
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
     while (k < restarts) {
-        beta = sqrt(std::real(dot(r0, r0))) + 0.0 * I_number;
-        VmT[0] = 1.0 / beta * r0;
+        beta = sqrt(std::real(dot(r, r))) + 0.0 * I_number;
+        VmT[0] = 1.0 / beta * r;
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
-            w = Pt_D_P(VmT[j]); //w = D v_j
+			w = (dim1 == LV::Ntot) ? D_phi(U,VmT[j],m0) : Pt_D_P(VmT[j]); //w = D v_j
             //This for loop is the most time consuming part ...
             //For the values of m that I will use, parallelizing is not really useful due to the overhead
             //#pragma omp parallel for
@@ -337,13 +322,13 @@ c_matrix AMG::gmres_Dc(const c_matrix& U, const c_matrix& phi, const c_matrix& x
                 w = w -  Hm[i][j] * VmT[i];
             }
             //i.e. the Gramm Schmidt part is highly inefficient. 
-            //Could a better implementation of the dot product improve the execution time?
+            
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
             if (std::real(Hm[j + 1][j]) > 0) {
                 VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
             }
             //----Rotate the matrix----//
-            rotation(cn, sn, Hm, j);
+            rotation(cn, sn, Hm, j); //Defined in include/gmres.h
 
             //Rotate gm
             gm[j + 1] = -sn[j] * gm[j];
@@ -353,59 +338,45 @@ c_matrix AMG::gmres_Dc(const c_matrix& U, const c_matrix& phi, const c_matrix& x
 	
 		eta = solve_upper_triangular(Hm, gm,m);
  
-        for (int i = 0; i < Ntest * Nagg; i++) {
-            int n = i / Nagg; int mu = i % Nagg;
+        for (int i = 0; i < dim1 * dim2; i++) {
+            int n = i / dim2; int mu = i % dim2;
             for (int j = 0; j < m; j++) {
                 x[n][mu] = x[n][mu] + eta[j] * VmT[j][n][mu]; 
             }
         }
         //Compute the residual
-        r = phi - Pt_D_P(x);
+		r = (dim1 == LV::Ntot) ?  phi - D_phi(U,x,m0) : phi - Pt_D_P(x);
         err = sqrt(std::real(dot(r, r)));
-        // if (print_message == true) {
-        //     std::cout << "GMRES for D " << k + 1 << " restart cycle" << " Error " << err << std::endl;
-        // }
 
          if (err < tol* norm_phi) {
 			 it_count = k + 1;
              if (print_message == true) {
-                 std::cout << "GMRES for Dc converged in " << k + 1 << " iterations" << " Error " << err << std::endl;
+                 std::cout << "GMRES converged in " << k + 1 << " iterations" << " Error " << err << std::endl;
              }
              return x;
          }
-         r0 = r;
+
          k++;
     }
-    //if (print_message == true) {
-        std::cout << "GMRES for Dc did not converge in " << restarts << " restarts" << " Error " << err << std::endl;
-    //}
-    return x;
+	
+        std::cout << "GMRES did not converge in " << restarts << " restarts" << " Error " << err << std::endl;
+	return x;
 }
 
 
 //These functions are for saving the matrices. Useful for testing.
-void save_matrix(c_matrix& Matrix,char* Name){
+void save_spinor(spinor& phi,char* Name){
     char NameData[500], Data_str[500];
 	sprintf(NameData, Name);
 	std::ofstream Datfile;
 	Datfile.open(NameData);
-	for (int i = 0; i < Matrix.size(); i++) {
-		for (int j = 0; j < Matrix[i].size(); j++) {
-			sprintf(Data_str, "%-30d%-30d%-30.17g%-30.17g\n", i, j, std::real(Matrix[i][j]), std::imag(Matrix[i][j]));
+	int size = phi.size();
+	int size2 = phi[0].size();
+	for (int i = 0; i < size; i++) {
+		for (int j = 0; j < size2; j++) {
+			sprintf(Data_str, "%-30d%-30d%-30.17g%-30.17g\n", i, j, std::real(phi[i][j]), std::imag(phi[i][j]));
 			Datfile << Data_str;
 		}
 	}
 	Datfile.close();
-}
-
-void save_vector(c_vector& Vector,char* Name){
-    char NameData[500], Data_str[500];
-    sprintf(NameData, Name);
-    std::ofstream Datfile;
-    Datfile.open(NameData);
-    for (int i = 0; i < Vector.size(); i++) {
-        sprintf(Data_str, "%-30d%-30.17g%-30.17g\n", i, std::real(Vector[i]), std::imag(Vector[i]));
-        Datfile << Data_str;
-    }
-    Datfile.close();
 }

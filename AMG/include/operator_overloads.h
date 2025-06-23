@@ -2,14 +2,13 @@
 #define OPERATOR_OVERLOADS_H
 #include <vector>
 #include <complex>
-#include <cblas.h>
+//#include <cblas.h>
 //#include <omp.h>
 
 typedef std::complex<double> c_double;
 typedef std::vector<c_double> c_vector;
 typedef std::vector<c_vector> c_matrix; 
 typedef std::vector<c_vector> spinor;
-
 
 
 //Complex dot product between two vectors 
@@ -24,7 +23,6 @@ inline c_double dot(const c_vector& x, const c_vector& y) {
 
 //Complex dot product between spinors psi[ntot][2]
 // A.B = sum_i A_i conj(B_i) 
-/*
 inline c_double dot(const spinor& x, const spinor& y) {
     c_double z = 0;
     for (int i = 0; i < x.size(); i++) {
@@ -34,9 +32,10 @@ inline c_double dot(const spinor& x, const spinor& y) {
     }
     return z;
 }
-*/
+
 
 //I have to check if this is actually faster than the above version.
+/*
 inline c_double dot(const spinor& x, const spinor& y) {
     // Flatten both spinors to 1D arrays (column-major order)
     int rows = x.size();
@@ -56,6 +55,7 @@ inline c_double dot(const spinor& x, const spinor& y) {
     );
     return result;
 }
+*/
 
 //Scalar times complex vector
 template <typename T>
@@ -109,6 +109,7 @@ inline c_matrix operator*(const T& lambda, const c_matrix& A) {
 }
 
 //Matrix addition
+//Also works for spinors
 inline c_matrix operator+(const c_matrix& A, const c_matrix& B) {
     c_matrix C(A.size(), c_vector(A[0].size(), 0));
     for (int i = 0; i < A.size(); i++) {
@@ -120,6 +121,7 @@ inline c_matrix operator+(const c_matrix& A, const c_matrix& B) {
 }
 
 //Matrix subtraction
+//Also works for spinors
 inline c_matrix operator-(const c_matrix& A, const c_matrix& B) {
     c_matrix C(A.size(), c_vector(A[0].size(), 0));
     for (int i = 0; i < A.size(); i++) {

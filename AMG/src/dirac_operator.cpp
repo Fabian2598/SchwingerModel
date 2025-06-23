@@ -1,4 +1,4 @@
-#include "matrix_operations.h"
+#include "dirac_operator.h"
 
 std::vector<c_matrix> gamma_mat(2,
 	c_matrix(2, c_vector(2, 0))

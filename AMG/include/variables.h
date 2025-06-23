@@ -35,9 +35,23 @@ namespace SAPV {
     extern double sap_tolerance; //tolerance for the SAP method
 }
 
-constexpr int Ntest = NTEST; //Number of test vectors
-constexpr int Nagg = 2*LV::block_t*LV::block_x; //Number of aggregates (one spin per aggregate)
-extern bool aggregates_initialized; //True if the aggregates are initialized
+//------------Parameters for AMG--------------//
+namespace AMGV{
+    constexpr int Ntest = NTEST; //Number of test vectors
+    constexpr int Nagg = 2*LV::block_t*LV::block_x; //Number of aggregates (one spin per aggregate)
+    extern bool aggregates_initialized; //True if the aggregates are initialized
+    extern int SAP_test_vectors_iterations; //Number of SAP iterations to smooth test vectors
+    //Parameters for the coarse level solver
+    extern int gmres_restarts_coarse_level; //restart length for GMREs at the coarse level
+    extern int gmres_restart_length_coarse_level; //GMRES restart length for the coarse level
+    extern double gmres_tol_coarse_level; //GMRES tolerance for the coarse level
+    //Parameters for the gmres as smoother (default version uses SAP)
+    extern int gmres_restarts_smoother; //GMRES iterations for the smoother
+    //Paramaters for bi-cgstab as a coarse solver
+    extern int bi_cgstab_Dc_iterations;
+    extern double bi_cgstab_Dc_iterations_tol; //Tolerance for the bi-cgstab method
+}
+
 
 //Vectorize coordinates for the lattice points
 extern std::vector<std::vector<int>>Coords; 
@@ -67,5 +81,6 @@ extern std::vector<int> SAP_RedBlocks; //Block index for the red blocks
 extern std::vector<int> SAP_BlackBlocks; //Block index for the black blocks
 
 void CheckBlocks(); //Check that Nx/block_x and Nt/block_t are integers, the same for Schwarz blocks
+void CheckAggregates(); //Check that the aggregates are initialized and have the correct size
 
 #endif 

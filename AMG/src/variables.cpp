@@ -33,7 +33,7 @@ std::vector<std::vector<std::vector<int>>>RightPB = std::vector<std::vector<std:
 std::vector<std::vector<int>>SAP_Blocks = std::vector<std::vector<int>>(SAPV::sap_block_x*SAPV::sap_block_t, 
     std::vector<int>(SAPV::sap_x_elements*SAPV::sap_t_elements, 0));
 std::vector<int> SAP_RedBlocks = std::vector<int>(SAPV::sap_coloring_blocks, 0); //Red blocks
-std::vector<int> SAP_BlackBlocks = std::vector<int>(SAPV::sap_coloring_blocks, 0); //Red blocks
+std::vector<int> SAP_BlackBlocks = std::vector<int>(SAPV::sap_coloring_blocks, 0); //Black blocks
 
 
 namespace SAPV {
@@ -44,18 +44,25 @@ namespace SAPV {
     double sap_tolerance = 1e-10; //Tolerance for the SAP method
 }
 
+namespace AMGV {
+    int SAP_test_vectors_iterations = 2; //Number of SAP iterations to smooth test vectors
+    bool aggregates_initialized = false;  //Aggregates are not initialized by default
+    //Parameters for the coarse level solver. They can be changed in the main function
+    int gmres_restarts_coarse_level = 10; 
+    int gmres_restart_length_coarse_level = 250; //GMRES restart length for the coarse level
+    double gmres_tol_coarse_level = 1e-10; //GMRES tolerance for the coarse level
+
+    int gmres_restarts_smoother = 20; //Iterations for GMRES as a smoother (SAP is the default)
+
+    int bi_cgstab_Dc_iterations= 1000; //Number of iterations for the bi-cgstab method
+    double bi_cgstab_Dc_iterations_tol = 1e-10; //Tolerance for the bi-cgstab method
+}
 
 
-bool aggregates_initialized = false; //Aggregates are not initialized by default
 
 void CheckBlocks(){
     bool check = true;
     using namespace SAPV;
-    using namespace LV;
-    {
-        
-    } // namespace LatticeVariables;
-    
     if (Nx % block_x != 0) {
         std::cout << "Error: Ns/block_x is not an integer" << std::endl;
         check = false;
@@ -81,4 +88,20 @@ void CheckBlocks(){
         exit(1);
     }
 
+}
+
+void CheckAggregates(){
+    bool check = true;
+    using namespace AMGV;
+    if (aggregates_initialized == false) {
+        std::cout << "Error: Aggregates are not initialized" << std::endl;
+        check = false;
+    }
+    if (Nagg*Ntest > 2*LV::Ntot) {
+        std::cout << "Error: Nagg*Ntest > 2*Ntot" << std::endl;
+        check = false;
+    }
+    if (check == false) {
+        exit(1);
+    }
 }

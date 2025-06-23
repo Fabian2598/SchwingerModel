@@ -1,5 +1,5 @@
-#ifndef MATRIX_OPERATIONS_INCLUDED
-#define MATRIX_OPERATIONS_INCLUDED
+#ifndef DIRAC_OPERATOR_H
+#define DIRAC_OPERATOR_H
 #include "variables.h"
 #include "operator_overloads.h"
 
@@ -30,8 +30,8 @@ inline void periodic_boundary() {
 			x1_t_1[x][t] = Coords[mod(x - 1, Nx)][mod(t + 1, Nt)];
 			for (int mu = 0; mu < 2; mu++) {
 				RightPB[x][t][mu] = Coords[mod(x + hat_mu[mu][1], Nx)][mod(t + hat_mu[mu][0], Nt)]; 
-				LeftPB[x][t][mu] = Coords[mod(x - hat_mu[mu][1], Nx)][mod(t - hat_mu[mu][0], Nt)];
-				
+				LeftPB[x][t][mu] = Coords[mod(x - hat_mu[mu][1], Nx)][mod(t - hat_mu[mu][0], Nt)];	
+				//This prevents us from computing the neighbor coordinates each time we call the operator D
 			}
 		}
 	}
@@ -39,7 +39,7 @@ inline void periodic_boundary() {
 
 
 //right fermionic boundary (antiperiodic in time) x+hat{mu}
-inline std::complex<double> rfb(const std::vector<std::vector<std::complex<double>>>& phi, const int& x, const int& t, const int& mu, const int& bet) {
+inline std::complex<double> rfb(const spinor& phi, const int& x, const int& t, const int& mu, const int& bet) {
 	//time
 	using namespace LV;	
 	if (mu == 0) {
@@ -57,7 +57,7 @@ inline std::complex<double> rfb(const std::vector<std::vector<std::complex<doubl
 }
 
 //left fermionic boundary (antiperiodic in time) x-hat{mu}
-inline std::complex<double> lfb(const std::vector<std::vector<std::complex<double>>>& phi, const int& x, const int& t, const int& mu, const int& bet) {
+inline std::complex<double> lfb(const spinor& phi, const int& x, const int& t, const int& mu, const int& bet) {
 	//time
 	using namespace LV;	
 	if (mu == 0) {
@@ -75,6 +75,6 @@ inline std::complex<double> lfb(const std::vector<std::vector<std::complex<doubl
 }
 
 //D phi
-spinor D_phi(const std::vector<std::vector<std::complex<double>>>& U, const std::vector<std::vector<std::complex<double>>>& phi, const double& m0);
+spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0);
 
 #endif

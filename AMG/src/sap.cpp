@@ -2,7 +2,7 @@
 
 void SchwarzBlocks(){
     using namespace SAPV;
-    schwarz_blocks = true; //Schwarz blocks are initialized
+    schwarz_blocks = true; //Schwarz blocks are initialized after calling this function
     int count, block;
     int x0, t0, x1, t1;
     for (int x = 0; x < sap_block_x; x++) {
@@ -216,11 +216,6 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
 void I_D_B_1_It(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0,const int& block){
     using namespace SAPV;
     bool print_message = false; //good for testing GMRES   
-    int rank; 
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0){
-        print_message = false;
-    }
     
     if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
         std::cout << "Error with vector dimensions in I_D_B_1_It" << std::endl;
@@ -229,9 +224,11 @@ void I_D_B_1_It(const c_matrix& U, const c_matrix& v, c_matrix& x, const double&
     c_matrix temp(sap_lattice_sites_per_block, c_vector(2, 0)); 
     c_matrix temp2(sap_lattice_sites_per_block, c_vector(2, 0)); 
     It_B_v(v,temp,block); //temp = I_B^T v
+
     gmres_D_B(U, temp, temp,temp2, m0, 
-        sap_gmres_restart_length, sap_gmres_restarts, sap_gmres_tolerance, 
+       sap_gmres_restart_length, sap_gmres_restarts, sap_gmres_tolerance, 
         block, print_message);  //temp2 = D_B^-1 I_B^T v 
+
     I_B_v(temp2,x,block); //x = I_B D_B^-1 I_B^T v 
 }
 
@@ -272,7 +269,7 @@ int SAP(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const
         }
     }
     //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
-    return 0; //Not converged
+    return 0; 
 }
 
 int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const int& nu,const int& blocks_per_proc){

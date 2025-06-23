@@ -9,7 +9,7 @@ project(Schwinger_model VERSION 1.0)
 set(SRC_FILES 
     src/variables.cpp
     src/gauge_conf.cpp
-    src/matrix_operations.cpp
+    src/dirac_operator.cpp
     src/bi_cgstab.cpp
     src/sap.cpp
     src/amg.cpp
@@ -21,33 +21,29 @@ set(SRC_FILES
 #file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR} src/*.cpp)
 
 #Lattice dimensions
-set(NS "16") 
-set(NT "16") 
+set(NS "32") 
+set(NT "32") 
 
-#Number of lattice blocks (used for aggregation)
+#Lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
-set(BLOCK_X "2")
-set(BLOCK_T "2")
-#The number of aggregates is 2 * BlockX * BlockT (we consider the spin as well)
+set(BLOCK_X "4")
+set(BLOCK_T "4")
+#The number of aggregates is 2 * BlockX * BlockT 
 
 #Lattice blocks for Schwarz alternating method. They don't need to be the same as BLOCK_X and BLOCK_T
 set(SAP_BLOCK_X "4")
 set(SAP_BLOCK_T "4")
 #N_i / SAP_BLOCK_i has to be an integer number
 #One block contains 2 * N_x / SAP_BLOCK_x * N_t / SAP_BLOCK_t variables 
-#For parallelization we need SAP_BLOCK_X * SAP_BLOCK_T / 2 cores to have one block per core
+#For parallelization we fix one block per core (i.e. SAP_BLOCK_X * SAP_BLOCK_T / 2 cores)
 
 #Number of test vectors
 set(NTEST "20") 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 
-
-# Add an executable with the above sources
 add_executable("SM_${NS}x${NT}" ${SRC_FILES})
 
-# Set the directories that should be included in the build command for this target
-# when running g++ these will be included as -I/directory/path/
 target_include_directories("SM_${NS}x${NT}"
         PUBLIC 
         ${PROJECT_SOURCE_DIR}/include
@@ -60,9 +56,12 @@ target_compile_options("SM_${NS}x${NT}" PRIVATE
 )
 
 find_package(MPI REQUIRED)
-find_package(BLAS)
-include_directories(" /usr/include/cblas/")
-target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX ${BLAS_LIBRARIES})
+
+#find_package(BLAS)
+#include_directories(" /usr/include/cblas/")
+#target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX ${BLAS_LIBRARIES})
+
+target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
 
 #find_package(OpenMP REQUIRED)
 #target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
