@@ -187,6 +187,7 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 	double err;
 	int k = 0;
 	double norm = sqrt(std::real(dot(phi,phi)));
+
 	while(k < max_iter){
 		//Pre-smoothing
 		if (nu1>0){
@@ -194,19 +195,29 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			//SAP(GConf.Conf, phi, x, m0, nu1);
 			SAP_parallel(GConf.Conf, phi, x, m0, nu1,SAPV::sap_blocks_per_proc); 
 		} 
+
+		double startT, endT;
+		startT = MPI_Wtime();
+		//*************Coarse grid correction*************//
 		//x = x + P*Dc^-1 * P^H * (phi-D*x);  Coarse grid correction
 		spinor Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
-
 		//-- Coarse grid solver --//
 		//x = x + P_v(bi_cgstab_Dc(GConf.Conf, Pt_r, Pt_r, m0,AMGV::bi_cgstab_Dc_iterations,AMGV::bi_cgstab_Dc_iterations_tol,false)); 
 		x = x + P_v(gmres(AMGV::Ntest,AMGV::Nagg,GConf.Conf, Pt_r, Pt_r, m0,
 			AMGV::gmres_restart_length_coarse_level,AMGV::gmres_restarts_coarse_level,AMGV::gmres_tol_coarse_level,false)); 
-		
+		//************************************************//
+		endT = MPI_Wtime();
+		coarse_time += endT - startT; //Add coarse grid time
+
 		//Post-smoothing
 		if (nu2>0){
 			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu2, 1e-10, false);
 			//SAP(GConf.Conf, phi, x, m0, nu2);
+			double startT, endT;
+			startT = MPI_Wtime();
 			SAP_parallel(GConf.Conf, phi, x, m0, nu2, SAPV::sap_blocks_per_proc); 
+			endT = MPI_Wtime();
+			smooth_time += endT - startT; //Add post-smoothing time
 		}
 		r = phi - D_phi(GConf.Conf, x, m0);
 		err = sqrt(std::real(dot(r,r)));

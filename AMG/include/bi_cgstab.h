@@ -1,5 +1,5 @@
-#ifndef CONJUGATE_GRADIENT_H
-#define CONJUGATE_GRADIENT_H
+#ifndef BI_CGSTAB_H
+#define BI_CGSTAB_H
 
 #include "dirac_operator.h"
 #include "operator_overloads.h"

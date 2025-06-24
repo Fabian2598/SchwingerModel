@@ -7,6 +7,9 @@
 
 extern double pi;
 extern double it_count;
+
+extern double coarse_time; //Time spent in the coarse grid solver
+extern double smooth_time; //Time spent in the smoother
 //Lattice variables
 namespace LV {
     constexpr int Nx=NS; //We extract this value from config.h
@@ -54,6 +57,13 @@ namespace AMGV{
     extern int nu1; //Pre-smoothing iterations
     extern int nu2; //Post-smoothing iterations
     extern int Nit; //Number of iterations for improving the interpolator 
+}
+
+//--------------Parameters for FGMRES--------------//
+namespace FGMRESV {
+    extern double fgmres_tolerance; //Tolerance for FGMRES
+    extern int fgmres_restart_length; //Restart length for FGMRES
+    extern int fgmres_restarts; //Number of restarts for FGMRES
 }
 
 

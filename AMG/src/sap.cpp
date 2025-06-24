@@ -230,7 +230,7 @@ void I_D_B_1_It(const c_matrix& U, const spinor& v, spinor& x, const double& m0,
     I_B_v(temp2,x,block); //x = I_B D_B^-1 I_B^T v 
 }
 
-
+//Sequential version of the SAP method (used for testing)
 int SAP(const c_matrix& U, const spinor& v,spinor& x, const double& m0,const int& nu){
     /*
     Solves D x = v using the SAP method

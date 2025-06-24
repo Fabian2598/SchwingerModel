@@ -91,6 +91,7 @@ int main(int argc, char **argv) {
     sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
     sap_gmres_tolerance = 1e-3; //GMRES tolerance for the Schwarz blocks
     sap_tolerance = 1e-10; //Tolerance for the SAP method
+    sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
     for(int i = 0; i < Ntot; i++) {
@@ -102,9 +103,13 @@ int main(int argc, char **argv) {
     double elapsed_time;
     double startT, endT;
 
-   
+    FGMRESV::fgmres_tolerance = 1e-10; //Tolerance for FGMRES
+    FGMRESV::fgmres_restart_length = 20; //Restart length for FGMRES
+    FGMRESV::fgmres_restarts = 50; //Number of restarts for FGMRES
+
    int gmres_restarts = 50, gmres_restart_length = 20; //for fgmres and gmres
     if (rank == 0){
+        //For comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
         spinor x0(Ntot, c_vector(2, 0)); //Initial guess
@@ -115,19 +120,20 @@ int main(int argc, char **argv) {
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
-        std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl;   
+    if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl;}   
     startT = MPI_Wtime();
-    spinor xfgmres = fgmresSAP(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
+    spinor xfgmres = fgmresSAP(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
 
     MPI_Barrier(MPI_COMM_WORLD);
-    std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;
+    if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
     startT = MPI_Wtime();
-    spinor xAMG = fgmresAMG(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
+    spinor xAMG = fgmresAMG(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
-    
+    printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
+    printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     MPI_Finalize();
     return 0;
 }

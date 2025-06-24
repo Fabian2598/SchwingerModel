@@ -35,6 +35,8 @@ std::vector<std::vector<int>>SAP_Blocks = std::vector<std::vector<int>>(SAPV::sa
 std::vector<int> SAP_RedBlocks = std::vector<int>(SAPV::sap_coloring_blocks, 0); //Red blocks
 std::vector<int> SAP_BlackBlocks = std::vector<int>(SAPV::sap_coloring_blocks, 0); //Black blocks
 
+double coarse_time = 0.0; //Time spent in the coarse grid solver
+double smooth_time = 0.0; //Time spent in the smoother
 
 namespace SAPV {
     bool schwarz_blocks = false; //Schwarz blocks are not initialized by default
@@ -62,6 +64,12 @@ namespace AMGV {
     int Nit = 3; //Number of iterations for improving the interpolator
 }
 
+//--------------Parameters for FGMRES--------------//
+namespace FGMRESV {
+    double fgmres_tolerance = 1e-10; //Tolerance for FGMRES
+    int fgmres_restart_length = 20; //Restart length for FGMRES
+    int fgmres_restarts = 50; //Number of restarts for FGMRES
+}
 
 
 void CheckBlocks(){

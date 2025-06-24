@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.26.5)
-set(CMAKE_CXX_STANDARD 11) 
+set(CMAKE_CXX_STANDARD 20) 
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 #set(CMAKE_C_COMPILER "C:/msys64/ucrt64/bin/gcc.exe")
 #set(CMAKE_CXX_COMPILER "C:/msys64/ucrt64/bin/g++.exe")
@@ -26,8 +26,8 @@ set(NT "32")
 
 #Lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
-set(BLOCK_X "2")
-set(BLOCK_T "2")
+set(BLOCK_X "4")
+set(BLOCK_T "4")
 #The number of aggregates is 2 * BlockX * BlockT 
 
 #Lattice blocks for Schwarz alternating method. They don't need to be the same as BLOCK_X and BLOCK_T
