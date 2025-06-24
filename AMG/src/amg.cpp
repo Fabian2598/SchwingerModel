@@ -1,6 +1,6 @@
 #include "amg.h"
 
-//Aggregates A_j_0 = L_j x {0}, A_j_1 = L_j x {1}
+//Aggregates A_j_0 = L_j x {0}, A_j_1 = L_j x {1} (Volume times Spin component)
 void Aggregates() {
 	using namespace LV;
 	for (int x = 0; x < block_x; x++) {
@@ -56,7 +56,7 @@ void AMG::orthonormalize(){
 	std::vector<spinor> temp(Ntest, spinor( LV::Ntot, c_vector (2,0)));
 	std::vector<spinor> v_chopped(Ntest*Nagg, spinor(LV::Ntot, c_vector(2,0)));
 	for(int i = 0; i < Ntest*Nagg; i++){
-		c_matrix e_i = canonical_vector(i, Ntest, Nagg);
+		spinor e_i = canonical_vector(i, Ntest, Nagg);
 		v_chopped[i] = P_v(e_i); //Columns of the interpolator
 	}
 
@@ -90,6 +90,8 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	//eps --> the norm of the test vectors during random initialization
 	//Nit --> number of iterations for improving the interpolator
 	//Random initialization
+	int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	using namespace AMGV;
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < LV::Ntot; j++) {
@@ -100,32 +102,31 @@ void AMG::tv_init(const double& eps,const int& Nit) {
 	}
 
 	for (int i = 0; i < Ntest; i++) {
+		//gmres initialization
 		//test_vectors[i] = gmres(LV::Ntot,2,GConf.Conf, test_vectors[i], test_vectors[i], m0, 20, 20, 1e-10, false);
 
 		//c_matrix v0(Ntot, c_vector(2, 0)); //Initial guess (zero as right hand side)
-
 		spinor v0 = test_vectors[i]; //Initial guess
-		//v0 = SAP*test_vectors[i]; //Initial guess
-        //set_zeros(v0, Ntot, 2); //Initialize ZmT[j] to zero //What happens If I don't do this?
-
-		//Is the result from these two the same?
-		//int blocks_per_proc = 1; //Number of blocks per process
-		//SAP_parallel(GConf.Conf, test_vectors[i], v0, m0, AMGV::SAP_test_vectors_iterations,blocks_per_proc); 
-
-		SAP(GConf.Conf, v0, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations);
+		SAP_parallel(GConf.Conf, v0, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations,SAPV::sap_blocks_per_proc); 
+		//SAP(GConf.Conf, v0, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations);
 	}
 
-	test_vectors_copy = test_vectors; //This step essentially assembles the inerpolator
+	test_vectors_copy = test_vectors; //This step essentially assembles the interpolator
 	orthonormalize(); //This modifies test_vectors_copy which is used in the interpolator NOT test_vectors
-	std::cout << "Improving interpolator" << std::endl;
+	if (rank == 0){std::cout << "Improving interpolator" << std::endl;}
+	
 	for (int n = 0; n < Nit; n++) {
-		std::cout << "****** Nit " << n << " ******" << std::endl;
+		if (rank == 0){std::cout << "****** Bootstrap iteration " << n << " ******" << std::endl;}
+		
 		for (int i = 0; i < Ntest; i++) {
-			test_vectors[i] = TwoGrid(1,1e-10, test_vectors[i], test_vectors[i], false); //Updates the test vectors with the current P
+			test_vectors[i] = TwoGrid(1,1e-10, test_vectors[i], test_vectors[i], false); 
+			//Update the test vectors with the current P
 		}
 		test_vectors_copy = test_vectors; //"Assemble" interpolator
 		orthonormalize();	
 	}
+	if (rank == 0){std::cout << "Set-up phase finished" << std::endl;}
+	
 
 }
 
@@ -151,7 +152,7 @@ spinor AMG::P_v(const spinor& v) {
 //x_i = P^H_ij v_j. dim(P^H) =  Ntest Na x 2 Ntot, Nagg = block_x * block_t
 //dim(v) = 2 NTot, dim(x) = Ntest Nagg
 spinor AMG::Pt_v(const spinor& v) {
-	//restriction operator times a spinor
+	//Restriction operator times a spinor
 	using namespace AMGV;
 	spinor x(Ntest, c_vector(Nagg, 0));
 	for (int i = 0; i < Ntest*Nagg; i++) {
@@ -173,7 +174,7 @@ spinor AMG::Pt_D_P(const spinor& v){
 
 
 //x = D^-1 phi
-spinor AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0, 
+spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0, 
 	const spinor& phi, const bool& print_message) {
 	//nu1 --> pre-smoothing steps
 	//nu2 --> post-smoothing steps
@@ -190,11 +191,8 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0,
 		//Pre-smoothing
 		if (nu1>0){
 			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu1, 1e-10, false);
-			
-			SAP(GConf.Conf, phi, x, m0, nu1);
-			
-			//int blocks_per_proc = 1; //Number of blocks per process
-			//SAP_parallel(GConf.Conf, phi, x, m0, nu1,blocks_per_proc); 
+			//SAP(GConf.Conf, phi, x, m0, nu1);
+			SAP_parallel(GConf.Conf, phi, x, m0, nu1,SAPV::sap_blocks_per_proc); 
 		} 
 		//x = x + P*Dc^-1 * P^H * (phi-D*x);  Coarse grid correction
 		spinor Pt_r = Pt_v(phi - D_phi(GConf.Conf,x,m0)); //P^H (phi - D x)
@@ -207,17 +205,13 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const c_matrix& x0,
 		//Post-smoothing
 		if (nu2>0){
 			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu2, 1e-10, false);
-			
-			SAP(GConf.Conf, phi, x, m0, nu2);
-			
-			//int blocks_per_proc = 1; //Number of blocks per process
-			//SAP_parallel(GConf.Conf, phi, x, m0, nu2,blocks_per_proc); 
+			//SAP(GConf.Conf, phi, x, m0, nu2);
+			SAP_parallel(GConf.Conf, phi, x, m0, nu2, SAPV::sap_blocks_per_proc); 
 		}
 		r = phi - D_phi(GConf.Conf, x, m0);
 		err = sqrt(std::real(dot(r,r)));
 
 		if (err < tol*norm){
-
 			if (print_message == true){
 				std::cout << "Two-grid method converged in " << k+1 << " iterations" << " Error " << err << std::endl;
 			}
@@ -237,7 +231,7 @@ spinor AMG::bi_cgstab_Dc(const c_matrix& U, const spinor& phi, const spinor& x0,
     //Dc^-1 phi = x
 	//Dc = P^T D P 
 	int k = 0; //Iteration number
-    double err = 1;
+    double err;
 	using namespace AMGV;
     spinor r(Ntest, c_vector(Nagg, 0));  //r[coordinate][spin] residual
     spinor r_tilde(Ntest, c_vector(Nagg, 0));  //r[coordinate][spin] residual
@@ -252,7 +246,7 @@ spinor AMG::bi_cgstab_Dc(const c_matrix& U, const spinor& phi, const spinor& x0,
     r = phi - Pt_D_P(x); //r = b - A*x 
     r_tilde = r;
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
-    while (k<max_iter && err>tol*norm_phi) {
+    while (k<max_iter) {
         rho_i = dot(r, r_tilde); //r . r_dagger
         if (k == 0) {
             d = r; //d_1 = r_0
@@ -286,7 +280,7 @@ spinor AMG::bi_cgstab_Dc(const c_matrix& U, const spinor& phi, const spinor& x0,
 }
 
 //Solves Dc or D psi = phi using GMRES
-spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message) {
+spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message) {
     //GMRES for D^-1 phi
     //phi --> right-hand side
     //x0 --> initial guess  
@@ -295,8 +289,7 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const c_ma
     //m --> number of iterations per cycle
 
     int k = 0; //Iteration number (restart cycle)
-    double err = 1;
-
+    double err;
 
     spinor r(dim1, c_vector(dim2, 0));  //r[coordinate][spin] residual
    
@@ -327,15 +320,11 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const c_ma
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
 			w = (dim1 == LV::Ntot) ? D_phi(U,VmT[j],m0) : Pt_D_P(VmT[j]); //w = D v_j
-            //This for loop is the most time consuming part ...
-            //For the values of m that I will use, parallelizing is not really useful due to the overhead
-            //#pragma omp parallel for
+
             for (int i = 0; i <= j; i++) {
-                Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
-                //#pragma omp critical
+                Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)       
                 w = w -  Hm[i][j] * VmT[i];
             }
-            //i.e. the Gramm Schmidt part is highly inefficient. 
             
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
             if (std::real(Hm[j + 1][j]) > 0) {
@@ -363,7 +352,6 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const c_ma
         err = sqrt(std::real(dot(r, r)));
 
          if (err < tol* norm_phi) {
-			 it_count = k + 1;
              if (print_message == true) {
                  std::cout << "GMRES converged in " << k + 1 << " iterations" << " Error " << err << std::endl;
              }
@@ -373,7 +361,7 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const c_ma
          k++;
     }
 	
-        std::cout << "GMRES did not converge in " << restarts << " restarts" << " Error " << err << std::endl;
+        //std::cout << "GMRES did not converge in " << restarts << " restarts for tol = " << tol << " Error " << err << std::endl;
 	return x;
 }
 

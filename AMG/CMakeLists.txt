@@ -21,8 +21,8 @@ set(SRC_FILES
 #file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR} src/*.cpp)
 
 #Lattice dimensions
-set(NS "16") 
-set(NT "16") 
+set(NS "32") 
+set(NT "32") 
 
 #Lattice blocks (used for aggregation)
 #N_i / BLOCK_i has to be an integer number
@@ -66,8 +66,7 @@ target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
 #find_package(OpenMP REQUIRED)
 #target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
 
-
-#PROJECT_SOURCE_DIR: it indicates where src is located
+#for windows ...
 #cmake -G "MinGW Makefiles" -DCMAKE_CXX_COMPILER="C:/msys64/ucrt64/bin/g++.exe" -DCMAKE_C_COMPILER="C:/msys64/ucrt64/bin/gcc.exe" ../
 
 

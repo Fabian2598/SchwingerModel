@@ -134,7 +134,6 @@ inline c_matrix operator-(const c_matrix& A, const c_matrix& B) {
 
 //This also works for spinors.
 inline void PrintComplexMatrix(const c_matrix& v ){
-	//for c_matrix
     for(int i = 0; i < v.size(); i++){
         for(int j = 0; j < v[i].size(); j++){
             std::cout << v[i][j] << " ";

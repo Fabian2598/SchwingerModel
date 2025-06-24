@@ -6,8 +6,6 @@
 #include "variables.h"
 #include <cmath>
 #include <iostream>
-//#include <omp.h>
-
 
 //Implementation of GMRES for inverting D
 spinor gmres(spinor (*func)(const c_matrix&, const c_matrix&, const double&),const int& dim1, const int& dim2,

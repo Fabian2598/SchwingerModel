@@ -33,6 +33,7 @@ namespace SAPV {
     extern int sap_gmres_restarts; //GMRES iterations for the Schwarz blocks
     extern double sap_gmres_tolerance; //GMRES tolerance for the Schwarz blocks 
     extern double sap_tolerance; //tolerance for the SAP method
+    extern int sap_blocks_per_proc; //Number of blocks per process for the parallel SAP method
 }
 
 //------------Parameters for AMG--------------//
@@ -50,6 +51,9 @@ namespace AMGV{
     //Paramaters for bi-cgstab as a coarse solver
     extern int bi_cgstab_Dc_iterations;
     extern double bi_cgstab_Dc_iterations_tol; //Tolerance for the bi-cgstab method
+    extern int nu1; //Pre-smoothing iterations
+    extern int nu2; //Post-smoothing iterations
+    extern int Nit; //Number of iterations for improving the interpolator 
 }
 
 

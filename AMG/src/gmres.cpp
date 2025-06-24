@@ -38,20 +38,22 @@ const bool& print_message) {
 
     r = phi - func(U, x, m0);//r = b - A*x
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
+    err = sqrt(std::real(dot(r, r))); //Initial error
     while (k < restarts) {
-        beta = sqrt(std::real(dot(r, r))) + 0.0 * I_number;
+        beta = err + 0.0 * I_number;
         VmT[0] = 1.0 / beta * r;
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
             w = D_phi(U, VmT[j], m0); //w = D v_j
-  
+
+            //the Gramm Schmidt part is highly inefficient. 
             for (int i = 0; i <= j; i++) {
-                Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
+                Hm[i][j] = dot(w, VmT[i]); //(v_i^dagger, w)
                 w = w -  Hm[i][j] * VmT[i];
             }
-            //i.e. the Gramm Schmidt part is highly inefficient. 
-            //Could a better implementation of the dot product improve the execution time?
+            //-------------------------//
+
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
             if (std::real(Hm[j + 1][j]) > 0) {
                 VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;

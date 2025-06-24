@@ -42,6 +42,7 @@ namespace SAPV {
     int sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
     double sap_gmres_tolerance = 1e-10; //GMRES tolerance for the Schwarz blocks
     double sap_tolerance = 1e-10; //Tolerance for the SAP method
+    int sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
 }
 
 namespace AMGV {
@@ -56,6 +57,9 @@ namespace AMGV {
 
     int bi_cgstab_Dc_iterations= 1000; //Number of iterations for the bi-cgstab method
     double bi_cgstab_Dc_iterations_tol = 1e-10; //Tolerance for the bi-cgstab method
+    int nu1 = 0; //Pre-smoothing iterations
+    int nu2 = 2; //Post-smoothing iterations
+    int Nit = 3; //Number of iterations for improving the interpolator
 }
 
 

@@ -4,15 +4,13 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
-#include "sap.h"
-#include "amg.h"
-#include "gmres.h"
 #include "bi_cgstab.h"
 #include "statistics.h"
 #include "fgmres.h"
 #include "mpi.h"
 
 //Formats decimal numbers
+//For opening file with confs 
 static std::string format(const double& number) {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(4) << number;
@@ -29,14 +27,14 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    srand(16);
+    //srand(19);
 
-    //srand(time(0));
+    srand(time(0));
     initialize_matrices(); //Initialize gamma matrices, identity and unit vectors
-    Coordinates(); //Vectorized coordinates
+    Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    double m0 = -0.7;
-
+    double m0 = -0.65;
+    //double m0 = -0.3;
     if (rank == 0){
         std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
         std::cout << "Nx = " << Nx << " Nt = " << Nt << std::endl;
@@ -49,7 +47,7 @@ int main(int argc, char **argv) {
         std::cout << "| Each aggregate has x_elements * t_elements = " <<  x_elements * t_elements << " elements" << std::endl;
         std::cout << "| Number of aggregates = " << AMGV::Nagg << std::endl;
     } 
-    Aggregates(); //Aggregates
+    Aggregates(); //build aggregates
     CheckAggregates();
     if (rank == 0){
         std::cout << "----------------------------------" << std::endl;
@@ -60,18 +58,22 @@ int main(int argc, char **argv) {
         std::cout << "| D restricted to each block has (" << 2 * sap_lattice_sites_per_block << ")^2 = " << sap_variables_per_block*sap_variables_per_block << " entries" << std::endl;
         std::cout << "| Number of Schwarz blocks = " << N_sap_blocks << std::endl;
         std::cout << "| Red/Black blocks = " << sap_coloring_blocks << std::endl;
-        CheckBlocks(); //Check blocks dimensions
+        
     }
-    
     SchwarzBlocks(); //Builds the blocks for the Schwarz alternating method
-     
+    CheckBlocks(); //Check blocks dimensions
+    AMGV::gmres_restarts_coarse_level = 20; 
+    AMGV::gmres_restart_length_coarse_level = 140; //GMRES restart length for the coarse level
+    AMGV::gmres_tol_coarse_level = 1e-3; //GMRES tolerance for the coarse level
+    AMGV::nu1 = 0; //Pre-smoothing iterations
+    AMGV::nu2 = 2; //Post-smoothing iterations
+    AMGV::Nit = 3; //Number of iterations for improving the interpolator
     if (rank == 0){
-        AMGV::gmres_restarts_coarse_level = 10; 
-        AMGV::gmres_restart_length_coarse_level = 250; //GMRES restart length for the coarse level
-        AMGV::gmres_tol_coarse_level = 1e-3; //GMRES tolerance for the coarse level
         std::cout << "----------------------------------" << std::endl;
-        std::cout << "| Other parameters" << std::endl;
+        std::cout << "|Other parameters" << std::endl;
         std::cout << "|Number of test vectors = " << AMGV::Ntest << std::endl;
+        std::cout << "|nu1 (pre-smoothing) = " << AMGV::nu1 << " nu2 (post-smoothing) = " << AMGV::nu2 << std::endl;
+        std::cout << "|Number of iterations for improving the interpolator = " << AMGV::Nit << std::endl;
         std::cout << "|Dc dimension = " << AMGV::Ntest * AMGV::Nagg << std::endl;
         std::cout << "|m0 = " << m0 << std::endl;
         std::cout << "|Number of SAP iterations to smooth test vectors = " << AMGV::SAP_test_vectors_iterations << std::endl; 
@@ -83,7 +85,6 @@ int main(int argc, char **argv) {
     
     GaugeConf GConf = GaugeConf(Nx, Nt);
     GConf.initialization(); //Initialize a random gauge configuration
-
 
     //Default values in variables.cpp
     sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
@@ -99,55 +100,34 @@ int main(int argc, char **argv) {
 
     clock_t start, end;
     double elapsed_time;
+    double startT, endT;
 
    
-   double startT, endT;
-
-   double gmres_restarts = 50, gmres_restart_length = 20; //for fgmres
+   int gmres_restarts = 50, gmres_restart_length = 20; //for fgmres and gmres
     if (rank == 0){
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
-        c_matrix x0(Ntot, c_vector(2, 0)); //Initial guess
-        c_matrix x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, 100000, 1e-10, true);
+        spinor x0(Ntot, c_vector(2, 0)); //Initial guess
+        spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, 100000, 1e-10, true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;
-        
-        /*
-        std::cout << "--------------Flexible GMRES with SAP preconditioning--------------" << std::endl;
-        start = clock();
-        fgmres(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for FGMRES = " << elapsed_time << " seconds" << std::endl;
-        
-        std::cout << "--------------GMRES--------------" << std::endl;
-        start = clock();
-        gmres(&D_phi,Ntot,2,
-            GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl;
-        */
-        
+        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;    
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
-    std::cout << "--------------Flexible GMRES with SAP preconditioning PARALLEL--------------" << std::endl;   
+        std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl;   
     startT = MPI_Wtime();
-    c_matrix xfgmres = fgmresParallel(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
-    //MPI_Barrier(MPI_COMM_WORLD);
+    spinor xfgmres = fgmresSAP(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
 
     MPI_Barrier(MPI_COMM_WORLD);
     std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;
     startT = MPI_Wtime();
-    fgmresAMG(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
+    spinor xAMG = fgmresAMG(GConf.Conf, rhs, x, m0, gmres_restart_length,gmres_restarts, 1e-10, true);
     endT = MPI_Wtime();
-    elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);  
-
+    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
+    
     MPI_Finalize();
     return 0;
 }

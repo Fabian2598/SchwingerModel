@@ -43,7 +43,7 @@ void SchwarzBlocks(){
 
 //x = I_B^T v --> Restriction of the vector v to the block B
 //dim(v) = 2 Ntot, dim(x) = 2 * sap_lattice_sites_per_block
-void It_B_v(const c_matrix& v, c_matrix& x, const int& block){
+void It_B_v(const spinor& v, spinor& x, const int& block){
     using namespace SAPV;
     //Schwarz blocks have to be initialized first before calling this function
     if (!schwarz_blocks){
@@ -65,7 +65,7 @@ void It_B_v(const c_matrix& v, c_matrix& x, const int& block){
 
 // x = I_B v --> Interpolation of the vector v to the original lattice
 //dim(v) = 2 * sap_lattice_sites_per_block, dim(x) = 2 Ntot
-void I_B_v(const c_matrix& v, c_matrix& x,const int& block){
+void I_B_v(const spinor& v, spinor& x,const int& block){
     using namespace SAPV;
     //Schwarz blocks have to be initialized first before calling this function
     if (!schwarz_blocks){
@@ -87,7 +87,7 @@ void I_B_v(const c_matrix& v, c_matrix& x,const int& block){
 //Restriction of the Dirac operator to the block B
 //D_B v = I_B^T D I_B v  
 //dim(v) = 2 * sap_lattice_sites_per_block, dim(x) = 2 * sap_lattice_sites_per_block
-void D_B(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0,const int& block){
+void D_B(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const int& block){
     using namespace SAPV;
     if (checkSize(v, sap_lattice_sites_per_block, 2)==true || checkSize(x, sap_lattice_sites_per_block, 2) == true){
         std::cout << "Error with vector dimensions in D_B" << std::endl;
@@ -99,7 +99,7 @@ void D_B(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0,con
 }
 
 //Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B 
-int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matrix& x,
+int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
     const double& m0, const int& m, const int& restarts, const double& tol, const int& block,
     const bool& print_message) {
     //GMRES for D^-1 phi
@@ -127,11 +127,10 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
     int k = 0; //Iteration number (restart cycle)
     double err; //Error = ||r||_2
 
-    c_matrix r(sap_lattice_sites_per_block, c_vector(2, 0));  //r[coordinate][spin] residual
-    c_matrix r0(sap_lattice_sites_per_block, c_vector(2, 0)); //Initial residual
-
+    spinor r(sap_lattice_sites_per_block, c_vector(2, 0));  //r[coordinate][spin] residual
+    
     //VmT[column vector index][vector arrange in matrix form]
-    std::vector<c_matrix> VmT(m+1, c_matrix(sap_lattice_sites_per_block, c_vector(2, 0))); //V matrix transpose --> dimensions exchanged
+    std::vector<spinor> VmT(m+1, spinor(sap_lattice_sites_per_block, c_vector(2, 0))); //V matrix transpose --> dimensions exchanged
 
     c_matrix Hm(m+1 , c_vector(m, 0)); //H matrix (Hessenberg matrix)
     c_vector gm(m + 1, 0); 
@@ -142,19 +141,20 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
     c_vector eta(m, 0);
 
 
-    c_matrix w(sap_lattice_sites_per_block, c_vector(2, 0)); //D*d
+    spinor w(sap_lattice_sites_per_block, c_vector(2, 0)); //D*d
     x = x0; //initial solution
     c_double beta; //not 1/g^2
 
-	c_matrix temp(sap_lattice_sites_per_block, c_vector(2, 0)); //I_B v
+	spinor temp(sap_lattice_sites_per_block, c_vector(2, 0)); //I_B v
     D_B(U, phi,temp, m0, block);
-    r0 = phi - temp; //r = b - A*x
+    r = phi - temp; //r = b - A*x
 	
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
+    err = sqrt(std::real(dot(r, r))); //Initial error
     if (print_message == true){std::cout << "||phi|| * tol = " << norm_phi * tol << std::endl;}
     while (k < restarts) {
-        beta = sqrt(std::real(dot(r0, r0))) + 0.0 * I_number;
-        VmT[0] = 1.0 / beta * r0;
+        beta = err + 0.0 * I_number;
+        VmT[0] = 1.0 / beta * r;
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
@@ -191,7 +191,6 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
         err = sqrt(std::real(dot(r, r)));
 
          if (err < tol * norm_phi) {
-			 it_count = k + 1;
              if (print_message == true) {
                  std::cout << "|GMRES for D_B (block " << block << ") converged in " << k + 1 << " restarts." << " Error " << err << std::endl;
                  std::cout << "------------------------------------------" << std::endl;
@@ -200,7 +199,6 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
              return 1;
              
          }
-         r0 = r;
          k++;
     }
     //if (print_message == true) {
@@ -213,7 +211,7 @@ int gmres_D_B(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c_matr
 //A_B = I_B * D_B^-1 * I_B^T v --> Extrapolation of D_B^-1 to the original lattice.
 //dim(v) = 2 * Ntot, dim(x) = 2 Ntot
 //v: input, x: output
-void I_D_B_1_It(const c_matrix& U, const c_matrix& v, c_matrix& x, const double& m0,const int& block){
+void I_D_B_1_It(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const int& block){
     using namespace SAPV;
     bool print_message = false; //good for testing GMRES   
     
@@ -233,7 +231,7 @@ void I_D_B_1_It(const c_matrix& U, const c_matrix& v, c_matrix& x, const double&
 }
 
 
-int SAP(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const int& nu){
+int SAP(const c_matrix& U, const spinor& v,spinor& x, const double& m0,const int& nu){
     /*
     Solves D x = v using the SAP method
     */
@@ -245,9 +243,8 @@ int SAP(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const
     double err;
     double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
 
-    c_matrix temp(Ntot, c_vector(2, 0)); 
-    c_matrix r(Ntot, c_vector(2, 0)); //residual
-    //set_zeros(x,Ntot,2); //Initialize x to zero
+    spinor temp(Ntot, c_vector(2, 0)); 
+    spinor r(Ntot, c_vector(2, 0)); //residual
     r = v - D_phi(U, x, m0); //r = v - D x
     for (int i = 0; i< nu; i++){
         for (auto block : SAP_RedBlocks){
@@ -272,7 +269,7 @@ int SAP(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const
     return 0; 
 }
 
-int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double& m0,const int& nu,const int& blocks_per_proc){
+int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc){
     /*
     Solves D x = v using the SAP method
     */
@@ -303,14 +300,13 @@ int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double&
     int start = rank * blocks_per_proc;
     int end = std::min(start + blocks_per_proc, sap_coloring_blocks);
 
-    c_matrix temp(Ntot, c_vector(2, 0)); 
-    c_matrix r(Ntot, c_vector(2, 0)); //residual
-    //set_zeros(x,Ntot,2); //Initialize x to zero
+    spinor temp(Ntot, c_vector(2, 0)); 
+    spinor r(Ntot, c_vector(2, 0)); //residual
 
     r = v - D_phi(U, x, m0); //r = v - D x
 
-    c_matrix local_x(Ntot, c_vector(2, 0)); // Local result for this process
-    c_matrix global_x(Ntot, c_vector(2, 0));
+    spinor local_x(Ntot, c_vector(2, 0)); // Local result for this process
+    spinor global_x(Ntot, c_vector(2, 0));
 
     //Prepare buffers for MPI communication
     std::vector<c_double> local_buffer(Ntot * 2);
@@ -373,6 +369,6 @@ int SAP_parallel(const c_matrix& U, const c_matrix& v,c_matrix &x, const double&
     }
    //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
     
-    return 0; //Not converged
+    return 0; 
 }
 
