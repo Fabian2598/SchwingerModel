@@ -1,24 +1,17 @@
 #include "gmres.h"
 #include <iomanip>
 
-//Solves D psi = phi using GMRES
-c_matrix gmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message) {
-    //GMRES for D^-1 phi
-    //phi --> right-hand side
-    //x0 --> initial guess  
-    //U --> configuration
-    //restarts --> number of restarts
-    //m --> number of iterations per cycle
 
+spinor gmres(spinor (*func)(const c_matrix&, const spinor&, const double&), const int& dim1, const int& dim2,
+const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& m, const int& restarts, const double& tol, 
+const bool& print_message) { 
     int k = 0; //Iteration number (restart cycle)
-    double err = 1;
+    double err;
 
-
-    c_matrix r(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
-    c_matrix r0(Ntot, c_vector(2, 0));
-
+    spinor r(dim1, c_vector(dim2, 0));  //r[coordinate][spin] residual
+   
     //VmT[column vector index][vector arrange in matrix form]
-    std::vector<c_matrix> VmT(m+1, c_matrix(Ntot, c_vector(2, 0))); //V matrix transpose-->dimensions exchanged
+    std::vector<c_matrix> VmT(m+1, c_matrix(dim1, c_vector(dim2, 0))); //V matrix transpose-->dimensions exchanged
 
     c_matrix Hm(m+1 , c_vector(m, 0)); //H matrix (Hessenberg matrix)
     c_vector gm(m + 1, 0); 
@@ -29,27 +22,29 @@ c_matrix gmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const
     c_vector eta(m, 0);
 
 
-    c_matrix w(Ntot, c_vector(2, 0)); //D*d
-    c_matrix x = x0; //initial solution
+    spinor w(dim1, c_vector(dim2, 0)); //D*d
+    spinor x = x0; //initial solution
     c_double beta;
 
 
-    r0 = phi - D_phi(U, x, m0); //r = b - A*x
+    r = phi - func(U, x, m0);//r = b - A*x
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
+    err = sqrt(std::real(dot(r, r))); //Initial error
     while (k < restarts) {
-        beta = sqrt(std::real(dot(r0, r0))) + 0.0 * I_number;
-        VmT[0] = 1.0 / beta * r0;
+        beta = err + 0.0 * I_number;
+        VmT[0] = 1.0 / beta * r;
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
             w = D_phi(U, VmT[j], m0); //w = D v_j
-  
+
+            //This part, the Gram-Schmidt process, is the bottleneck of the algorithm
             for (int i = 0; i <= j; i++) {
-                Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
+                Hm[i][j] = dot(w, VmT[i]); //(v_i^dagger, w)
                 w = w -  Hm[i][j] * VmT[i];
             }
-            //i.e. the Gramm Schmidt part is highly inefficient. 
-            //Could a better implementation of the dot product improve the execution time?
+            //-------------------------//
+
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
             if (std::real(Hm[j + 1][j]) > 0) {
                 VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
@@ -64,27 +59,22 @@ c_matrix gmres(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const
         //Solve the upper triangular system//
 		eta = solve_upper_triangular(Hm, gm,m);
         
-        for (int i = 0; i < 2 * Ntot; i++) {
-            int n = i / 2; int mu = i % 2;
+        for (int i = 0; i < dim1*dim2; i++) {
+            int n = i / dim2; int mu = i % dim2;
             for (int j = 0; j < m; j++) {
                 x[n][mu] = x[n][mu] + eta[j] * VmT[j][n][mu]; 
             }
         }
         //Compute the residual
-        r = phi - D_phi(U, x, m0);
+        r = phi - func(U, x, m0);
         err = sqrt(std::real(dot(r, r)));
-        // if (print_message == true) {
-        //     std::cout << "GMRES for D " << k + 1 << " restart cycle" << " Error " << err << std::endl;
-        // }
 
          if (err < tol* norm_phi) {
-			 it_count = k + 1;
              if (print_message == true) {
                  std::cout << "GMRES converged in " << k + 1 << " iterations" << " Error " << err << std::endl;
              }
              return x;
-         }
-         r0 = r;
+         };
          k++;
     }
     if (print_message == true) {

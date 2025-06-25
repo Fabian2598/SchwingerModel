@@ -1,53 +1,58 @@
 #ifndef GAUGECONF_H_INCLUDED
 #define GAUGECONF_H_INCLUDED
 #include "variables.h"
+#include "operator_overloads.h"
 #include <complex>  
 #include <iostream>
 #include <fstream>
 
-std::complex<double> RandomU1(); //defined on gauge_conf.cpp
-void Coordinates(); //Vectorized coordinates. Coords[x][t]. Computed only once
-void Aggregates(); //Chooses one of the schemes depending on the number of aggregates Nagg
-void AggregatesV1(); //Aggregation scheme 1
-void AggregatesV2(); //Aggregation scheme 2
-void SaveConf(std::vector<std::vector<std::complex<double>>>& Conf, char* Name); //Save Gauge configuration
-void PrintAggregates();
+/*
+Generate a random U(1) variable
+*/
+std::complex<double> RandomU1(); 
 
 
-//class GaugeConf;
 class GaugeConf {
 public:
-	GaugeConf() {} //Default constructor
-	//Constructor
-	GaugeConf(const int& Nspace, const int& Ntime) : Ns(Nspace), Nt(Ntime), Ntot(Nspace* Ntime) {
+	/*
+	Nspace: number of lattice points in the space direction
+	Ntime: number of lattice points in the time direction
+	*/
+	GaugeConf(const int& Nspace, const int& Ntime) : Nx(Nspace), Nt(Ntime), Ntot(Nspace* Ntime) {
 		Conf = std::vector<std::vector<std::complex<double>>>(Ntot, std::vector<std::complex<double>>(2, 0)); //Gauge configurationion copy
-		Plaquette01 = std::vector<std::complex<double>>(Ntot, 0); //Plaquettes
-		Staples = std::vector<std::vector<std::complex<double>>>(Ntot, std::vector<std::complex<double>>(2, 0)); //Staples
+		
 	}
-	//Copy constructor
-	GaugeConf(const GaugeConf& GConfig) : Ns(GConfig.getNs()), Nt(GConfig.getNt()), Ntot(Ns*Nt) {
-		Conf = GConfig.Conf; 
-		Plaquette01 = GConfig.Plaquette01; 
-		Staples = GConfig.Staples; 
-	}
-	~GaugeConf() {}; //Destructor
 
-	void initialization(); //Random initialization of the gauge configuration
-	void set_gconf(const std::vector<std::vector<std::complex<double>>>& CONF) {Conf = CONF;}
-	int getNs() const { return Ns; }
+	/*
+	Copy constructor
+	*/
+	GaugeConf(const GaugeConf& GConfig) : Nx(GConfig.getNx()), Nt(GConfig.getNt()), Ntot(Nx*Nt) {
+		Conf = GConfig.Conf; 
+	}
+	~GaugeConf() {}; 
+
+	/*
+	random initialization of the gauge configuration
+	*/
+	void initialize(); 
+
+	/*
+	set the gauge configuration
+	*/
+	void setGconf(const std::vector<std::vector<std::complex<double>>>& CONF) {Conf = CONF;}
+
+	/*
+	save Gauge configuration
+	*/
+	void saveConf(char* Name); 
+
+	int getNx() const { return Nx; }
 	int getNt() const { return Nt; }
 
-	//HMC needs access to these variables
-	std::vector<std::vector<std::complex<double>>> Conf; //Conf[Ntot][mu]; //The first entry is the number of lattice points, the second entry is mu
-	std::vector<std::vector<std::complex<double>>> Staples; //Staples
-	std::vector<std::complex<double>> Plaquette01; //Plaquette U_01(x)
-
-	void Compute_Staple(); //Computes staples
-	void Compute_Plaquette01(); //Computes plaquettes
-	double MeasureSp_HMC();
-	void PrintConf();
+	std::vector<std::vector<std::complex<double>>> Conf; //Conf[Nx Nt][2] 	
+	void printConf();
 private:
-	int Ns, Nt, Ntot;
+	int Nx, Nt, Ntot;
 };
 
 

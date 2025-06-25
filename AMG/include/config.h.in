@@ -5,7 +5,6 @@
 #define BLOCK_X ${BLOCK_X}
 #define BLOCK_T ${BLOCK_T}
 #define NTEST ${NTEST}
-#define NAGG ${NAGG}
 #define SAP_BLOCK_X ${SAP_BLOCK_X}
 #define SAP_BLOCK_T ${SAP_BLOCK_T}
 
