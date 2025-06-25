@@ -4,18 +4,9 @@
 
 spinor gmres(spinor (*func)(const c_matrix&, const spinor&, const double&), const int& dim1, const int& dim2,
 const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& m, const int& restarts, const double& tol, 
-const bool& print_message) {
-    //GMRES for D^-1 phi.
-    //phi --> right-hand side
-    //x0 --> initial guess  
-    //U --> configuration
-    //restarts --> number of restarts
-    //m --> number of iterations per cycle
-    //func --> function pointer to the matrix-vector operation
- 
+const bool& print_message) { 
     int k = 0; //Iteration number (restart cycle)
     double err;
-
 
     spinor r(dim1, c_vector(dim2, 0));  //r[coordinate][spin] residual
    
@@ -47,7 +38,7 @@ const bool& print_message) {
         for (int j = 0; j < m; j++) {
             w = D_phi(U, VmT[j], m0); //w = D v_j
 
-            //the Gramm Schmidt part is highly inefficient. 
+            //This part, the Gram-Schmidt process, is the bottleneck of the algorithm
             for (int i = 0; i <= j; i++) {
                 Hm[i][j] = dot(w, VmT[i]); //(v_i^dagger, w)
                 w = w -  Hm[i][j] * VmT[i];
@@ -79,7 +70,6 @@ const bool& print_message) {
         err = sqrt(std::real(dot(r, r)));
 
          if (err < tol* norm_phi) {
-			 it_count = k + 1;
              if (print_message == true) {
                  std::cout << "GMRES converged in " << k + 1 << " iterations" << " Error " << err << std::endl;
              }

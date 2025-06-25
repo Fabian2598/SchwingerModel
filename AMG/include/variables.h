@@ -5,26 +5,29 @@
 #include <complex>
 #include <vector>
 
-extern double pi;
-extern double it_count;
+constexpr double pi=3.14159265359;
 
 extern double coarse_time; //Time spent in the coarse grid solver
 extern double smooth_time; //Time spent in the smoother
-//Lattice variables
+
+//------------Lattice parameters--------------//
 namespace LV {
-    constexpr int Nx=NS; //We extract this value from config.h
-    constexpr int Nt = NT; //We extract this value from config.h
-    constexpr int block_x = BLOCK_X; //We extract this value from config.h
-    constexpr int block_t = BLOCK_T; //We extract this value from config.h
+    //Parameters for the lattice blocking used for the aggregation
+    //We extract the following values from config.h
+    constexpr int Nx=NS; 
+    constexpr int Nt = NT; 
+    constexpr int block_x = BLOCK_X; 
+    constexpr int block_t = BLOCK_T; 
     constexpr int x_elements = Nx/block_x; //Number of elements in the x direction
     constexpr int t_elements = Nt/block_t; //Number of elements in the t direction
     constexpr int Ntot = Nx*Nt; //Total number of lattice points
 }
+
 //------------Schwarz alternating procedure parameters--------------//
 namespace SAPV {
     using namespace LV; 
-    constexpr int sap_block_x = SAP_BLOCK_X; //We extract this value from config.h
-    constexpr int sap_block_t = SAP_BLOCK_T; //We extract this value from config.h
+    constexpr int sap_block_x = SAP_BLOCK_X; 
+    constexpr int sap_block_t = SAP_BLOCK_T; 
     constexpr int sap_x_elements = Nx/sap_block_x; //Number of lattice points in the x direction (without the spin index)
     constexpr int sap_t_elements = Nt/sap_block_t; //Number of lattice points in the t direction (without the spin index)
     constexpr int N_sap_blocks = sap_block_x * sap_block_t; //Number of Schwarz blocks
@@ -46,10 +49,10 @@ namespace AMGV{
     extern bool aggregates_initialized; //True if the aggregates are initialized
     extern int SAP_test_vectors_iterations; //Number of SAP iterations to smooth test vectors
     //Parameters for the coarse level solver
-    extern int gmres_restarts_coarse_level; //restart length for GMREs at the coarse level
+    extern int gmres_restarts_coarse_level; //restart length for GMRES at the coarse level
     extern int gmres_restart_length_coarse_level; //GMRES restart length for the coarse level
     extern double gmres_tol_coarse_level; //GMRES tolerance for the coarse level
-    //Parameters for the gmres as smoother (default version uses SAP)
+    //Parameters for GMRES as a smoother (the default AMG version uses SAP)
     extern int gmres_restarts_smoother; //GMRES iterations for the smoother
     //Paramaters for bi-cgstab as a coarse solver
     extern int bi_cgstab_Dc_iterations;
@@ -67,28 +70,26 @@ namespace FGMRESV {
 }
 
 
-//Vectorize coordinates for the lattice points
+//Coordinates vectorization for the lattice points
 extern std::vector<std::vector<int>>Coords; 
 void Coordinates();
 
- //Vectorized Coordinates for the aggregates. 
- //Intialized in Aggregates()
+//Coordinates vectorization for the aggregates 
+//Intialized in Aggregates()
 extern std::vector<int> XCoord; 
 extern std::vector<int> TCoord;
 extern std::vector<int> SCoord;
-extern std::vector<std::vector<int>> Agg; //Aggregates[number_of_aggregate][vectorized_coordinate of the lattice point]
-//The vectorization also takes into account the spin index
+extern std::vector<std::vector<int>> Agg; 
+//Aggregates[number_of_aggregate][vectorized_coordinate of the lattice point]
+//This vectorization also takes into account the spin index
 
 
 //--Coordinates of the neighbors to avoid recomputing them each time the operator D is called--//
-//Check matrix_operations.h for the definition of RightPB and LeftPB
-extern std::vector<std::vector<int>>x_1_t1;
-extern std::vector<std::vector<int>>x1_t_1;
+//Check dirac_operator.h for the definition of RightPB and LeftPB
 extern std::vector<std::vector<std::vector<int>>>RightPB; //Right periodic boundary
 extern std::vector<std::vector<std::vector<int>>>LeftPB; //Left periodic boundary
-//---------------------------------------------------------------------------------------------//
 
-
+//Indexes for the SAP blocks
 extern std::vector<std::vector<int>> SAP_Blocks; //SAP_Blocks[number_of_block][vectorized_coordinate of the lattice point]
 //The vectorization does not take into account the spin index, since both spin indices are in the same block.
 extern std::vector<int> SAP_RedBlocks; //Block index for the red blocks

@@ -1,46 +1,50 @@
 cmake_minimum_required(VERSION 3.26.5)
 set(CMAKE_CXX_STANDARD 20) 
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-#set(CMAKE_C_COMPILER "C:/msys64/ucrt64/bin/gcc.exe")
-#set(CMAKE_CXX_COMPILER "C:/msys64/ucrt64/bin/g++.exe")
-project(Schwinger_model VERSION 1.0)
+project(TwoGrid VERSION 1.0)
 
-# Create a sources variable with a link to all cpp files to compile
+#Source files
 set(SRC_FILES 
-    src/variables.cpp
-    src/gauge_conf.cpp
-    src/dirac_operator.cpp
-    src/bi_cgstab.cpp
-    src/sap.cpp
-    src/amg.cpp
-    src/main.cpp  
-    src/statistics.cpp
-    src/gmres.cpp
-    src/fgmres.cpp
+    src/variables.cpp       #Relevant parameters for the method
+    src/gauge_conf.cpp      #Gauge configuration class
+    src/dirac_operator.cpp  #Implementation of the Dirac operator
+    src/bi_cgstab.cpp       #Bi-CGStab solver for comparison
+    src/sap.cpp             #Schwarz alternating method
+    src/amg.cpp             #Two-grid implementation 
+    src/main.cpp            #Main program
+    src/gmres.cpp           #GMRES solver for comparison
+    src/fgmres.cpp          #Flexible GMRES solver that uses the two-grid preconditioner
 )
-#file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR} src/*.cpp)
 
-#Lattice dimensions
-set(NS "32") 
-set(NT "32") 
+#--------------------------Lattice dimensions---------------------------#
+set(NS "16") #Space
+set(NT "16") #Time
+#-----------------------------------------------------------------------#
 
-#Lattice blocks (used for aggregation)
+
+#------------------Lattice blocks used for aggregation------------------#
+# A_j_0 = L_j x {0}, A_j_1 = L_j x {1} (Volume times Spin component)
+set(BLOCK_X "2")
+set(BLOCK_T "2")
 #N_i / BLOCK_i has to be an integer number
-set(BLOCK_X "4")
-set(BLOCK_T "4")
-#The number of aggregates is 2 * BlockX * BlockT 
+#The number of aggregates is 2 * BlockX * BlockT
+#-----------------------------------------------------------------------#
 
-#Lattice blocks for Schwarz alternating method. They don't need to be the same as BLOCK_X and BLOCK_T
+#-------------Lattice blocks for Schwarz alternating method-------------# 
+#The blocking does not have to the same as for the aggregation
 set(SAP_BLOCK_X "4")
 set(SAP_BLOCK_T "4")
 #N_i / SAP_BLOCK_i has to be an integer number
 #One block contains 2 * N_x / SAP_BLOCK_x * N_t / SAP_BLOCK_t variables 
-#For parallelization we fix one block per core (i.e. SAP_BLOCK_X * SAP_BLOCK_T / 2 cores)
+#For parallelization we fix one block per core i.e. 
+#SAP_BLOCK_X * SAP_BLOCK_T / 2 cores
+#-----------------------------------------------------------------------#
 
 #Number of test vectors
 set(NTEST "20") 
-configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
+#The coarse grid matrix dimension is NTEST * 2 * BLOCK_X * BLOCK_T
 
+configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 add_executable("SM_${NS}x${NT}" ${SRC_FILES})
 
@@ -57,16 +61,17 @@ target_compile_options("SM_${NS}x${NT}" PRIVATE
 
 find_package(MPI REQUIRED)
 
+target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
+
+
 #find_package(BLAS)
 #include_directories(" /usr/include/cblas/")
 #target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX ${BLAS_LIBRARIES})
 
-target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
-
 #find_package(OpenMP REQUIRED)
 #target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
 
-#for windows ...
+#For windows with MinGW, use the following command to generate the makefile:
 #cmake -G "MinGW Makefiles" -DCMAKE_CXX_COMPILER="C:/msys64/ucrt64/bin/g++.exe" -DCMAKE_C_COMPILER="C:/msys64/ucrt64/bin/gcc.exe" ../
 
 

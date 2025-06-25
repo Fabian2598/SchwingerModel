@@ -1,15 +1,12 @@
 #include "bi_cgstab.h"
 
 
-// D x = phi
+//Solves Dx x = phi with the Bi-CGstab method
 spinor bi_cgstab(c_matrix (*func)(const c_matrix&, const spinor&, const double&), const int& dim1, const int& dim2,
 const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
-    //Bi_cgstab for D^-1 phi
-    //phi --> right-hand side
-    //x0 --> initial guess  
-    //U --> configuration
+
     int k = 0; //Iteration number
-    double err;
+    double err; // ||r||
 
     spinor r(dim1, c_vector(dim2, 0));  //r[coordinate][spin] residual
     spinor r_tilde(dim1, c_vector(dim2, 0));  //r[coordinate][spin] residual
@@ -23,6 +20,7 @@ const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const 
     r = phi - func(U, x, m0); //r = b - A*x
     r_tilde = r;
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
+
     while (k<max_iter) {
         rho_i = dot(r, r_tilde); //r . r_dagger
         if (k == 0) {
@@ -39,7 +37,6 @@ const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const 
         
         if (err < tol * norm_phi) {
             x = x + alpha * d;
-            it_count = k+1;
             if (print_message == true) {
                 std::cout << "Bi-CG-stab for D converged in " << k+1 << " iterations" << " Error " << err << std::endl;
             }

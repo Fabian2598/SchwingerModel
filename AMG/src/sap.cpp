@@ -1,7 +1,7 @@
 #include "sap.h"
 
 void SchwarzBlocks(){
-    using namespace SAPV;
+    using namespace SAPV; //SAP parameters namespace
     schwarz_blocks = true; //Schwarz blocks are initialized after calling this function
     int count, block;
     int x0, t0, x1, t1;
@@ -16,7 +16,7 @@ void SchwarzBlocks(){
                 for (int t = t0; t < t1; t++) {
                     SAP_Blocks[block][count++] = x * Nt+ t; 
                     //Each block also considers both spin components, 
-                    //but we only reference the lattice coordinates here.
+                    //so we only reference the lattice coordinates here.
                 }
             }
             if (count != sap_lattice_sites_per_block) {
@@ -36,7 +36,6 @@ void SchwarzBlocks(){
             else {
                 (block % 2 == 0) ? SAP_RedBlocks[block / 2] = block:SAP_BlackBlocks[block / 2] = block;                
             }
-            //-----------------------------------//
         }
     }
 }
@@ -55,9 +54,10 @@ void It_B_v(const spinor& v, spinor& x, const int& block){
         std::cout << "Error with vector dimensions in It_B_v" << std::endl;
         exit(1);
     } 
-    set_zeros(x,sap_lattice_sites_per_block,2); //Initialize x to zero
+    set_zeros(x,sap_lattice_sites_per_block,2); //Initialize the output vector to zero
 
     for (int j = 0; j < sap_lattice_sites_per_block; j++){
+        //Writing result to x 
         x[j][0] = v[SAP_Blocks[block][j]][0];
         x[j][1] = v[SAP_Blocks[block][j]][1];
     }
@@ -93,7 +93,7 @@ void D_B(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const i
         std::cout << "Error with vector dimensions in D_B" << std::endl;
         exit(1);
     }
-    c_matrix temp(Ntot, c_vector(2, 0)); //I_B v
+    spinor temp(Ntot, c_vector(2, 0)); //I_B v
     I_B_v(v,temp,block); 
     It_B_v( D_phi(U,temp, m0), x, block); //It_B_v sets x to zero first
 }
@@ -102,13 +102,6 @@ void D_B(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const i
 int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
     const double& m0, const int& m, const int& restarts, const double& tol, const int& block,
     const bool& print_message) {
-    //GMRES for D^-1 phi
-    //phi --> right-hand side
-    //x0 --> initial guess  
-    //x --> solution
-    //U --> configuration
-    //restarts --> number of restarts
-    //m --> number of iterations per cycle
     using namespace SAPV;
     if (print_message == true){
         std::cout << "------------------------------------------" << std::endl;
@@ -219,8 +212,8 @@ void I_D_B_1_It(const c_matrix& U, const spinor& v, spinor& x, const double& m0,
         std::cout << "Error with vector dimensions in I_D_B_1_It" << std::endl;
         exit(1);
     } 
-    c_matrix temp(sap_lattice_sites_per_block, c_vector(2, 0)); 
-    c_matrix temp2(sap_lattice_sites_per_block, c_vector(2, 0)); 
+    spinor temp(sap_lattice_sites_per_block, c_vector(2, 0)); 
+    spinor temp2(sap_lattice_sites_per_block, c_vector(2, 0)); 
     It_B_v(v,temp,block); //temp = I_B^T v
 
     gmres_D_B(U, temp, temp,temp2, m0, 
@@ -296,7 +289,6 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
     double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
 
     //Divide SAP_RedBlocks among processes
-    //Red blocks size equal to 
     int start = rank * blocks_per_proc;
     int end = std::min(start + blocks_per_proc, sap_coloring_blocks);
 

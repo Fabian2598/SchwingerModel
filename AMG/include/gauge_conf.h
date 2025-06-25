@@ -6,34 +6,51 @@
 #include <iostream>
 #include <fstream>
 
-std::complex<double> RandomU1(); //defined on gauge_conf.cpp
+/*
+Generate a random U(1) variable
+*/
+std::complex<double> RandomU1(); 
 
 
-
-//class GaugeConf;
 class GaugeConf {
 public:
-	GaugeConf() {} //Default constructor
-	//Constructor
+	/*
+	Nspace: number of lattice points in the space direction
+	Ntime: number of lattice points in the time direction
+	*/
 	GaugeConf(const int& Nspace, const int& Ntime) : Nx(Nspace), Nt(Ntime), Ntot(Nspace* Ntime) {
 		Conf = std::vector<std::vector<std::complex<double>>>(Ntot, std::vector<std::complex<double>>(2, 0)); //Gauge configurationion copy
 		
 	}
-	//Copy constructor
+
+	/*
+	Copy constructor
+	*/
 	GaugeConf(const GaugeConf& GConfig) : Nx(GConfig.getNx()), Nt(GConfig.getNt()), Ntot(Nx*Nt) {
 		Conf = GConfig.Conf; 
 	}
-	~GaugeConf() {}; //Destructor
+	~GaugeConf() {}; 
 
-	void initialization(); //Random initialization of the gauge configuration
-	void set_gconf(const std::vector<std::vector<std::complex<double>>>& CONF) {Conf = CONF;}
-	void SaveConf(char* Name); //Save Gauge configuration
+	/*
+	random initialization of the gauge configuration
+	*/
+	void initialize(); 
+
+	/*
+	set the gauge configuration
+	*/
+	void setGconf(const std::vector<std::vector<std::complex<double>>>& CONF) {Conf = CONF;}
+
+	/*
+	save Gauge configuration
+	*/
+	void saveConf(char* Name); 
+
 	int getNx() const { return Nx; }
 	int getNt() const { return Nt; }
 
-	std::vector<std::vector<std::complex<double>>> Conf; //Conf[Ntot][mu]; 
-	//The first entry is the number of lattice points, the second entry is mu
-	void PrintConf();
+	std::vector<std::vector<std::complex<double>>> Conf; //Conf[Nx Nt][2] 	
+	void printConf();
 private:
 	int Nx, Nt, Ntot;
 };

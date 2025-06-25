@@ -1,10 +1,8 @@
 #include "variables.h"
 
-//We define the variables that we declared in variables.h
-double pi=3.14159265359;
-double it_count = 0;
+double coarse_time = 0.0; //Time spent in the coarse grid solver
+double smooth_time = 0.0; //Time spent in the smoother
 
-//---Vectorized lattice coordinates---//
 std::vector<std::vector<int>>Coords = std::vector<std::vector<int>>(LV::Nx, std::vector<int>(LV::Nt, 0));
 void Coordinates() {
 	for (int x = 0; x < LV::Nx; x++) {
@@ -22,21 +20,16 @@ std::vector<int> TCoord = std::vector<int>(2*LV::Ntot, 0);
 std::vector<int> SCoord = std::vector<int>(2*LV::Ntot, 0);
 
 //--Coordinates of the neighbors to avoid recomputing them each time the operator D is called--//
-std::vector<std::vector<int>>x_1_t1 = std::vector<std::vector<int>>(LV::Nx, std::vector<int>(LV::Nt, 0));
-std::vector<std::vector<int>>x1_t_1 = std::vector<std::vector<int>>(LV::Nx, std::vector<int>(LV::Nt, 0));
 std::vector<std::vector<std::vector<int>>>LeftPB = std::vector<std::vector<std::vector<int>>>(LV::Nx, 
-    std::vector<std::vector<int>>(LV::Nt,std::vector<int>(2, 0)));
+    std::vector<std::vector<int>>(LV::Nt,std::vector<int>(2, 0))); //LeftPB[x][t][mu]
 std::vector<std::vector<std::vector<int>>>RightPB = std::vector<std::vector<std::vector<int>>>(LV::Nx,
-     std::vector<std::vector<int>>(LV::Nt, std::vector<int>(2, 0)));
+     std::vector<std::vector<int>>(LV::Nt, std::vector<int>(2, 0))); //RightPB[x][t][mu]
 
 //--SAP blocks--//
 std::vector<std::vector<int>>SAP_Blocks = std::vector<std::vector<int>>(SAPV::sap_block_x*SAPV::sap_block_t, 
     std::vector<int>(SAPV::sap_x_elements*SAPV::sap_t_elements, 0));
 std::vector<int> SAP_RedBlocks = std::vector<int>(SAPV::sap_coloring_blocks, 0); //Red blocks
 std::vector<int> SAP_BlackBlocks = std::vector<int>(SAPV::sap_coloring_blocks, 0); //Black blocks
-
-double coarse_time = 0.0; //Time spent in the coarse grid solver
-double smooth_time = 0.0; //Time spent in the smoother
 
 namespace SAPV {
     bool schwarz_blocks = false; //Schwarz blocks are not initialized by default
