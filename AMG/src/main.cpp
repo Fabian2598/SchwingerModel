@@ -54,9 +54,10 @@ int main(int argc, char **argv) {
     FGMRESV::fgmres_restarts = 50; //Number of restarts for FGMRES
     if (rank == 0){
         std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
-        std::cout << "Nx = " << Nx << " Nt = " << Nt << std::endl;
-        std::cout << "Lattice dimension = " << (Nx * Nt) << std::endl;
-        std::cout << "Number of entries of the Dirac matrix = (" << (2 * Nx * Nt) << ")^2 = " << (2 * Nx * Nt) * (2 * Nx * Nt) << std::endl;
+        std::cout << " Nx = " << Nx << " Nt = " << Nt << std::endl;
+        std::cout << " Lattice dimension = " << (Nx * Nt) << std::endl;
+        std::cout << " Number of entries of the Dirac matrix = (" << (2 * Nx * Nt) << ")^2 = " << (2 * Nx * Nt) * (2 * Nx * Nt) << std::endl;
+        std::cout << " Bare mass parameter m0 = " << m0 << std::endl;
         std::cout << "-----------------------------------" << std::endl;
         std::cout << " Lattice blocking for the aggregates" << std::endl;
         std::cout << "| block_x = " << block_x << " block_t = " << block_t << std::endl;
@@ -90,8 +91,7 @@ int main(int argc, char **argv) {
         std::cout << "| Number of test vectors = " << AMGV::Ntest << std::endl;
         std::cout << "| nu1 (pre-smoothing) = " << AMGV::nu1 << " nu2 (post-smoothing) = " << AMGV::nu2 << std::endl;
         std::cout << "| Number of iterations for improving the interpolator = " << AMGV::Nit << std::endl;
-        std::cout << "| Dc dimension = " << AMGV::Ntest * AMGV::Nagg << std::endl;
-        std::cout << "| m0 = " << m0 << std::endl;
+        std::cout << "| Coarse grid matrix (Dc) dimension = " << AMGV::Ntest * AMGV::Nagg << std::endl;
         std::cout << "| Number of SAP iterations to smooth test vectors = " << AMGV::SAP_test_vectors_iterations << std::endl; 
         std::cout << "| Restart length of GMRES at the coarse level = " << AMGV::gmres_restart_length_coarse_level << std::endl;
         std::cout << "| Restarts of GMRES at the coarse level = " << AMGV::gmres_restarts_coarse_level << std::endl;
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
         std::cout << " FGMRES with AMG preconditioning parameters" << std::endl;
         std::cout << "| FGMRES restart length = " << FGMRESV::fgmres_restart_length << std::endl;
         std::cout << "| FGMRES restarts = " << FGMRESV::fgmres_restarts << std::endl;
-        std::cout << "| FGMRES = " << FGMRESV::fgmres_tolerance << std::endl;
+        std::cout << "| FGMRES tolerance = " << FGMRESV::fgmres_tolerance << std::endl;
         std::cout << "*****************************************************************************************************" << std::endl;
     }
     
