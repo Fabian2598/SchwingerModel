@@ -10,6 +10,11 @@ constexpr double pi=3.14159265359;
 extern double coarse_time; //Time spent in the coarse grid solver
 extern double smooth_time; //Time spent in the smoother
 
+extern std::vector<double> r_norms;  //Vector with the norms of the residuals for each iteration
+extern int rand_iteration; //Random iteration for measuring the residual of the coarse grid solution
+extern int it_count; 
+
+
 //------------Lattice parameters--------------//
 namespace LV {
     //Parameters for the lattice blocking used for the aggregation

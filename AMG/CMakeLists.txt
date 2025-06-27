@@ -32,7 +32,7 @@ set(BLOCK_T "2")
 
 #-------------Lattice blocks for Schwarz alternating method-------------# 
 #The blocking does not have to the same as for the aggregation
-set(SAP_BLOCK_X "4")
+set(SAP_BLOCK_X "2")
 set(SAP_BLOCK_T "4")
 #N_i / SAP_BLOCK_i has to be an integer number
 #One block contains 2 * N_x / SAP_BLOCK_x * N_t / SAP_BLOCK_t variables 

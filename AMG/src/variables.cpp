@@ -3,6 +3,12 @@
 double coarse_time = 0.0; //Time spent in the coarse grid solver
 double smooth_time = 0.0; //Time spent in the smoother
 
+//Vector with the norms of the residuals for each iteration
+std::vector<double> r_norms = std::vector<double>(50,0); 
+int rand_iteration;
+int it_count = -1; 
+
+
 std::vector<std::vector<int>>Coords = std::vector<std::vector<int>>(LV::Nx, std::vector<int>(LV::Nt, 0));
 void Coordinates() {
 	for (int x = 0; x < LV::Nx; x++) {

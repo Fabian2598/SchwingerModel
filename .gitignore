@@ -13,6 +13,8 @@ AMG/build
 AMG/confs
 AMG/.ipynb_checkpoints
 AMG/.vscode
+AMG/*.pdf
+AMG/ResidualNorm.ipynb
 confs
 bi_gcstab.cpp
 conjugate_gradient_test.cpp

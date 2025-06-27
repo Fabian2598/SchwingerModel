@@ -7,6 +7,7 @@
 #include "bi_cgstab.h"
 #include "fgmres.h"
 #include "mpi.h"
+#include <random>
 
 //Formats decimal numbers
 //For opening file with confs 
@@ -26,14 +27,21 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    //srand(19);
+    srand(18);
+    //srand(time(0));
 
-    srand(time(0));
-    
+    if (rank == 0){
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> distrib(5, 20);
+        rand_iteration = distrib(gen);
+        std::cout << "Random iteration for measuring the residual of the coarse grid solution: " << rand_iteration << std::endl;
+    }
+
     initialize_matrices(); //Initialize gamma matrices, identity and unit vectors
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    double m0 = -0.19494584837545137; 
+    double m0 = -0.75;
 
     //Default values in variables.cpp
     sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
@@ -43,12 +51,13 @@ int main(int argc, char **argv) {
     sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
 
     AMGV::gmres_restarts_coarse_level = 20; 
-    AMGV::gmres_restart_length_coarse_level = 140; //GMRES restart length for the coarse level
-    AMGV::gmres_tol_coarse_level = 1e-3; //GMRES tolerance for the coarse level
+    AMGV::gmres_restart_length_coarse_level = 100; //GMRES restart length for the coarse level
+    AMGV::gmres_tol_coarse_level = 1e-2; //GMRES tolerance for the coarse level
     AMGV::nu1 = 0; //Pre-smoothing iterations
     AMGV::nu2 = 2; //Post-smoothing iterations
     AMGV::Nit = 3; //Number of iterations for improving the interpolator
 
+    
     FGMRESV::fgmres_tolerance = 1e-10; //Tolerance for FGMRES
     FGMRESV::fgmres_restart_length = 20; //Restart length for FGMRES
     FGMRESV::fgmres_restarts = 50; //Number of restarts for FGMRES
@@ -106,7 +115,7 @@ int main(int argc, char **argv) {
     
     GaugeConf GConf = GaugeConf(Nx, Nt);
     GConf.initialize(); //Initialize a random gauge configuration
-
+   
     //Open conf from file//
     /*
     {
@@ -157,14 +166,14 @@ int main(int argc, char **argv) {
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;    
     }
-
+/*
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl;}   
     startT = MPI_Wtime();
     spinor xfgmres = fgmresSAP(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
-
+*/
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
     startT = MPI_Wtime();
@@ -173,6 +182,18 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
+    if (rank == 0){
+        std::ofstream outfile("r_norm.txt"); // Choose your file name here
+        if (!outfile) {
+        std::cerr << "Error opening file for writing!" << std::endl;
+        } else {
+        for (const auto& val : r_norms) {
+            outfile << val << std::endl;
+        }
+        outfile.close();
+        }
+    }
+
     MPI_Finalize();
     return 0;
 }

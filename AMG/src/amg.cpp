@@ -224,6 +224,8 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 
 	while(k < max_iter){
 		//Pre-smoothing
+		if (it_count > -1){it_count++;} //Increment iteration count
+
 		if (nu1>0){
 			//gmres smoothing
 			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu1, 1e-10, false);
@@ -355,6 +357,9 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
     spinor x = x0; //initial solution
     c_double beta; //not 1/g^2 from simulations
 
+	int rank; 
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
 	r = (dim1 == LV::Ntot) ?  phi - D_phi(U,x,m0) : phi - Pt_D_P(x); //r = b - A*x
 	
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
@@ -396,7 +401,16 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
 
         //Compute the residual
 		r = (dim1 == LV::Ntot) ?  phi - D_phi(U,x,m0) : phi - Pt_D_P(x);
+		//Compute the error
         err = sqrt(std::real(dot(r, r)));
+
+		if (it_count == rand_iteration){
+			if (dim1 != LV::Ntot && rank == 0){	
+				r_norms[k] = err;
+				std::cout << "GMRES iteration " << k + 1 << " Error " << r_norms[k] << " it_count = " << it_count << std::endl;
+			}
+		}
+		
 
          if (err < tol* norm_phi) {
              if (print_message == true) {

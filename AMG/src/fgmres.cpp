@@ -130,6 +130,8 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
     amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
     //--------------------------------------------------//
 
+    it_count = 0; //Iteration count for saving the residual norm of the coarse grid solver after the set up phase
+
     err = sqrt(std::real(dot(r, r))); //Initial error
     while (k < restarts) {
         beta = err + 0.0 * I_number;
