@@ -26,14 +26,14 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    //srand(19);
+    srand(19);
 
-    srand(time(0));
+    //srand(time(0));
     
     initialize_matrices(); //Initialize gamma matrices, identity and unit vectors
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    double m0 = -0.19494584837545137; 
+    double m0 = -0.7; 
 
     //Default values in variables.cpp
     sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
@@ -43,8 +43,8 @@ int main(int argc, char **argv) {
     sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
 
     AMGV::gmres_restarts_coarse_level = 20; 
-    AMGV::gmres_restart_length_coarse_level = 140; //GMRES restart length for the coarse level
-    AMGV::gmres_tol_coarse_level = 1e-3; //GMRES tolerance for the coarse level
+    AMGV::gmres_restart_length_coarse_level = 20; //GMRES restart length for the coarse level
+    AMGV::gmres_tol_coarse_level = 0.1; //GMRES tolerance for the coarse level
     AMGV::nu1 = 0; //Pre-smoothing iterations
     AMGV::nu2 = 2; //Post-smoothing iterations
     AMGV::Nit = 3; //Number of iterations for improving the interpolator
@@ -108,12 +108,13 @@ int main(int argc, char **argv) {
     GConf.initialize(); //Initialize a random gauge configuration
 
     //Open conf from file//
+    
     /*
     {
         //Open Conf File//
         char NameData[500];
         //sprintf(NameData, "../confs/2D_U1_Ns%d_Nt%d_b%s_m%s_%d.txt", Ns, Nt, format(beta).c_str(), format(m0).c_str(), n);
-        sprintf(NameData, "L016x016_b02000_k27700_%d.ctxt",700);
+        sprintf(NameData, "/wsgjsc/home/nietocastellanos1/Documents/Schwinger/confs/b2_32x32/kappa0268/L032x032_b02000_k26800_%d.ctxt",149);
         std::ifstream infile(NameData);
         if (!infile) {
             std::cerr << "File not found on rank " << rank << std::endl;
@@ -131,7 +132,7 @@ int main(int argc, char **argv) {
         infile.close();
     }
     MPI_Barrier(MPI_COMM_WORLD);
-    */
+   */ 
 
 
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 

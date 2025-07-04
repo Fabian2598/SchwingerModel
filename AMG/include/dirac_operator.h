@@ -2,6 +2,7 @@
 #define DIRAC_OPERATOR_H
 #include "variables.h"
 #include "operator_overloads.h"
+#include "omp.h"
 
 extern std::vector<c_matrix> gamma_mat;  //Pauli matrices
 extern c_double I_number; //imaginary number

@@ -32,6 +32,7 @@ void initialize_matrices() {
 spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0) {
 	using namespace LV;
 	spinor Dphi(Ntot, c_vector(2, 0)); //Dphi[Nx Nt][2]
+//#pragma omp parallel for
 	for (int x = 0; x < Nx; x++) {
 		for (int t = 0; t < Nt; t++) {
 			int n = Coords[x][t]; //n = x * Nt + t
@@ -48,6 +49,7 @@ spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0) {
 			}
 		}
 	}
+//#pragma omp barrier
 	return Dphi;
 }
 

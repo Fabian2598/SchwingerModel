@@ -7,7 +7,6 @@
 #include <fstream>
 
 c_double RandomU1(); //defined on gauge_conf.cpp
-void Coordinates(); //Vectorized coordinates. Coords[x][t]. Computed only once
 void SaveConf(c_matrix& Conf, char* Name); //Save Gauge configuration
 
 //class GaugeConf;
@@ -16,13 +15,13 @@ class GaugeConf {
 public:
 	GaugeConf() {} //Default constructor
 	//Constructor
-	GaugeConf(const int& Nspace, const int& Ntime) : Ns(Nspace), Nt(Ntime), Ntot(Nspace* Ntime) {
+	GaugeConf(const int& Nspace, const int& Ntime) : Nx(Nspace), Nt(Ntime), Ntot(Nspace* Ntime) {
 		Conf = c_matrix(Ntot, c_vector(2, 0)); //Gauge configurationion copy
 		Plaquette01 = c_vector(Ntot, 0); //Plaquettes
 		Staples = c_matrix(Ntot, c_vector(2, 0)); //Staples
 	}
 	//Copy constructor
-	GaugeConf(const GaugeConf& GConfig) : Ns(GConfig.getNs()), Nt(GConfig.getNt()), Ntot(Ns*Nt) {
+	GaugeConf(const GaugeConf& GConfig) : Nx(GConfig.getNx()), Nt(GConfig.getNt()), Ntot(Nx*Nt) {
 		Conf = GConfig.Conf; 
 		Plaquette01 = GConfig.Plaquette01; 
 		Staples = GConfig.Staples; 
@@ -30,7 +29,7 @@ public:
 	~GaugeConf() {}; //Destructor
 
 	void initialization(); //Random initialization of the gauge configuration
-	int getNs() const { return Ns; }
+	int getNx() const { return Nx; }
 	int getNt() const { return Nt; }
 
 	//HMC needs access to these variables
@@ -43,7 +42,7 @@ public:
 	double MeasureSp_HMC();
 	double Compute_gaugeAction(const double& beta); //Computes the gauge action
 private:
-	int Ns, Nt, Ntot;
+	int Nx, Nt, Ntot;
 };
 
 
