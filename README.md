@@ -1,6 +1,6 @@
 # SchwingerModel
 
-Simulation of the two-flavor Schwinger Model with degenerate fermions. The simulation is performed using pseudofermions, HMC and (for the moment) conjugate gradient to invert $(DD^\dagger)^{-1}$. Later multigrid will replace conjugate gradient, so temporarily ignore the AMG directory. Check the wiki for detailed information of the code.
+Simulation of the two-flavor Schwinger Model with degenerate fermions. The simulation is performed using pseudofermions, HMC and (for the moment) conjugate gradient to invert $(DD^\dagger)^{-1}$. Later multigrid will replace conjugate gradient, so temporarily ignore the AMG directory.
 
 The code implements Wilson fermions 
 
