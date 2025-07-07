@@ -3,6 +3,7 @@
 #include <fstream>
 #include <string>
 #include "hmc.h"
+#include <format>
 
 
 int main() {
@@ -52,14 +53,15 @@ int main() {
     else {
         Masses = linspace(m0_min, m0_max, Nm0);
     }
-    char NameData[500], Data_str[500];
-    sprintf(NameData, "2D_U1_Ns%d_Nt%d_Meas%d.txt", LV::Nx, LV::Nt, Nmeas);
+    char Data_str[500];
+    std::ostringstream NameData;
+    NameData << "2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_Meas" << Nmeas << ".txt";
 
     std::ofstream Datfile;
-    Datfile.open(NameData);
+    Datfile.open(NameData.str());
     for (double m0 : Masses) {
         std::cout << "**********************************************************************" << std::endl;
-        std::cout << "* PARAMETERS" << std::endl;
+        std::cout << "*                              PARAMETERS" << std::endl;
         std::cout << "* Nx = " << LV::Nx << ", Nt = " << LV::Nt << std::endl;
         std::cout << "* m0 = " << m0 << ", kappa = " << 1/(2*(m0+2)) << std::endl;
         std::cout << "* beta = " << beta << std::endl;
@@ -79,11 +81,13 @@ int main() {
         std::cout << "Average gauge action / volume: gS = " << hmc.getgS() << " dgS = " << hmc.getdgS() << std::endl;
         std::cout << "Acceptance rate: " << hmc.getacceptance_rate() << std::endl;
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-        sprintf(Data_str, "%-30.17g%-30.17g%-30d%-30d%-30d\n", beta, m0, Ntherm, Nmeas, Nsteps);
-        sprintf(Data_str, "%-30.17g%-30.17g\n", hmc.getEp(), hmc.getdEp());
-        sprintf(Data_str, "%-30.17g%-30.17g\n", hmc.getgS(), hmc.getdgS());
-        sprintf(Data_str, "%-30.17g", elapsed_secs);
-        Datfile << Data_str;
+
+        Datfile << std::format("{:<30.17g}{:<30.17g}{:<30d}{:<30d}{:<30d}\n", beta, m0, Ntherm, Nmeas, Nsteps);
+        Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getEp(), hmc.getdEp());
+        Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getgS(), hmc.getdgS());
+        Datfile << std::format("{:<30.17g}", elapsed_secs);
+        
+ 
         std::cout << "Time = " << elapsed_secs << " s" << std::endl;
         std::cout << "------------------------------" << std::endl;
 

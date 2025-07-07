@@ -139,9 +139,13 @@ void HMC::HMC_algorithm(){
         SpVector[i] = GConf.MeasureSp_HMC(); //Plaquettes are computed when the action is called
         gAction[i] = GConf.Compute_gaugeAction(beta); //Gauge action
 		if (saveconf == 1) {
-			char NameData[500];
-            sprintf(NameData, "2D_U1_Ns%d_Nt%d_b%s_m%s_%d.ctxt", Nx, Nt, format(beta).c_str(), format(m0).c_str(), i); 
-            SaveConf(GConf.Conf, NameData);
+			std::ostringstream NameData;
+                NameData << "2D_U1_Ns" << Nx << "_Nt" << Nt
+                << "_b" << format(beta)
+                << "_m" << format(m0)
+                << "_" << i << ".ctxt";
+            //sprintf(NameData, "2D_U1_Ns%d_Nt%d_b%s_m%s_%d.ctxt", Nx, Nt, format(beta).c_str(), format(m0).c_str(), i); 
+            SaveConf(GConf.Conf, NameData.str());
 		}
 		for (int j = 0; j < Nsteps; j++) { HMC_Update(); } //Decorrelation
     }

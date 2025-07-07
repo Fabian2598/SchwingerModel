@@ -1,20 +1,18 @@
 #include "gauge_conf.h"
 
 
-
-//Random U1 variable
 c_double RandomU1() {
+	//Random angle in (0,2*pi) with uniform distribution 
 	double cociente = ((double) rand() / (RAND_MAX));
     double theta = 2.0*pi * cociente;
 	c_double z(cos(theta), sin(theta));
 	return z;
 }
 
-//Initialize a random conf
 void GaugeConf::initialization() {
 	for (int i = 0; i < Ntot; i++) {
 		for (int mu = 0; mu < 2; mu++) {
-			Conf[i][mu] = RandomU1(); //Conf[Ns x Nt][mu in {0,1}]
+			Conf[i][mu] = RandomU1(); //Conf[Nx Nt][mu in {0,1}]
 		}
 	}
 }
@@ -70,29 +68,34 @@ void GaugeConf::Compute_Staple() {
     }
 }
 
-//Save Gauge configuration //I could make this a member function ...
-void SaveConf(c_matrix& Conf,char* Name) {
-	char NameData[500], Data_str[500];
-	sprintf(NameData, Name);
-	std::ofstream Datfile;
-	Datfile.open(NameData);
-	using namespace LV;
-	for (int x = 0; x < Nx; x++) {
-		for (int t = 0; t < Nt; t++) {
-			int i = x * Nx + t;
-			for (int mu = 0; mu < 2; mu++) {
-				sprintf(Data_str, "%-30d%-30d%-30d%-30.17g%-30.17g\n", x, t, mu, std::real(Conf[i][mu]), std::imag(Conf[i][mu]));
-				Datfile << Data_str;
-			}
-		}
-	}
-	Datfile.close();
+/*
+Save Gauge configuration
+*/ 
+void SaveConf(c_matrix& Conf, const std::string& Name) {
+    std::ofstream Datfile(Name);
+    if (!Datfile.is_open()) {
+        std::cerr << "Error opening file: " << Name << std::endl;
+        return;
+    }
+    using namespace LV;
+    for (int x = 0; x < Nx; x++) {
+        for (int t = 0; t < Nt; t++) {
+            int i = x * Nx + t;
+            for (int mu = 0; mu < 2; mu++) {
+                Datfile << x
+                        << std::setw(30) << t
+                        << std::setw(30) << mu
+                        << std::setw(30) << std::setprecision(17) << std::scientific << std::real(Conf[i][mu])
+                        << std::setw(30) << std::setprecision(17) << std::scientific << std::imag(Conf[i][mu])
+                        << "\n";
+            }
+        }
+    }
 }
 
 
-
 double GaugeConf::MeasureSp_HMC() {
-	//Plaquettes have to be computed at the HMC update
+	//Plaquettes have to be computed during the HMC update
 	double Sp = 0.0;
 	for (int i = 0; i < Ntot; i++) {
 		Sp += std::real(Plaquette01[i]);	
