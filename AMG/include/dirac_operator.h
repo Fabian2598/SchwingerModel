@@ -44,6 +44,13 @@ inline void periodic_boundary() {
 			for (int mu = 0; mu < 2; mu++) {
 				RightPB[x][t][mu] = Coords[mod(x + hat_mu[mu][1], Nx)][mod(t + hat_mu[mu][0], Nt)]; 
 				LeftPB[x][t][mu] = Coords[mod(x - hat_mu[mu][1], Nx)][mod(t - hat_mu[mu][0], Nt)];	
+				SignR[x][t][mu] = (mu == 0 && t == Nt - 1) ? -1 : 1; //sign for the right boundary in time
+				SignL[x][t][mu] = (mu == 0 && t == 0) ? -1 : 1; //sign for the left boundary in time
+
+				RightPBT[Coords[x][t]][mu] = RightPB[x][t][mu];
+				LeftPBT[Coords[x][t]][mu] = LeftPB[x][t][mu];
+				SignRT[Coords[x][t]][mu] = SignR[x][t][mu];
+				SignLT[Coords[x][t]][mu] = SignL[x][t][mu];
 			}
 		}
 	}
@@ -105,5 +112,7 @@ inline std::complex<double> lfb(const spinor& phi, const int& x, const int& t, c
 	m0: mass parameter
 */
 spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0);
+
+spinor D_phi_old(const c_matrix& U, const spinor& phi, const double& m0);
 
 #endif

@@ -4,8 +4,8 @@ std::vector<c_matrix> gamma_mat(2,
 	c_matrix(2, c_vector(2, 0))
 );  //Pauli matrices
 c_double I_number(0, 1); //imaginary number
-c_matrix Identity(LV::Ntot, c_vector(2, 0));
-std::vector<std::vector<int>>hat_mu(LV::Ntot, std::vector<int>(2, 0)); //hat_mu[mu][2] = {hat_mu_t, hat_mu_x}
+c_matrix Identity(2, c_vector(2, 0));
+std::vector<std::vector<int>>hat_mu(2, std::vector<int>(2, 0)); //hat_mu[mu][2] = {hat_mu_t, hat_mu_x}
 
 void initialize_matrices() {
 	/*
@@ -32,7 +32,33 @@ void initialize_matrices() {
 spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0) {
 	using namespace LV;
 	spinor Dphi(Ntot, c_vector(2, 0)); //Dphi[Nx Nt][2]
-//#pragma omp parallel for
+
+	for (int n = 0; n < Ntot; n++) {
+		//n = x * Nt + t
+		Dphi[n][0] = (m0 + 2) * phi[n][0] -0.5 * ( 
+			U[n][0] * SignRT[n][0] * (phi[RightPBT[n][0]][0] - phi[RightPBT[n][0]][1]) 
+		+   U[n][1] * SignRT[n][1] * (phi[RightPBT[n][1]][0] + I_number * phi[RightPBT[n][1]][1])
+		+   std::conj(U[LeftPBT[n][0]][0]) * SignLT[n][0] * (phi[LeftPBT[n][0]][0] + phi[LeftPBT[n][0]][1])
+		+   std::conj(U[LeftPBT[n][1]][1]) * SignLT[n][1] * (phi[LeftPBT[n][1]][0] - I_number * phi[LeftPBT[n][1]][1])
+		);
+
+		Dphi[n][1] = (m0 + 2) * phi[n][1] -0.5 * ( 
+			U[n][0] * SignRT[n][0] * (-phi[RightPBT[n][0]][0] + phi[RightPBT[n][0]][1]) 
+		+   U[n][1] * SignRT[n][1] * (-I_number*phi[RightPBT[n][1]][0] + phi[RightPBT[n][1]][1])
+		+   std::conj(U[LeftPBT[n][0]][0]) * SignLT[n][0] * (phi[LeftPBT[n][0]][0] + phi[LeftPBT[n][0]][1])
+		+   std::conj(U[LeftPBT[n][1]][1]) * SignLT[n][1] * (I_number*phi[LeftPBT[n][1]][0] + phi[LeftPBT[n][1]][1])
+		);
+			
+	}
+	
+
+	return Dphi;
+}
+
+spinor D_phi_old(const c_matrix& U, const spinor& phi, const double& m0) {
+	using namespace LV;
+	spinor Dphi(Ntot, c_vector(2, 0)); //Dphi[Nx Nt][2]
+
 	for (int x = 0; x < Nx; x++) {
 		for (int t = 0; t < Nt; t++) {
 			int n = Coords[x][t]; //n = x * Nt + t
@@ -49,7 +75,7 @@ spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0) {
 			}
 		}
 	}
-//#pragma omp barrier
+
 	return Dphi;
 }
 
