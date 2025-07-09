@@ -109,7 +109,7 @@ int main(){
 
 
     //------These calls are necessary to use D_phi------//
-    initialize_matrices(); //Intialize gamma matrices, identity and unit vectors
+    //initialize_matrices(); //Intialize gamma matrices, identity and unit vectors
     Coordinates(); //Compute vectorized coordinates
     periodic_boundary(); //Compute right and left periodic boundary
     //--------------------------------------------------//

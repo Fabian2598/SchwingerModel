@@ -55,27 +55,6 @@ private:
 	
 };
 
-
-//Save Momentum configuration (useful for testing)
-inline void SavePIConf(const spinor& PConf, char* Name) {
-
-	using namespace LV;
-	char NameData[500], Data_str[500];
-	sprintf(NameData, Name);
-	std::ofstream Datfile;
-	Datfile.open(NameData);
-	for (int x = 0; x < Nx; x++) {
-		for (int t = 0; t < Nt; t++) {
-			int i = x * Nx + t;
-			for (int mu = 0; mu < 2; mu++) {
-				sprintf(Data_str, "%-30d%-30d%-30d%-30.17g\n", x, t, mu, PConf[i][mu]);
-				Datfile << Data_str;
-			}
-		}
-	}
-	Datfile.close();
-}
-
 inline re_field RandomMomentum() {
 	using namespace LV;
 	//We use a Gaussian distribution to sample the momenta

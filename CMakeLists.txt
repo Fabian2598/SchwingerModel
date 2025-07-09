@@ -1,30 +1,28 @@
 cmake_minimum_required(VERSION 3.26.5)
 set(CMAKE_CXX_STANDARD 20) 
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-#set(CMAKE_C_COMPILER "C:/msys64/ucrt64/bin/gcc.exe")
-#set(CMAKE_CXX_COMPILER "C:/msys64/ucrt64/bin/g++.exe")
 project(Schwinger_model VERSION 1.0)
 
 
 set(SOURCES
-    src/statistics.cpp
-    src/variables.cpp
-    src/main.cpp   
-    src/gauge_conf.cpp
-    src/dirac_operator.cpp
-    src/conjugate_gradient.cpp
-    src/hmc.cpp
+    src/statistics.cpp          #Functions to perform statistical analysis
+    src/variables.cpp           #Relevant parameters for the lattice
+    src/main.cpp                #Main program
+    src/gauge_conf.cpp          #Gauge configuration (computes staples, plaquettes and gauge action)
+    src/dirac_operator.cpp      #Implementation of D, D^+ and 2* Re ( left^+ d D / d omega(z) right )
+    src/conjugate_gradient.cpp  #Conjugate gradient and Bi-cgstab
+    src/hmc.cpp                 #Hybrid Monte Carlo
 )
 
-set(NS "16") 
-set(NT "16") 
+set(NS "16")   #Lattice dimension x
+set(NT "16")   #Lattice dimension t
 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 
 add_executable("SM_${NS}x${NT}" ${SOURCES})
 
-# This is where the header files are located
+
 target_include_directories("SM_${NS}x${NT}"
         PUBLIC 
         ${PROJECT_SOURCE_DIR}/include
@@ -34,11 +32,14 @@ target_compile_options("SM_${NS}x${NT}" PRIVATE
 			#-fopenmp
 )
 
-#-----------------mass-----------------#
+#find_package(OpenMP REQUIRED)
+#target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
+
+#-----------------For measuring the pion correlator-----------------#
 set(SOURCES_MASS
     src/statistics.cpp
     src/variables.cpp
-    src/mass.cpp   
+    src/mass.cpp              #Pion correlator implementation
     src/gauge_conf.cpp
     src/dirac_operator.cpp
     src/conjugate_gradient.cpp
@@ -52,12 +53,12 @@ target_include_directories("mass_${NS}x${NT}"
 )
 target_compile_options("mass_${NS}x${NT}" PRIVATE
 			-O3
+            #-fopenmp
 )
 #---------------------------------------#
 
-
 #find_package(OpenMP REQUIRED)
-#target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
+#target_link_libraries("mass_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
 
 
 #PROJECT_SOURCE_DIR: it indicates where src is located

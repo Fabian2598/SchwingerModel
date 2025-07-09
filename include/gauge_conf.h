@@ -66,6 +66,7 @@ public:
 		U_v(x) U_m(x+v) U*_v(x+m) + U*_v(x-v) U_m(x-v) U_v(x+m-v)
     	mu = 0 time direction, mu = 1 space direction
 		WARNING: Some references define the staple as the conjugate of the term I just wrote above. 
+		PERIODIC BOUNDARIES MUST BE PRECOMPUTED FIRST
 	*/
 	void Compute_Staple();
 
@@ -73,6 +74,7 @@ public:
 		Compute the plaquette
 		U_mv(x) = U_m(x) U_v(x+m) U*_m(x+v) U*_v(x)
 		with m = 0, nu = 1
+		PERIODIC BOUNDARIES MUST BE PRECOMPUTED FIRST
 	*/
 	void Compute_Plaquette01(); 
 

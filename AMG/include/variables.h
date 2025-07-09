@@ -87,15 +87,10 @@ extern std::vector<std::vector<int>> Agg;
 
 //--Coordinates of the neighbors to avoid recomputing them each time the operator D is called--//
 //Check dirac_operator.h for the definition of RightPB and LeftPB
-extern std::vector<std::vector<std::vector<int>>>RightPB; //Right periodic boundary
-extern std::vector<std::vector<std::vector<int>>>LeftPB; //Left periodic boundary
-extern std::vector<std::vector<std::vector<c_double>>>SignR; //Right fermionic boundary
-extern std::vector<std::vector<std::vector<c_double>>>SignL; //Left fermionic boundary
-
-extern std::vector<std::vector<int>>RightPBT; //Right periodic boundary
-extern std::vector<std::vector<int>>LeftPBT; //Left periodic boundary
-extern std::vector<std::vector<c_double>>SignRT; //Right fermionic boundary
-extern std::vector<std::vector<c_double>>SignLT; //Left fermionic boundary
+extern std::vector<std::vector<int>>RightPB; //Right periodic boundary
+extern std::vector<std::vector<int>>LeftPB; //Left periodic boundary
+extern std::vector<std::vector<c_double>>SignR; //Right fermionic boundary
+extern std::vector<std::vector<c_double>>SignL; //Left fermionic boundary
 
 //Indexes for the SAP blocks
 extern std::vector<std::vector<int>> SAP_Blocks; //SAP_Blocks[number_of_block][vectorized_coordinate of the lattice point]
