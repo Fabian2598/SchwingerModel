@@ -91,6 +91,7 @@ int main() {
         Datfile << std::format("{:<30.17g}\n", m0);
         Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getEp(), hmc.getdEp());
         Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getgS(), hmc.getdgS());
+        Datfile << std::format("{:<30.17g}\n", hmc.getacceptance_rate());
         Datfile << std::format("{:<30.17g}", elapsed_secs);
         
  

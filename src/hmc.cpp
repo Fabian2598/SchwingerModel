@@ -3,7 +3,30 @@
 #include <string>
 #include <sstream>
 
+ void HMC::RandomPI() {
 
+	static std::random_device rd;
+	static std::default_random_engine generator(rd());
+	static std::normal_distribution<double> distribution(0.0, 1.0); //mu, std
+	
+	for (int n = 0; n < Ntot; n++) {
+		PConf[n][0] = distribution(generator);
+		PConf[n][1] = distribution(generator);
+	}
+
+}
+
+//Random Chi vector 
+void HMC::RandomCHI() {
+	static std::random_device rd;
+	static std::default_random_engine generator(rd());
+	static std::normal_distribution<double> distribution(0.0, 1/sqrt(2)); //mu, standard deviation
+
+	for (int n = 0; n < Ntot; n++) {
+		chi[n][0] = 1.0 * distribution(generator) + I_number * distribution(generator);
+		chi[n][1] = 1.0 * distribution(generator) + I_number * distribution(generator);
+	}
+}
 
 //Pure gauge force
 //NOTE: phi_dag_partialD_phi HAS TO BE CALLED FIRST
@@ -97,9 +120,14 @@ double HMC::Hamiltonian(GaugeConf& GConfig, const re_field& Pi,const spinor& phi
 }
 
 void HMC::HMC_Update() {
-	PConf = RandomMomentum(); //random momentum conf sampled from a normal distribution
+   
+	//PConf = RandomMomentum(); //random momentum conf sampled from a normal distribution
+    RandomPI(); 
     //pseudofermions phi = D chi, where chi is normaly sampled
-    spinor chi = RandomChi();
+    //spinor chi = RandomChi();
+    RandomCHI();
+
+
     spinor phi = D_phi(GConf.Conf, chi, m0);
     Leapfrog(phi); //Evolve [Pi] and [U] 
     double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
