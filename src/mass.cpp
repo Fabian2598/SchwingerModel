@@ -13,12 +13,11 @@ double m0, beta; //Mass and coupling constant
 
 int max_iter = 10000;
 std::vector<std::vector<double>> CorrMat; //Correlation function for each conf.
-std::vector<double> Corr(Nt,0), dCorr(Nt,0); //Correlation function averaged over configurations and its error
-c_matrix Dinv(2*Ntot, c_vector(2*Ntot,0)); //Correlation function for each conf.
+std::vector<double> Corr(LV::Nt,0), dCorr(LV::Nt,0); //Correlation function averaged over configurations and its error
 
 c_matrix source1, source2; //source vector
 c_matrix Dcol1, Dcol2; //D^-1 source 
-c_matrix x0(Ntot, c_vector(2,1)); //Initial solution for inverting Dirac matrix
+c_matrix x0(LV::Ntot, c_vector(2,1)); //Initial solution for inverting Dirac matrix
 int coord;
 
 std::string listFilePath;
@@ -64,7 +63,7 @@ void read_confs(const int& nconf,std::vector<std::string>& filePaths){
             return;
         }
         while (file >> x >> t >> mu >> re >> im) {
-            Confs[conf][x * Nt + t][mu] = c_double(re, im);
+            Confs[conf][x * LV::Nt + t][mu] = c_double(re, im);
         }
         file.close();
     }
@@ -127,8 +126,8 @@ int main(){
     periodic_boundary(); //Compute right and left periodic boundary
     //--------------------------------------------------//
 
-    Confs.resize(nconf, c_matrix(Ns * Nt, c_vector(2, 0))); //Resize Confs
-    CorrMat.resize(Nt, std::vector<double>(nconf, 0)); // Resize CorrMat
+    Confs.resize(nconf, c_matrix(LV::Ntot, c_vector(2, 0))); //Resize Confs
+    CorrMat.resize(LV::Nt, std::vector<double>(nconf, 0)); // Resize CorrMat
 
     std::cout << "Reading configurations...";
     read_confs(nconf,filePaths); //Read configurations and store them in Confs
@@ -137,27 +136,27 @@ int main(){
     for(int conf = 0; conf<nconf; conf++){
         if (conf % 100 == 0) { std::cout << "--------Computing c(nt) for conf " << conf << "--------" << std::endl;} 
         //We only need two sources, equivalent to extracting the first two columns of D^-1
-        source1 = canonical_vector(0, Ntot, 2); 
-        source2 = canonical_vector(1, Ntot, 2); 
+        source1 = canonical_vector(0, LV::Ntot, 2); 
+        source2 = canonical_vector(1, LV::Ntot, 2); 
         Dcol1 = bi_cgstab(Confs[conf], source1, x0, m0, max_iter, 1e-10, false); //D^-1 source = D^-1((nx,nt),0)
         Dcol2 = bi_cgstab(Confs[conf], source2, x0, m0, max_iter, 1e-10, false); //D^-1 source = D^-1((nx,nt),1)
         
-        for(int t=0; t<Nt; t++){
+        for(int t=0; t<LV::Nt; t++){
             CorrMat[t][conf] = 0;
-            for(int x=0; x<Ns; x++){
+            for(int x=0; x<LV::Nx; x++){
                 coord = Coords[x][t]; //x*Nt + t
                 CorrMat[t][conf] += std::real(Dcol1[coord][0] * std::conj(Dcol1[coord][0]))
                 + std::real(Dcol1[coord][1] * std::conj(Dcol1[coord][1]))  
                 + std::real(Dcol2[coord][0] * std::conj(Dcol2[coord][0]))
                 + std::real(Dcol2[coord][1] * std::conj(Dcol2[coord][1])); 
             }
-            CorrMat[t][conf] *= 1.0/std::sqrt(Ns); //Average over spatial coordinates
+            CorrMat[t][conf] *= 1.0/std::sqrt(LV::Nx); //Average over spatial coordinates
         }            
     }
     
         
     //Write c(nt) and its error into a file
-    for(int t=0; t<Nt; t++){
+    for(int t=0; t<LV::Nt; t++){
         for(int conf=0; conf<nconf; conf++){
             Corr[t] += CorrMat[t][conf]; //Sum over configurations
         }
@@ -167,7 +166,7 @@ int main(){
     } 
     
     std::ostringstream Name;
-    Name << "2D_U1_Ns" << Ns << "_Nt" << Nt << "_b" << beta << "_m" << format(m0) << "_" << "corr" << ".txt";
+    Name << "2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << beta << "_m" << format(m0) << "_" << "corr" << ".txt";
     write(Corr, dCorr, Name.str());
 
     return 0;

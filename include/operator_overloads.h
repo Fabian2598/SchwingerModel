@@ -2,44 +2,63 @@
 #define OPERATOR_OVERLOADS_H
 #include <vector>
 #include <complex>
+#include <iostream>
 
 typedef std::complex<double> c_double;
 typedef std::vector<c_double> c_vector;
 typedef std::vector<c_vector> c_matrix; 
+typedef std::vector<c_vector> spinor; 
 
-//Complex dot product between vectors
+//Real vector, matrix and field
+typedef std::vector<double> re_vector;
+typedef std::vector<re_vector> re_matrix; 
+typedef std::vector<re_vector> re_field; 
+
+/*
+    dot product between two complex vectors 
+*/
 inline c_double dot(const c_vector& x, const c_vector& y) {
     c_double z = 0;
+
     for (int i = 0; i < x.size(); i++) {
         z += x[i] * std::conj(y[i]);
     }
     return z;
 }
 
-//Complex dot product between vectors arranged like matrices (not matrix multiplication)
-inline c_double dot(const c_matrix& x, const c_matrix& y) {
+/*
+    dot product between two spinors of the form psi[ntot][2]
+    A.B = sum_i A_i conj(B_i) 
+*/
+inline c_double dot(const spinor& x, const spinor& y) {
     c_double z = 0;
-    for (int i = 0; i < x.size(); i++) {
-        for (int j = 0; j < x[i].size(); j++) {
+    int size1 = x.size(), size2 = x[0].size();
+    for (int i = 0; i < size1; i++) {
+        for (int j = 0; j < size2; j++) {
             z += x[i][j] * std::conj(y[i][j]);
         }
     }
     return z;
 }
 
-//Classic dot product between two vectors arranged like matrices (not matrix multiplication)
-// A.B = sum_i sum_j A_ij B_ij (not conjugate)
-inline c_double dot_v2(const c_matrix& x, const c_matrix& y) {
+/*
+    "Classic" dot product between two spinors 
+    A.B = sum_i sum_j A_ij B_ij (not conjugate)
+*/ 
+inline c_double dot_v2(const spinor& x, const spinor& y) {
     c_double z = 0;
-    for (int i = 0; i < x.size(); i++) {
-        for (int j = 0; j < x[i].size(); j++) {
+    int size1 = x.size(), size2 = x[0].size();
+    for (int i = 0; i < size1; i++) {
+        for (int j = 0; j < size2; j++) {
             z += x[i][j] * y[i][j];
         }
     }
     return z;
 }
 
-//Scalar times complex vector
+/*
+    Scalar times a complex vector
+*/
 template <typename T>
 inline c_vector operator*(const T& lambda, const c_vector& A) {
     c_vector B(A.size(), 0);
@@ -48,7 +67,10 @@ inline c_vector operator*(const T& lambda, const c_vector& A) {
     }
     return B;
 }
-//Vector addition
+
+/*
+    Complex vector addition
+*/
 inline c_vector operator+(const c_vector& A, const c_vector& B) {
     c_vector C(A.size(), 0);
     for (int i = 0; i < A.size(); i++) {
@@ -57,7 +79,9 @@ inline c_vector operator+(const c_vector& A, const c_vector& B) {
     return C;
 }
 
-//Vector subtraction
+/*
+    Complex vector subtraction
+*/
 inline c_vector operator-(const c_vector& A, const c_vector& B) {
     c_vector C(A.size(), 0);
     for (int i = 0; i < A.size(); i++) {
@@ -66,7 +90,9 @@ inline c_vector operator-(const c_vector& A, const c_vector& B) {
     return C;
 }
 
-//Matrix vector multiplication
+/*
+    Matrix-vector multiplication 
+*/
 inline c_vector operator*(const c_matrix& A, const c_vector& v) {
     c_vector w(A.size(), 0);
     for (int i = 0; i < A.size(); i++) {
@@ -77,7 +103,10 @@ inline c_vector operator*(const c_matrix& A, const c_vector& v) {
     return w;
 }
 
-//scalar multiplication of a matrix
+/*
+    Scalar times a complex matrix.
+    Also works for spinors, since they are just matrices with 2 columns.
+*/
 template <typename T>
 inline c_matrix operator*(const T& lambda, const c_matrix& A) {
     c_matrix B(A.size(), c_vector(A[0].size(), 0));
@@ -89,7 +118,10 @@ inline c_matrix operator*(const T& lambda, const c_matrix& A) {
     return B;
 }
 
-//Matrix addition
+/*
+    Complex matrix addition
+    Also works for spinors, since they are just matrices with 2 columns.
+*/
 inline c_matrix operator+(const c_matrix& A, const c_matrix& B) {
     c_matrix C(A.size(), c_vector(A[0].size(), 0));
     for (int i = 0; i < A.size(); i++) {
@@ -100,7 +132,10 @@ inline c_matrix operator+(const c_matrix& A, const c_matrix& B) {
     return C;
 }
 
-//Matrix subtraction
+/*
+    Complex matrix subtraction
+    Also works for spinors, since they are just matrices with 2 columns.
+*/
 inline c_matrix operator-(const c_matrix& A, const c_matrix& B) {
     c_matrix C(A.size(), c_vector(A[0].size(), 0));
     for (int i = 0; i < A.size(); i++) {
@@ -109,6 +144,30 @@ inline c_matrix operator-(const c_matrix& A, const c_matrix& B) {
         }
     }
     return C;
+}
+
+/*
+    Print a complex matrix
+    Also works for spinors
+*/
+inline void PrintComplexMatrix(const c_matrix& v ){
+    for(int i = 0; i < v.size(); i++){
+        for(int j = 0; j < v[i].size(); j++){
+            std::cout << v[i][j] << " ";
+        }
+		std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/*
+    Print a complex vector
+*/
+inline void PrintComplexVector(const c_vector& v ){
+    for(int i = 0; i < v.size(); i++){
+        std::cout << v[i] << " ";
+    }
+    std::cout << std::endl;
 }
 
 #endif 

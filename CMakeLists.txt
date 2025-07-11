@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.26.5)
-set(CMAKE_CXX_STANDARD 11) 
+set(CMAKE_CXX_STANDARD 20) 
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 #set(CMAKE_C_COMPILER "C:/msys64/ucrt64/bin/gcc.exe")
 #set(CMAKE_CXX_COMPILER "C:/msys64/ucrt64/bin/g++.exe")
@@ -11,20 +11,19 @@ set(SOURCES
     src/variables.cpp
     src/main.cpp   
     src/gauge_conf.cpp
-    src/matrix_operations.cpp
+    src/dirac_operator.cpp
     src/conjugate_gradient.cpp
     src/hmc.cpp
 )
 
-set(NS "32") 
-set(NT "32") 
+set(NS "16") 
+set(NT "16") 
 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
-# Add an executable with the above sources
+
 add_executable("SM_${NS}x${NT}" ${SOURCES})
 
-# Add the include directory to the compiler search path
 # This is where the header files are located
 target_include_directories("SM_${NS}x${NT}"
         PUBLIC 
@@ -41,7 +40,7 @@ set(SOURCES_MASS
     src/variables.cpp
     src/mass.cpp   
     src/gauge_conf.cpp
-    src/matrix_operations.cpp
+    src/dirac_operator.cpp
     src/conjugate_gradient.cpp
 )
 

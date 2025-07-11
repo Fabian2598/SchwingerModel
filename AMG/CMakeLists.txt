@@ -63,13 +63,12 @@ find_package(MPI REQUIRED)
 
 target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
 
-
 #find_package(BLAS)
 #include_directories(" /usr/include/cblas/")
 #target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX ${BLAS_LIBRARIES})
 
 #find_package(OpenMP REQUIRED)
-#target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
+#target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX OpenMP::OpenMP_CXX)
 
 #For windows with MinGW, use the following command to generate the makefile:
 #cmake -G "MinGW Makefiles" -DCMAKE_CXX_COMPILER="C:/msys64/ucrt64/bin/g++.exe" -DCMAKE_C_COMPILER="C:/msys64/ucrt64/bin/gcc.exe" ../

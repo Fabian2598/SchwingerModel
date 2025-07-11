@@ -2,7 +2,7 @@
 
 //Conjugate gradient for computing (DD^dagger)^-1 phi, where phi is a vector represented by a matrix
 //phi[Ntot][2]
-c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double& m0) {
+spinor conjugate_gradient(const c_matrix& U, const spinor& phi, const double& m0) {
     int max_iter = 10000;
     double tol = 1e-10; //maybe I lower the tolerance later
     int k = 0; //Iteration number
@@ -10,10 +10,10 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
     double err_sqr;
 
     //D_D_dagger_phi(U, phi, m0); //DD^dagger  
-    c_matrix r(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
-    c_matrix d(Ntot, c_vector(2, 0)); //search direction
-    c_matrix Ad(Ntot, c_vector(2, 0)); //DD^dagger*d
-    c_matrix x(Ntot, c_vector(2, 0)); //solution
+    spinor r(LV::Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
+    spinor d(LV::Ntot, c_vector(2, 0)); //search direction
+    spinor Ad(LV::Ntot, c_vector(2, 0)); //DD^dagger*d
+    spinor x(LV::Ntot, c_vector(2, 0)); //solution
     c_double alpha, beta;
 	x = phi; //initial solution
     r = phi - D_D_dagger_phi(U, x, m0); //The initial solution can be a vector with zeros 
@@ -28,7 +28,7 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
         err_sqr = std::real(dot(r, r)); //err_sqr = (r_{i+1},r_{i+1})
 		err = sqrt(err_sqr); // err = sqrt(err_sqr)
         if (err < tol*phi_norm2) {
-            std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
+            //std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
             return x;
         }
         beta = err_sqr / r_norm2; //beta = (r_{i+1},r_{i+1})/(r_i,r_i)
@@ -36,12 +36,12 @@ c_matrix conjugate_gradient(const c_matrix& U, const c_matrix& phi, const double
         r_norm2 = err_sqr;
         k++;
     }
-    std::cout << "Did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
+    std::cout << "CG did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
     return x;
 }
 
 // D x = phi
-c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
+spinor bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
     //Bi_GCR for D^-1 phi
     //phi --> right-hand side
     //x0 --> initial guess  
@@ -51,13 +51,13 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
 
     
     //D_D_dagger_phi(U, phi, m0); //DD^dagger  
-    c_matrix r(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
-    c_matrix r_tilde(Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
-    c_matrix d(Ntot, c_vector(2, 0)); //search direction
-    c_matrix s(Ntot, c_vector(2, 0));
-    c_matrix t(Ntot, c_vector(2, 0));
-    c_matrix Ad(Ntot, c_vector(2, 0)); //D*d
-    c_matrix x(Ntot, c_vector(2, 0)); //solution
+    spinor r(LV::Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
+    spinor r_tilde(LV::Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
+    spinor d(LV::Ntot, c_vector(2, 0)); //search direction
+    spinor s(LV::Ntot, c_vector(2, 0));
+    spinor t(LV::Ntot, c_vector(2, 0));
+    spinor Ad(LV::Ntot, c_vector(2, 0)); //D*d
+    spinor x(LV::Ntot, c_vector(2, 0)); //solution
     c_double alpha, beta, rho_i, omega, rho_i_2;
     x = x0; //initial solution
     r = phi - D_phi(U, x, m0); //r = b - A*x
@@ -79,7 +79,7 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
         if (err < tol * norm_phi) {
             x = x + alpha * d;
             if (print_message == true) {
-                std::cout << "Bi-CG-stab for D converged in " << k+1 << " iterations" << " Error " << err << std::endl;
+                //std::cout << "Bi-CG-stab for D converged in " << k+1 << " iterations" << " Error " << err << std::endl;
             }
             return x;
         }
@@ -93,44 +93,3 @@ c_matrix bi_cgstab(const c_matrix& U, const c_matrix& phi, const c_matrix& x0, c
     std::cout << "Bi-CG-stab for D did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
     return x;
 }
-
-
-/*
-// OpenMP parallelization
-#include <omp.h>
-//Overload + - and * operators
-template <typename T>
-c_matrix operator*(const T& lambda, const c_matrix& A) {
-    c_matrix B(A.size(), c_vector(A[0].size(), 0));
-#pragma omp parallel for
-    for (int i = 0; i < A.size(); i++) {
-        for (int j = 0; j < A[i].size(); j++) {
-            B[i][j] = lambda * A[i][j];
-        }
-    }
-    return B;
-}
-
-c_matrix operator+(const c_matrix& A, const c_matrix& B) {
-    c_matrix C(A.size(), c_vector(A[0].size(), 0));
-#pragma omp parallel for
-    for (int i = 0; i < A.size(); i++) {
-        for (int j = 0; j < A[i].size(); j++) {
-            C[i][j] = A[i][j] + B[i][j];
-        }
-    }
-    return C;
-}
-
-c_matrix operator-(const c_matrix& A, const c_matrix& B) {
-    c_matrix C(A.size(), c_vector(A[0].size(), 0));
-#pragma omp parallel for
-    for (int i = 0; i < A.size(); i++) {
-        for (int j = 0; j < A[i].size(); j++) {
-            C[i][j] = A[i][j] - B[i][j];
-        }
-    }
-    return C;
-}
-
-*/

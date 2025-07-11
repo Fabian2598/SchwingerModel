@@ -1,8 +1,5 @@
 #ifndef STATISTICS_H_INCLUDED
 #define STATISTICS_H_INCLUDED
-//inline functions have to be defined in the header
-//templates also have to be defined in the header. There is a solution to this problem, but I would
-//have to create another file and include it here.
 #include <vector>
 #include <algorithm>
 #include <cmath>

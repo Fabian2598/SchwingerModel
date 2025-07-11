@@ -1,19 +1,27 @@
-#include "matrix_operations.h"
+#include "dirac_operator.h"
 
 
 std::vector<c_matrix> gamma_mat(2,
 	c_matrix(2, c_vector(2, 0))
 );  //Pauli matrices
 c_double I_number(0, 1); //imaginary number
-c_matrix Identity(Ntot, c_vector(2, 0));
-std::vector<std::vector<int>>hat_mu(Ntot, std::vector<int>(2, 0)); //hat_mu[mu][2] = {hat_mu_t, hat_mu_x}
+c_matrix Identity(LV::Ntot, c_vector(2, 0));
+std::vector<std::vector<int>>hat_mu(LV::Ntot, std::vector<int>(2, 0)); //hat_mu[mu][2] = {hat_mu_t, hat_mu_x}
 
 //Intialize gamma matrices, identity and unit vectors
 void initialize_matrices() {
-	//sigma_0 --> time
+	/*
+	sigma_0 --> time
+		0 1 
+		1 0
+	*/
 	gamma_mat[0][0][0] = 0; gamma_mat[0][0][1] = 1;
 	gamma_mat[0][1][0] = 1; gamma_mat[0][1][1] = 0;
-	//simgma_1 --> space
+	/*
+	simgma_1 --> space
+	  	0 -i
+  		i  0
+	*/
 	gamma_mat[1][0][0] = 0; gamma_mat[1][0][1] = -I_number;
 	gamma_mat[1][1][0] = I_number; gamma_mat[1][1][1] = 0;
 	//2d identity
@@ -24,10 +32,10 @@ void initialize_matrices() {
 }
 
 //D phi
-c_matrix D_phi(const c_matrix& U, const c_matrix& phi, const double& m0) {
-	int Ntot = Ns * Nt;
-	c_matrix Dphi(Ntot, c_vector(2, 0)); //Dphi[Ntot][2]
-	for (int x = 0; x < Ns; x++) {
+spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0) {
+	using namespace LV;
+	spinor Dphi(Ntot, c_vector(2, 0)); //Dphi[Ntot][2]
+	for (int x = 0; x < Nx; x++) {
 		for (int t = 0; t < Nt; t++) {
 			int n = Coords[x][t];
 			for (int alf = 0; alf < 2; alf++) {
@@ -47,10 +55,10 @@ c_matrix D_phi(const c_matrix& U, const c_matrix& phi, const double& m0) {
 }
 
 //D^dagger phi
-c_matrix D_dagger_phi(const c_matrix& U, const c_matrix& phi, const double& m0) {
-	int Ntot = Ns * Nt;
-	c_matrix Dphi(Ntot, c_vector(2, 0)); //Dphi[Ntot][2]
-	for (int x = 0; x < Ns; x++) {
+spinor D_dagger_phi(const c_matrix& U, const spinor& phi, const double& m0) {
+	using namespace LV;
+	spinor Dphi(Ntot, c_vector(2, 0)); //Dphi[Ntot][2]
+	for (int x = 0; x < Nx; x++) {
 		for (int t = 0; t < Nt; t++) {
 			int n = Coords[x][t];
 			for (int alf = 0; alf < 2; alf++) {
@@ -70,17 +78,17 @@ c_matrix D_dagger_phi(const c_matrix& U, const c_matrix& phi, const double& m0) 
 }
 
 //D D^dagger phi 
-c_matrix D_D_dagger_phi(const c_matrix& U, const c_matrix& phi, const double& m0) {
+spinor D_D_dagger_phi(const c_matrix& U, const spinor& phi, const double& m0) {
 	return D_phi(U, D_dagger_phi(U, phi, m0), m0);
 }
 
 
 //2* Re ( left^dag \partial D / \partial omega(z) right )
-std::vector<std::vector<double>> phi_dag_partialD_phi(const c_matrix& U,
- const c_matrix& left,const c_matrix& right){
-	int Ntot = Ns * Nt;
-	std::vector<std::vector<double>> Dphi(Ntot, std::vector<double>(2, 0)); //Dphi[Ntot][2]
-	for (int x = 0; x < Ns; x++) {
+re_field phi_dag_partialD_phi(const c_matrix& U,
+ const spinor& left,const spinor& right){
+	using namespace LV;
+	re_field Dphi(Ntot, std::vector<double>(2, 0)); //Dphi[Ntot][2]
+	for (int x = 0; x < Nx; x++) {
 		for (int t = 0; t < Nt; t++) {
 			int n = Coords[x][t];
 			for (int mu = 0; mu < 2; mu++) {
