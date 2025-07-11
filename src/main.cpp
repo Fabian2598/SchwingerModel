@@ -96,7 +96,7 @@ int main() {
         
  
         std::cout << "Time = " << elapsed_secs << " s" << std::endl;
-        std::cout << "------------------------------" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
 
     }
     Datfile.close();
