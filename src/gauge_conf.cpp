@@ -20,13 +20,10 @@ void GaugeConf::initialization() {
 void GaugeConf::Compute_Plaquette01() {
 	//U_mv(x) = U_m(x) U_v(x+m) U*_m(x+v) U*_v(x)
 	//mu = 0 time direction, mu = 1 space direction
-	for (int x = 0; x < Nx; x++) {
-		for (int t = 0; t < Nt; t++) {
-			//int Coord0 = Coords[x][t], Coord1 = Coords[x][modulo(t + 1, Nt)], Coord2 = Coords[modulo(x + 1, Ns)][t];
-			int Coord0 = Coords[x][t], Coord1 = RightPB[x][t][0], Coord2 = RightPB[x][t][1];
-			Plaquette01[Coord0] = Conf[Coord0][0] * Conf[Coord1][1] * std::conj(Conf[Coord2][0]) * std::conj(Conf[Coord0][1]);
-		}
-	}
+    for (int n = 0; n<Ntot; n++){
+        //int Coord0 = Coords[x][t], Coord1 = Coords[x][modulo(t + 1, Nt)], Coord2 = Coords[modulo(x + 1, Ns)][t];
+		Plaquette01[n] = Conf[n][0] * Conf[RightPB[n][0]][1] * std::conj(Conf[RightPB[n][1]][0]) * std::conj(Conf[n][1]);
+    }		
 }
 
 //Compute staple at coordinate (x,t) in the mu-direction
@@ -34,37 +31,35 @@ void GaugeConf::Compute_Staple() {
     // WARNING: Some references define the staple as the conjugate of this:
     //U_v(x) U_m(x+v) U*_v(x+m) + U*_v(x-v) U_m(x-v) U_v(x+m-v)
     //mu = 0 time direction, mu = 1 space direction
-    for (int x = 0; x < Nx; x++) {
-        for (int t = 0; t < Nt; t++) {
-            //These coordinates could change depending on the conventions 
-			int x1 = RightPB[x][t][1]; //Coords[modulo(x + 1, Ns) ,t]
-			int x_1 = LeftPB[x][t][1]; //Coords[modulo(x - 1, Ns) ,t]
-			int t1 = RightPB[x][t][0]; //Coords[x, modulo(t + 1, Nt)]
-			int t_1 = LeftPB[x][t][0]; //Coords[x, modulo(t - 1, Nt)]
-            int i = Coords[x][t];
-            for (int mu = 0; mu < 2; mu++) {
-                if (mu == 0) {
-                    const c_double& conf1 = Conf[i][1];
-                    const c_double& conf2 = Conf[x1][0];
-                    const c_double& conf3 = Conf[t1][1];
-                    const c_double& conf4 = Conf[x_1][1];
-                    const c_double& conf5 = Conf[x_1][0];
-                    const c_double& conf6 = Conf[ x_1_t1[x][t] ][1]; //Coords[mod(x - 1, Ns)][mod(t + 1, Nt)];
-                    Staples[i][mu] = conf1 * conf2 * std::conj(conf3) +
-                        std::conj(conf4) * conf5 * conf6;
-                }
-                else {
-                    const c_double& conf1 = Conf[i][0];
-                    const c_double& conf2 = Conf[t1][1];
-                    const c_double& conf3 = Conf[x1][0];
-                    const c_double& conf4 = Conf[t_1][0];
-                    const c_double& conf5 = Conf[t_1][1];
-                    const c_double& conf6 = Conf[ x1_t_1[x][t] ][0]; //Coords[mod(x + 1, Ns)][mod(t - 1, Nt)];
-                    Staples[i][mu] = conf1 * conf2 * std::conj(conf3) +
-                        std::conj(conf4) * conf5 * conf6;
-                }
+    for (int n = 0; n < Ntot; n++) {
+        //These coordinates could change depending on the conventions 
+		int x1 = RightPB[n][1];  //Coords[modulo(x + 1, Ns) ,t]
+		int x_1 = LeftPB[n][1];  //Coords[modulo(x - 1, Ns) ,t]
+		int t1 = RightPB[n][0];  //Coords[x, modulo(t + 1, Nt)]
+		int t_1 = LeftPB[n][0];  //Coords[x, modulo(t - 1, Nt)]
+        for (int mu = 0; mu < 2; mu++) {
+            if (mu == 0) {
+                const c_double& conf1 = Conf[n][1];
+                const c_double& conf2 = Conf[x1][0];
+                const c_double& conf3 = Conf[t1][1];
+                const c_double& conf4 = Conf[x_1][1];
+                const c_double& conf5 = Conf[x_1][0];
+                const c_double& conf6 = Conf[ x_1_t1[n] ][1]; //Coords[mod(x - 1, Ns)][mod(t + 1, Nt)];
+                Staples[n][mu] = conf1 * conf2 * std::conj(conf3) +
+                    std::conj(conf4) * conf5 * conf6;
+            }
+            else {
+                const c_double& conf1 = Conf[n][0];
+                const c_double& conf2 = Conf[t1][1];
+                const c_double& conf3 = Conf[x1][0];
+                const c_double& conf4 = Conf[t_1][0];
+                const c_double& conf5 = Conf[t_1][1];
+                const c_double& conf6 = Conf[ x1_t_1[n] ][0]; //Coords[mod(x + 1, Ns)][mod(t - 1, Nt)];
+                Staples[n][mu] = conf1 * conf2 * std::conj(conf3) +
+                    std::conj(conf4) * conf5 * conf6;
             }
         }
+        
     }
 }
 

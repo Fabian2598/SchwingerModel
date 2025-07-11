@@ -3,20 +3,40 @@
 #include <string>
 #include <sstream>
 
+ void HMC::RandomPI() {
 
+	static std::random_device rd;
+	static std::default_random_engine generator(rd());
+	static std::normal_distribution<double> distribution(0.0, 1.0); //mu, std
+	
+	for (int n = 0; n < Ntot; n++) {
+		PConf[n][0] = distribution(generator);
+		PConf[n][1] = distribution(generator);
+	}
+
+}
+
+//Random Chi vector 
+void HMC::RandomCHI() {
+	static std::random_device rd;
+	static std::default_random_engine generator(rd());
+	static std::normal_distribution<double> distribution(0.0, 1/sqrt(2)); //mu, standard deviation
+
+	for (int n = 0; n < Ntot; n++) {
+		chi[n][0] = 1.0 * distribution(generator) + I_number * distribution(generator);
+		chi[n][1] = 1.0 * distribution(generator) + I_number * distribution(generator);
+	}
+}
 
 //Pure gauge force
 //NOTE: phi_dag_partialD_phi HAS TO BE CALLED FIRST
 void HMC::Force_G(GaugeConf& GConfig) {
     GConfig.Compute_Staple(); //Computes staples
-	for (int x = 0; x < Nx; x++) {
-		for (int t = 0; t < Nt; t++) {
-			int i = Coords[x][t];
-			for (int mu = 0; mu < 2; mu++) {
-				Forces[i][mu] += -beta * std::imag(GConfig.Conf[i][mu] * std::conj(GConfig.Staples[i][mu]));
-			}
-		}
+	for (int n = 0; n < Ntot; n++) {
+		Forces[n][0] += -beta * std::imag(GConfig.Conf[n][0] * std::conj(GConfig.Staples[n][0]));
+        Forces[n][1] += -beta * std::imag(GConfig.Conf[n][1] * std::conj(GConfig.Staples[n][1]));
 	}
+		
 }
 
 //Fermions force
@@ -30,46 +50,45 @@ void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
 
 //Generates new configuration [U,Pi]
 void HMC::Leapfrog(const spinor& phi){
-        double StepSize = trajectory_length / (MD_steps * 1.0);
-        PConf_copy = PConf;
-        c_double inumber(0.0, 1.0); //imaginary number
-		GConf_copy = GConf; //Copy of the gauge configuration
-        //Conf_copy = Conf*exp(0.5i * StepSize * PConf_copy)
-        for (int x = 0; x < Nx; x++) {
-            for (int t = 0; t < Nt; t++) {
-                int i = Coords[x][t];
-                for (int mu = 0; mu < 2; mu++) {
-                    GConf_copy.Conf[i][mu] = GConf_copy.Conf[i][mu] * exp(0.5 * inumber * StepSize * PConf_copy[i][mu]);
-                }
-            }
-        }
-		Force(GConf_copy,phi); 
-        for (int step = 1; step < MD_steps - 1; step++) {
-            //PConf_copy += StepSize*force
-            //Conf_copy *= exp(i * StepSize * PConf_copy)
-            for (int x = 0; x < Nx; x++) {
-                for (int t = 0; t < Nt; t++) {
-                    int i = Coords[x][t];
-                    for (int mu = 0; mu < 2; mu++) {
-                        PConf_copy[i][mu] += StepSize *  Forces[i][mu];
-                        GConf_copy.Conf[i][mu] *= exp(inumber * StepSize * PConf_copy[i][mu]);
-                    }
-                }
-            }
-            Force(GConf_copy,phi);
-        }
+    double StepSize = trajectory_length / (MD_steps * 1.0);
+    PConf_copy = PConf;
+    c_double inumber(0.0, 1.0); //imaginary number
+	GConf_copy = GConf; //Copy of the gauge configuration
+
+    //Conf_copy = Conf*exp(0.5i * StepSize * PConf_copy)
+    for (int n = 0; n < Ntot; n++) {
+        GConf_copy.Conf[n][0] = GConf_copy.Conf[n][0] * exp(0.5 * inumber * StepSize * PConf_copy[n][0]);
+        GConf_copy.Conf[n][1] = GConf_copy.Conf[n][1] * exp(0.5 * inumber * StepSize * PConf_copy[n][1]);   
+    }
+
+	Force(GConf_copy,phi); 
+
+    for (int step = 1; step < MD_steps - 1; step++) {
         //PConf_copy += StepSize*force
-        //Conf_copy = Conf*exp(0.5i * StepSize* PConf_copy)
-        for (int x = 0; x < Nx; x++) {
-            for (int t = 0; t < Nt; t++) {
-                int i = Coords[x][t];
-                for (int mu = 0; mu < 2; mu++) {
-                    PConf_copy[i][mu] += StepSize * Forces[i][mu];
-                    GConf_copy.Conf[i][mu] *= exp(0.5 * inumber * StepSize * PConf_copy[i][mu]);
-                    
-                }
-            }
+        //Conf_copy *= exp(i * StepSize * PConf_copy)
+        for (int n = 0; n < Ntot; n++) {
+            //mu = 0
+            PConf_copy[n][0] += StepSize *  Forces[n][0];
+            GConf_copy.Conf[n][0] *= exp(inumber * StepSize * PConf_copy[n][0]);
+
+            //mu = 1
+            PConf_copy[n][1] += StepSize *  Forces[n][1];
+            GConf_copy.Conf[n][1] *= exp(inumber * StepSize * PConf_copy[n][1]);
         }
+        Force(GConf_copy,phi);
+    }
+
+    //PConf_copy += StepSize*force
+    //Conf_copy = Conf*exp(0.5i * StepSize* PConf_copy)
+    for (int n = 0; n < Ntot; n++) {
+        //mu = 0
+        PConf_copy[n][0] += StepSize * Forces[n][0];
+        GConf_copy.Conf[n][0] *= exp(0.5 * inumber * StepSize * PConf_copy[n][0]);
+
+        //mu = 1
+        PConf_copy[n][1] += StepSize * Forces[n][1];
+        GConf_copy.Conf[n][1] *= exp(0.5 * inumber * StepSize * PConf_copy[n][1]);
+    }
 
 }
 
@@ -83,7 +102,6 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     //Fermions contribution
     //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
 	action += std::real( dot( conjugate_gradient(GConfig.Conf, phi, m0), phi)); 
-    //action += std::real( dot( phi,conjugate_gradient(GConfig.Conf, phi, m0))); 
     return action;
 }
 
@@ -102,9 +120,14 @@ double HMC::Hamiltonian(GaugeConf& GConfig, const re_field& Pi,const spinor& phi
 }
 
 void HMC::HMC_Update() {
-	PConf = RandomMomentum(); //random momentum conf sampled from a normal distribution
+   
+	//PConf = RandomMomentum(); //random momentum conf sampled from a normal distribution
+    RandomPI(); 
     //pseudofermions phi = D chi, where chi is normaly sampled
-    spinor chi = RandomChi();
+    //spinor chi = RandomChi();
+    RandomCHI();
+
+
     spinor phi = D_phi(GConf.Conf, chi, m0);
     Leapfrog(phi); //Evolve [Pi] and [U] 
     double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
@@ -144,7 +167,6 @@ void HMC::HMC_algorithm(){
                 << "_b" << format(beta)
                 << "_m" << format(m0)
                 << "_" << i << ".ctxt";
-            //sprintf(NameData, "2D_U1_Ns%d_Nt%d_b%s_m%s_%d.ctxt", Nx, Nt, format(beta).c_str(), format(m0).c_str(), i); 
             SaveConf(GConf.Conf, NameData.str());
 		}
 		for (int j = 0; j < Nsteps; j++) { HMC_Update(); } //Decorrelation

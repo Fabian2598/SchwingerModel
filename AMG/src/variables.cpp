@@ -1,5 +1,6 @@
 #include "variables.h"
 
+typedef std::complex<double> c_double;
 double coarse_time = 0.0; //Time spent in the coarse grid solver
 double smooth_time = 0.0; //Time spent in the smoother
 
@@ -20,10 +21,13 @@ std::vector<int> TCoord = std::vector<int>(2*LV::Ntot, 0);
 std::vector<int> SCoord = std::vector<int>(2*LV::Ntot, 0);
 
 //--Coordinates of the neighbors to avoid recomputing them each time the operator D is called--//
-std::vector<std::vector<std::vector<int>>>LeftPB = std::vector<std::vector<std::vector<int>>>(LV::Nx, 
-    std::vector<std::vector<int>>(LV::Nt,std::vector<int>(2, 0))); //LeftPB[x][t][mu]
-std::vector<std::vector<std::vector<int>>>RightPB = std::vector<std::vector<std::vector<int>>>(LV::Nx,
-     std::vector<std::vector<int>>(LV::Nt, std::vector<int>(2, 0))); //RightPB[x][t][mu]
+std::vector<std::vector<int>>LeftPB = std::vector<std::vector<int>>(LV::Ntot, std::vector<int>(2,0)); //LeftPB[x][t][mu]
+std::vector<std::vector<int>>RightPB = std::vector<std::vector<int>>(LV::Ntot, std::vector<int>(2,0)); //RightPB[x][t][mu]
+
+
+
+std::vector<std::vector<c_double>>SignL =std::vector<std::vector<c_double>>(LV::Ntot, std::vector<c_double>(2,0)); //SignL[x][t][mu]
+std::vector<std::vector<c_double>>SignR = std::vector<std::vector<c_double>>(LV::Ntot, std::vector<c_double>(2,0)); ////SignR[x][t][mu]
 
 //--SAP blocks--//
 std::vector<std::vector<int>>SAP_Blocks = std::vector<std::vector<int>>(SAPV::sap_block_x*SAPV::sap_block_t, 

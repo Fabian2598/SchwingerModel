@@ -8,6 +8,7 @@
 
 int main() {
     srand(time(0));
+    
     int Ntherm, Nmeas, Nsteps, Nm0; //Simulation parameters
     double beta; //Beta range
     double trajectory_length; //HMC parameters
@@ -15,6 +16,7 @@ int main() {
     double m0_min, m0_max; //bare mass
 	int saveconf = 0; //Save configurations
     //---Input data---//
+    
     std::cout << "----------------------------" << std::endl;
     std::cout << "|  Two-flavor Schwinger model   |" << std::endl;
     std::cout << "| Hybrid Monte Carlo simulation |" << std::endl;
@@ -43,22 +45,26 @@ int main() {
     std::cout << " " << std::endl;
 
     std::vector<double> Masses(Nm0);
-    initialize_matrices(); //Intialize gamma matrices, identity and unit vectors
+    
 	Coordinates(); //Compute vectorized coordinates
     periodic_boundary(); //Compute right and left periodic boundary
+    
 	GaugeConf GConf = GaugeConf(LV::Nx, LV::Nt);  //Gauge configuration
+
+    
     if (Nm0 == 1) {
-        m0_min = { m0_min };
+        Masses = { m0_min };
     }
     else {
         Masses = linspace(m0_min, m0_max, Nm0);
     }
-    char Data_str[500];
+
     std::ostringstream NameData;
     NameData << "2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_Meas" << Nmeas << ".txt";
-
     std::ofstream Datfile;
     Datfile.open(NameData.str());
+    Datfile << std::format("{:<30.17g}{:<30d}{:<30d}{:<30d}\n", beta, Ntherm, Nmeas, Nsteps);
+    
     for (double m0 : Masses) {
         std::cout << "**********************************************************************" << std::endl;
         std::cout << "*                              PARAMETERS" << std::endl;
@@ -82,9 +88,10 @@ int main() {
         std::cout << "Acceptance rate: " << hmc.getacceptance_rate() << std::endl;
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 
-        Datfile << std::format("{:<30.17g}{:<30.17g}{:<30d}{:<30d}{:<30d}\n", beta, m0, Ntherm, Nmeas, Nsteps);
+        Datfile << std::format("{:<30.17g}\n", m0);
         Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getEp(), hmc.getdEp());
         Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getgS(), hmc.getdgS());
+        Datfile << std::format("{:<30.17g}\n", hmc.getacceptance_rate());
         Datfile << std::format("{:<30.17g}", elapsed_secs);
         
  
@@ -93,6 +100,38 @@ int main() {
 
     }
     Datfile.close();
+    
 
 	return 0;
 }
+
+
+
+/*
+
+for(int at = 0; at<10000; at++){
+    spinor right(LV::Ntot,c_vector(2,0));
+    spinor left(LV::Ntot,c_vector(2,0));
+
+    for(int i = 0; i< LV::Ntot; i++){
+        right[i][0] = RandomU1();
+        left[i][0] = RandomU1();
+        right[i][1] = RandomU1();
+        left[i][1] = RandomU1();
+    }
+
+    re_field X = phi_dag_partialD_phi(GConf.Conf,left,right);
+    re_field Xold = phi_dag_partialD_phi_old(GConf.Conf,left,right);
+
+    for(int i = 0; i < LV::Ntot; i++) {
+        if(std::abs(X[i][0] - Xold[i][0]) > 1e-12 || std::abs(X[i][1] - Xold[i][1]) > 1e-12) {
+            std::cout << "Error in the operator phi_dag_partialD_phi " << std::endl;
+            std::cout << "n " << i << std::endl;
+            return 1;
+        }
+    }
+    
+    }
+
+    std::cout << "derivative working fine\n";
+*/

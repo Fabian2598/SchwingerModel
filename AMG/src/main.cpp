@@ -30,7 +30,6 @@ int main(int argc, char **argv) {
 
     //srand(time(0));
     
-    initialize_matrices(); //Initialize gamma matrices, identity and unit vectors
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     double m0 = -0.7; 

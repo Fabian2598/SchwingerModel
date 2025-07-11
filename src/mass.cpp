@@ -45,18 +45,6 @@ void read_confs(const int& nconf,std::vector<std::string>& filePaths){
     int x, t, mu;
     double re, im;
     for(int conf=0; conf<nconf; conf++){
-        //Check how I actually want to do this part in general ...
-        /*
-        std::ostringstream formattedName;
-        formattedName << "../confs/b1_16x16/2D_U1_Ns" << Ns
-                    << "_Nt" << Nt
-                    << "_b" << format(beta).c_str()
-                    << "_m" << format(m0).c_str()
-                    << "_" << conf << ".txt";
-
-        std::string fileName = formattedName.str();
-        */
-
         std::ifstream file(filePaths[conf]);
         if (!file.is_open()) {
             std::cerr << "Error opening file " << filePaths[conf] << std::endl;
@@ -121,7 +109,7 @@ int main(){
 
 
     //------These calls are necessary to use D_phi------//
-    initialize_matrices(); //Intialize gamma matrices, identity and unit vectors
+    //initialize_matrices(); //Intialize gamma matrices, identity and unit vectors
     Coordinates(); //Compute vectorized coordinates
     periodic_boundary(); //Compute right and left periodic boundary
     //--------------------------------------------------//

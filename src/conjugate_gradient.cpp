@@ -6,7 +6,7 @@ spinor conjugate_gradient(const c_matrix& U, const spinor& phi, const double& m0
     int max_iter = 10000;
     double tol = 1e-10; //maybe I lower the tolerance later
     int k = 0; //Iteration number
-    double err = 1;
+    double err;
     double err_sqr;
 
     //D_D_dagger_phi(U, phi, m0); //DD^dagger  
@@ -20,7 +20,8 @@ spinor conjugate_gradient(const c_matrix& U, const spinor& phi, const double& m0
     d = r; //initial search direction
     c_double r_norm2 = dot(r, r);
     double phi_norm2 = sqrt(std::real(dot(phi, phi)));
-    while (k<max_iter && err>tol*phi_norm2) {
+
+    while (k<max_iter) {
         Ad = D_D_dagger_phi(U, d, m0); //DD^dagger*d 
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
         x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i
@@ -47,7 +48,7 @@ spinor bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, const d
     //x0 --> initial guess  
     //U --> configuration
     int k = 0; //Iteration number
-    double err = 1;
+    double err;
 
     
     //D_D_dagger_phi(U, phi, m0); //DD^dagger  
@@ -63,7 +64,7 @@ spinor bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, const d
     r = phi - D_phi(U, x, m0); //r = b - A*x
     r_tilde = r;
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
-    while (k<max_iter && err>tol* norm_phi) {
+    while (k<max_iter) {
         rho_i = dot(r, r_tilde); //r . r_dagger
         if (k == 0) {
             d = r; //d_1 = r_0

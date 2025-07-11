@@ -5,6 +5,7 @@
 #include <complex>
 #include <vector>
 
+typedef std::complex<double> c_double;
 constexpr double pi=3.14159265359;
 
 extern double coarse_time; //Time spent in the coarse grid solver
@@ -86,8 +87,10 @@ extern std::vector<std::vector<int>> Agg;
 
 //--Coordinates of the neighbors to avoid recomputing them each time the operator D is called--//
 //Check dirac_operator.h for the definition of RightPB and LeftPB
-extern std::vector<std::vector<std::vector<int>>>RightPB; //Right periodic boundary
-extern std::vector<std::vector<std::vector<int>>>LeftPB; //Left periodic boundary
+extern std::vector<std::vector<int>>RightPB; //Right periodic boundary
+extern std::vector<std::vector<int>>LeftPB; //Left periodic boundary
+extern std::vector<std::vector<c_double>>SignR; //Right fermionic boundary
+extern std::vector<std::vector<c_double>>SignL; //Left fermionic boundary
 
 //Indexes for the SAP blocks
 extern std::vector<std::vector<int>> SAP_Blocks; //SAP_Blocks[number_of_block][vectorized_coordinate of the lattice point]
