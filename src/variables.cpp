@@ -29,3 +29,5 @@ std::vector<std::vector<c_double>>SignR = std::vector<std::vector<c_double>>(LV:
 
 std::vector<int>x_1_t1 = std::vector<int>(LV::Ntot, 0);
 std::vector<int>x1_t_1 =  std::vector<int>(LV::Ntot, 0);
+
+std::vector<std::vector<c_double>>Y(LV::Ntot, std::vector<c_double>(2,0));

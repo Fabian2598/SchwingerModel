@@ -7,7 +7,7 @@
 
 	static std::random_device rd;
 	static std::default_random_engine generator(rd());
-	static std::normal_distribution<double> distribution(0.0, 1.0); //mu, std
+	std::normal_distribution<double> distribution(0.0, 1.0); //mu, std
 	
 	for (int n = 0; n < Ntot; n++) {
 		PConf[n][0] = distribution(generator);
@@ -20,8 +20,7 @@
 void HMC::RandomCHI() {
 	static std::random_device rd;
 	static std::default_random_engine generator(rd());
-	static std::normal_distribution<double> distribution(0.0, 1/sqrt(2)); //mu, standard deviation
-
+	std::normal_distribution<double> distribution(0.0, 1/sqrt(2)); //mu, standard deviation
 	for (int n = 0; n < Ntot; n++) {
 		chi[n][0] = 1.0 * distribution(generator) + I_number * distribution(generator);
 		chi[n][1] = 1.0 * distribution(generator) + I_number * distribution(generator);

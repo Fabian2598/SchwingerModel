@@ -27,6 +27,7 @@ extern std::vector<std::vector<c_double>>SignR; //Right fermionic boundary
 extern std::vector<std::vector<c_double>>SignL; //Left fermionic boundary
 extern std::vector<int>x_1_t1; //x-\hat{x}+\hat{t}
 extern std::vector<int>x1_t_1; //x+\hat{x}-\hat{t}
+extern std::vector<std::vector<c_double>>Y;
 
 
 #endif 

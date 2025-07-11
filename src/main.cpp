@@ -64,7 +64,7 @@ int main() {
     std::ofstream Datfile;
     Datfile.open(NameData.str());
     Datfile << std::format("{:<30.17g}{:<30d}{:<30d}{:<30d}\n", beta, Ntherm, Nmeas, Nsteps);
-    
+    Datfile << std::format("{:<30.17g}{:<30d}\n", trajectory_length, MD_steps);
     for (double m0 : Masses) {
         std::cout << "**********************************************************************" << std::endl;
         std::cout << "*                              PARAMETERS" << std::endl;

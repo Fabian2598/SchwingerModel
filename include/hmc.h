@@ -59,6 +59,7 @@ private:
 	
 };
 
+/*
 inline re_field RandomMomentum() {
 	using namespace LV;
 	//We use a Gaussian distribution to sample the momenta
@@ -90,5 +91,7 @@ inline spinor RandomChi() {
 	}
 	return RandPI;
 }
+*/
+
 
 #endif

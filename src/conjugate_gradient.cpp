@@ -16,7 +16,9 @@ spinor conjugate_gradient(const c_matrix& U, const spinor& phi, const double& m0
     spinor x(LV::Ntot, c_vector(2, 0)); //solution
     c_double alpha, beta;
 	x = phi; //initial solution
-    r = phi - D_D_dagger_phi(U, x, m0); //The initial solution can be a vector with zeros 
+
+    r = phi - D_D_dagger_phi(U, x, m0); //The initial solution can be a vector with zeros
+
     d = r; //initial search direction
     c_double r_norm2 = dot(r, r);
     double phi_norm2 = sqrt(std::real(dot(phi, phi)));
@@ -24,8 +26,17 @@ spinor conjugate_gradient(const c_matrix& U, const spinor& phi, const double& m0
     while (k<max_iter) {
         Ad = D_D_dagger_phi(U, d, m0); //DD^dagger*d 
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
-        x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i
-        r = r - alpha * Ad; //r_{i+1} = r_i - alpha*Ad_i
+        for(int n = 0; n<LV::Ntot; n++){
+            x[n][0] += alpha*d[n][0];
+            x[n][1] += alpha*d[n][1];
+        }
+        //x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i
+        for(int n = 0; n<LV::Ntot; n++){
+            r[n][0] -= alpha*Ad[n][0];
+            r[n][1] -= alpha*Ad[n][1];
+        }
+        //r = r - alpha * Ad; //r_{i+1} = r_i - alpha*Ad_i
+
         err_sqr = std::real(dot(r, r)); //err_sqr = (r_{i+1},r_{i+1})
 		err = sqrt(err_sqr); // err = sqrt(err_sqr)
         if (err < tol*phi_norm2) {
@@ -33,7 +44,14 @@ spinor conjugate_gradient(const c_matrix& U, const spinor& phi, const double& m0
             return x;
         }
         beta = err_sqr / r_norm2; //beta = (r_{i+1},r_{i+1})/(r_i,r_i)
-        d = r + beta * d; //d_{i+1} = r_{i+1} + beta*d_i        
+        for(int n = 0; n<LV::Ntot; n++){
+
+            d[n][0] *= beta; 
+            d[n][1] *= beta;
+            d[n][0] += r[n][0];
+            d[n][1] += r[n][1];
+        }
+        //d = r + beta * d; //d_{i+1} = r_{i+1} + beta*d_i        
         r_norm2 = err_sqr;
         k++;
     }

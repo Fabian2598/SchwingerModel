@@ -62,6 +62,7 @@ spinor D_D_dagger_phi(const c_matrix& U, const spinor& phi, const double& m0) {
 }
 
 
+
 //2* Re ( left^dag \partial D / \partial omega(z) right )
 re_field phi_dag_partialD_phi(const c_matrix& U, const spinor& left,const spinor& right){
 	using namespace LV;
