@@ -1,6 +1,6 @@
 # SchwingerModel
 
-Simulation of the two-flavor Schwinger Model with degenerate fermions. The simulation is performed using pseudofermions, HMC and (for the moment) conjugate gradient to invert $(DD^\dagger)^{-1}$. Later multigrid will replace conjugate gradient, so temporarily ignore the AMG directory.
+Simulation of the two-flavor Schwinger Model with degenerate fermions. The simulation is performed using pseudofermions, HMC and (for the moment) conjugate gradient to invert $(DD^\dagger)^{-1}$. Later multigrid will replace conjugate gradient, so temporarily ignore the AMG directory. Check HMC_doc.pdf for a detailed explanation of the Hybrid Monte Carlo in this context.
 
 The code implements Wilson fermions 
 
@@ -30,15 +30,14 @@ mkdir build
 ```
 
 ## Linux
-If you are working on Linux you have to delete lines 4 and 5 in the CMakeLists.txt file. 
-These set the compiler direction which is necessary for Windows. Then, in the `build` folder, run the following commands:
+In the `build` folder run the following commands:
 
 ```
 cmake ../
 cmake --build .
 ```
 
-This will create an executable for you to run. The **lattice dimensions** are fixed in the **CMakeLists.txt**, on lines 19-20. 
+This will create an executable for you to run. The **lattice dimensions** are fixed in the **CMakeLists.txt**.
 You can change the dimensions there as well as the executable name.
 
 A running example with HMC is shown below
@@ -50,18 +49,25 @@ A running example with HMC is shown below
 | Hybrid Monte Carlo simulation |
 ----------------------------
 Ns NS Nt NT
-m0: 1
-Molecular dynamics steps: 10
+m0 min: 0
+m0 max: 0
+Number of masses in [m0_min, m0_max] 1
+Molecular dynamics steps: 8
 Trajectory length: 1
-beta min: 0.1
-beta max: 2
-Number of betas: 10
-Thermalization: 0
+beta: 2
+Thermalization: 500
 Measurements: 1000
-Step (sweeps between measurements): 0
-Save configurations yes/no (1 or 0): 0
+Step (sweeps between measurements): 10
+Save configurations yes/no (1 or 0): 1
 ```
 
+The other executable
+
+ ```
+mass_NSxNT.exe
+```
+
+measures the pion mass correlator, given a set of gauge configurations. The latter are generated during the simulation.
 ## Windows
 
 The instructions are essentially the same. The CMakeLists.txt only needs the address of your C++ and C compiler on lines 4 and 5. 

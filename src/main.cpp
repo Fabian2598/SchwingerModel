@@ -15,6 +15,9 @@ int main() {
     int MD_steps;
     double m0_min, m0_max; //bare mass
 	int saveconf = 0; //Save configurations
+
+    CG::max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
+    CG::tol = 1e-10; //Tolerance for convergence
     //---Input data---//
     
     std::cout << "----------------------------" << std::endl;
@@ -76,6 +79,7 @@ int main() {
         std::cout << "* Decorrelation steps (confs dropped between measurements) = " << Nsteps << std::endl;
         std::cout << "* Trajectory length = " << trajectory_length << ", Leapfrog steps = " << MD_steps << 
         ", Integration step = " << trajectory_length/MD_steps << std::endl;
+        std::cout << "* CG max iterations = " << CG::max_iter << ", CG tolerance = " << CG::tol << std::endl;
         std::cout << "**********************************************************************" << std::endl;
 
 

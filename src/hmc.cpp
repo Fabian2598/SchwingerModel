@@ -153,7 +153,7 @@ static std::string format(const double& number) {
 void HMC::HMC_algorithm(){
     re_vector SpVector(Nmeas);
     re_vector gAction(Nmeas);
-	GConf.initialization(); //Initialize the gauge configuration
+	GConf.initialization(); //Initialize the gauge configuration randomly
     for(int i = 0; i < Ntherm; i++) {HMC_Update();} //Thermalization
     therm = true; //Set the flag to true
     for(int i = 0; i < Nmeas; i++) {
