@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    double m0 = -0.7; 
+    double m0 = -0.1; 
 
     //Default values in variables.cpp
     sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     sap_tolerance = 1e-10; //Tolerance for the SAP method
     sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
 
-    AMGV::gmres_restarts_coarse_level = 20; 
+    AMGV::gmres_restarts_coarse_level = 10; 
     AMGV::gmres_restart_length_coarse_level = 100; //GMRES restart length for the coarse level
     AMGV::gmres_tol_coarse_level = 0.1; //GMRES tolerance for the coarse level
     AMGV::nu1 = 0; //Pre-smoothing iterations
@@ -108,12 +108,12 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    /*
+    
     {
         double beta = 2;
         int nconf = 15;
         std::ostringstream NameData;
-        NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-019/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
+        NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-01/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
         //std::cout << "Reading conf from file: " << NameData.str() << std::endl;
         std::ifstream infile(NameData.str());
@@ -132,15 +132,15 @@ int main(int argc, char **argv) {
         infile.close();
     }
     MPI_Barrier(MPI_COMM_WORLD);
-   */
+   
 
 
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
     //Random right hand side
     for(int i = 0; i < Ntot; i++) {
-        rhs[i][0] = 1;//RandomU1();
-        rhs[i][1] = 1; //RandomU1();
+        rhs[i][0] = RandomU1();
+        rhs[i][1] = RandomU1();
     }
 
     clock_t start, end;

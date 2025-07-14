@@ -142,7 +142,9 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	//This modifies interpolator_columns which is used in the interpolator NOT test_vectors
 	interpolator_columns = test_vectors; 
 	orthonormalize(); 
-
+	//For large problems this actually helps ...
+	AMGV::SetUpDone = true; //Set the setup as done
+	assembleDc(); //Assemble the coarse grid operator
 	//Improving the interpolator quality by iterating over the two-grid method defined by the current test vectors
 	if (rank == 0){std::cout << "Improving interpolator" << std::endl;}
 	for (int n = 0; n < Nit; n++) {
@@ -159,6 +161,7 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
 		orthonormalize();
+		assembleDc(); //Assemble the coarse grid operator
 
 	}
 	//In case I want to assemble the coarse grid matrix
@@ -229,8 +232,8 @@ void AMG::assembleDc() {
 			}
 		}
 	}
-	//std::cout << "Coarse grid operator assembled with " << nonzero << " non-zero elements" << std::endl;
-	//std::cout << "Sparsity " << (double)nonzero / (AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg) << std::endl;
+	std::cout << "Coarse grid operator assembled with " << nonzero << " non-zero elements" << std::endl;
+	std::cout << "Sparsity " << (double)nonzero / (AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg) << std::endl;
 	
 	/*
 	valuesDc = c_matrix(3,c_vector(nonzero,0));

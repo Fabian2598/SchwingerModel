@@ -29,7 +29,7 @@ int main() {
     std::cin >> m0_min;
     std::cout << "m0 max: ";
     std::cin >> m0_max;
-    std::cout << "Number of masses in [m0_min, m0_max] ";
+    std::cout << "Number of masses in [m0_min, m0_max]: ";
     std::cin >> Nm0;
     std::cout << "Molecular dynamics steps: ";
     std::cin >> MD_steps;

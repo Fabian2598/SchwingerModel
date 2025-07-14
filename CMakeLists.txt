@@ -14,8 +14,8 @@ set(SOURCES
     src/hmc.cpp                 #Hybrid Monte Carlo
 )
 
-set(NS "64")   #Lattice dimension x
-set(NT "64")   #Lattice dimension t
+set(NS "32")   #Lattice dimension x
+set(NT "32")   #Lattice dimension t
 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
@@ -55,11 +55,13 @@ target_compile_options("mass_${NS}x${NT}" PRIVATE
 			-O3
             #-fopenmp
 )
-#---------------------------------------#
+
 
 #find_package(OpenMP REQUIRED)
 #target_link_libraries("mass_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
 
+
+#---------------------------------------#
 
 #PROJECT_SOURCE_DIR: it indicates where src is located
 #cmake -G "MinGW Makefiles" -DCMAKE_CXX_COMPILER="C:/msys64/ucrt64/bin/g++.exe" -DCMAKE_C_COMPILER="C:/msys64/ucrt64/bin/gcc.exe" ../

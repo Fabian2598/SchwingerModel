@@ -7,6 +7,7 @@ spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0) {
 	using namespace LV;
 	spinor Dphi(Ntot, c_vector(2, 0)); //Dphi[Nx Nt][2]
 
+	//#pragma omp parallel for
 	for (int n = 0; n < Ntot; n++) {
 		//n = x * Nt + t
 		Dphi[n][0] = (m0 + 2) * phi[n][0] -0.5 * ( 
@@ -33,6 +34,7 @@ spinor D_dagger_phi(const c_matrix& U, const spinor& phi, const double& m0) {
 	using namespace LV;
 	spinor Dphi(Ntot, c_vector(2, 0)); //Dphi[Nx Nt][2]
 
+	//#pragma omp parallel for
 	for (int n = 0; n < Ntot; n++) {
 		//n = x * Nt + t
 		Dphi[n][0] = (m0 + 2) * phi[n][0] -0.5 * ( 
@@ -68,8 +70,8 @@ re_field phi_dag_partialD_phi(const c_matrix& U, const spinor& left,const spinor
 	using namespace LV;
 	re_field Dphi(Ntot, std::vector<double>(2, 0)); //Dphi[Ntot][2]
 
+	//#pragma omp parallel for
 	for (int n = 0; n < Ntot; n++) {
-
 		//mu = 0
 		Dphi[n][0] = std::imag(
 		U[n][0] * SignR[n][0] * (std::conj(left[n][0] - left[n][1]) ) * (right[RightPB[n][0]][0] - right[RightPB[n][0]][1])

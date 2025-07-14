@@ -17,15 +17,15 @@ set(SRC_FILES
 )
 
 #--------------------------Lattice dimensions---------------------------#
-set(NS "16") #Space
-set(NT "16") #Time
+set(NS "64") #Space
+set(NT "64") #Time
 #-----------------------------------------------------------------------#
 
 
 #------------------Lattice blocks used for aggregation------------------#
 # A_j_0 = L_j x {0}, A_j_1 = L_j x {1} (Volume times Spin component)
-set(BLOCK_X "2")
-set(BLOCK_T "2")
+set(BLOCK_X "4")
+set(BLOCK_T "4")
 #N_i / BLOCK_i has to be an integer number
 #The number of aggregates is 2 * BlockX * BlockT
 #-----------------------------------------------------------------------#
