@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
     sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
 
     AMGV::gmres_restarts_coarse_level = 20; 
-    AMGV::gmres_restart_length_coarse_level = 20; //GMRES restart length for the coarse level
+    AMGV::gmres_restart_length_coarse_level = 100; //GMRES restart length for the coarse level
     AMGV::gmres_tol_coarse_level = 0.1; //GMRES tolerance for the coarse level
     AMGV::nu1 = 0; //Pre-smoothing iterations
     AMGV::nu2 = 2; //Post-smoothing iterations
@@ -110,11 +110,13 @@ int main(int argc, char **argv) {
     
     /*
     {
-        //Open Conf File//
-        char NameData[500];
-        //sprintf(NameData, "../confs/2D_U1_Ns%d_Nt%d_b%s_m%s_%d.txt", Ns, Nt, format(beta).c_str(), format(m0).c_str(), n);
-        sprintf(NameData, "/wsgjsc/home/nietocastellanos1/Documents/Schwinger/confs/b2_32x32/kappa0268/L032x032_b02000_k26800_%d.ctxt",149);
-        std::ifstream infile(NameData);
+        double beta = 2;
+        int nconf = 15;
+        std::ostringstream NameData;
+        NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-019/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
+        format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
+        //std::cout << "Reading conf from file: " << NameData.str() << std::endl;
+        std::ifstream infile(NameData.str());
         if (!infile) {
             std::cerr << "File not found on rank " << rank << std::endl;
             MPI_Abort(MPI_COMM_WORLD, 1);
@@ -124,29 +126,27 @@ int main(int argc, char **argv) {
         
         c_matrix CONF(Ntot,c_vector(2,0)); 
         while (infile >> x >> t >> mu >> re >> im) {
-            //fortran indexing
-            CONF[Coords[x-1][t-1]][mu] = c_double(re, im); 
+            CONF[Coords[x][t]][mu] = c_double(re, im); 
         }
         GConf.setGconf(CONF);
         infile.close();
     }
     MPI_Barrier(MPI_COMM_WORLD);
-   */ 
+   */
 
 
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
     //Random right hand side
     for(int i = 0; i < Ntot; i++) {
-        rhs[i][0] = RandomU1();
-        rhs[i][1] = RandomU1();
+        rhs[i][0] = 1;//RandomU1();
+        rhs[i][1] = 1; //RandomU1();
     }
 
     clock_t start, end;
     double elapsed_time;
     double startT, endT;
 
-   int gmres_restarts = 50, gmres_restart_length = 20; //for fgmres and gmres
     if (rank == 0){
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;

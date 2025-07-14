@@ -20,10 +20,10 @@ int main() {
     CG::tol = 1e-10; //Tolerance for convergence
     //---Input data---//
     
-    std::cout << "----------------------------" << std::endl;
+    std::cout << "  -----------------------------" << std::endl;
     std::cout << "|  Two-flavor Schwinger model   |" << std::endl;
     std::cout << "| Hybrid Monte Carlo simulation |" << std::endl;
-    std::cout << "----------------------------" << std::endl;
+    std::cout << "  -----------------------------" << std::endl;
     std::cout << "Nx " << LV::Nx << " Nt " << LV::Nt << std::endl;
     std::cout << "m0 min: ";
     std::cin >> m0_min;
@@ -109,33 +109,3 @@ int main() {
 	return 0;
 }
 
-
-
-/*
-
-for(int at = 0; at<10000; at++){
-    spinor right(LV::Ntot,c_vector(2,0));
-    spinor left(LV::Ntot,c_vector(2,0));
-
-    for(int i = 0; i< LV::Ntot; i++){
-        right[i][0] = RandomU1();
-        left[i][0] = RandomU1();
-        right[i][1] = RandomU1();
-        left[i][1] = RandomU1();
-    }
-
-    re_field X = phi_dag_partialD_phi(GConf.Conf,left,right);
-    re_field Xold = phi_dag_partialD_phi_old(GConf.Conf,left,right);
-
-    for(int i = 0; i < LV::Ntot; i++) {
-        if(std::abs(X[i][0] - Xold[i][0]) > 1e-12 || std::abs(X[i][1] - Xold[i][1]) > 1e-12) {
-            std::cout << "Error in the operator phi_dag_partialD_phi " << std::endl;
-            std::cout << "n " << i << std::endl;
-            return 1;
-        }
-    }
-    
-    }
-
-    std::cout << "derivative working fine\n";
-*/

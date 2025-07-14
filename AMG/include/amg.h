@@ -80,6 +80,8 @@ private:
 	GaugeConf GConf;
 	double m0; 
 	int nu1, nu2; 
+	int nonzero;
+	c_matrix valuesDc; //CSR matrix for the coarse grid operator
 
 	/*
 	Interpolator times a spinor
@@ -90,6 +92,12 @@ private:
 	Restriction operator times a spinor
 	*/
 	spinor Pt_v(const spinor& v); // P^T v
+
+	/*
+	Assemble the coarse grid operator Dc = P^H D P 
+	dim(Dc) = Ntest Nagg x Ntest Nagg
+	*/
+	void assembleDc();
 
 	/*
 	Coarse grid operator Dc = P^H D P times a spinor

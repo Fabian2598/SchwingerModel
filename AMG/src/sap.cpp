@@ -155,7 +155,13 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
 
             for (int i = 0; i <= j; i++) {
                 Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
-                w = w -  Hm[i][j] * VmT[i];
+
+                //w = w -  Hm[i][j] * VmT[i];
+				for(int n=0; n<sap_lattice_sites_per_block; n++){
+					for(int l=0; l<2; l++){
+						w[n][l] -= Hm[i][j] * VmT[i][n][l];
+					}
+				}
             }
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
             if (std::real(Hm[j + 1][j]) > 0) {
@@ -242,13 +248,22 @@ int SAP(const c_matrix& U, const spinor& v,spinor& x, const double& m0,const int
     for (int i = 0; i< nu; i++){
         for (auto block : SAP_RedBlocks){
             I_D_B_1_It(U,r,temp,m0,block);
-            x = x + temp; //x = x + D_B^-1 r
+            //x = x + temp; //x = x + D_B^-1 r
+            for(int n = 0; n < Ntot; n++) {
+                x[n][0] += temp[n][0];
+                x[n][1] += temp[n][1];
+            }
         }
         
         r = v - D_phi(U, x, m0); //r = v - D x
         for (auto block : SAP_BlackBlocks){
             I_D_B_1_It(U,r,temp,m0,block);
-            x = x + temp; //x = x + D_B^-1 r
+            //x = x + temp; //x = x + D_B^-1 r
+            for(int n = 0; n < Ntot; n++) {
+                x[n][0] += temp[n][0];
+                x[n][1] += temp[n][1];
+            }
+           
         }
         r = v - D_phi(U, x, m0); //r = v - D x
 
@@ -303,14 +318,18 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
     //Prepare buffers for MPI communication
     std::vector<c_double> local_buffer(Ntot * 2);
     std::vector<c_double> global_buffer(Ntot * 2);
-
+    spinor Dphi;
     
     for (int i = 0; i< nu; i++){  
         set_zeros(local_x,Ntot,2); //Initialize local_x to zero
         for (int b = start; b < end; b++) {
             int block = SAP_RedBlocks[b];
             I_D_B_1_It(U, r, temp, m0, block);
-            local_x = local_x + temp; // Local computation
+            //local_x = local_x + temp; // Local computation
+            for(int n = 0; n < Ntot; n++) {
+                local_x[n][0] += temp[n][0];
+                local_x[n][1] += temp[n][1];
+            }
         }
 
         //------MPI communication for red blocks------//
@@ -327,15 +346,29 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
             global_x[n][1] = global_buffer[2*n + 1];
         }
         //---------------------------------------------//
+        //x = x + global_x;
+        for(int n = 0; n < Ntot; n++) {
+            x[n][0] += global_x[n][0];
+            x[n][1] += global_x[n][1];
+        }
+        Dphi = D_phi(U, x, m0);
+        //r = v - D_phi(U, x, m0); //r = v - D x
+        for(int n = 0; n < Ntot; n++) {
+            r[n][0] = v[n][0] - Dphi[n][0];
+            r[n][1] = v[n][1] - Dphi[n][1];
+        }
 
-        x = x + global_x;
-        r = v - D_phi(U, x, m0); //r = v - D x
+
         set_zeros(local_x,Ntot,2); //Initialize local_x to zero
 
         for (int b = start; b < end; b++) {
             int block = SAP_BlackBlocks[b];
             I_D_B_1_It(U, r, temp, m0, block);
-            local_x = local_x + temp; // Local computation
+            //local_x = local_x + temp; // Local computation
+            for(int n = 0; n < Ntot; n++) {
+                local_x[n][0] += temp[n][0];
+                local_x[n][1] += temp[n][1];
+            }
         }
 
         //------MPI communication for black blocks------//
@@ -350,8 +383,17 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
         }
         //---------------------------------------------//
         
-        x =  x + global_x;
-        r = v - D_phi(U, x, m0); //r = v - D x
+         //x = x + global_x;
+        for(int n = 0; n < Ntot; n++) {
+            x[n][0] += global_x[n][0];
+            x[n][1] += global_x[n][1];
+        }
+        Dphi = D_phi(U, x, m0);
+        //r = v - D_phi(U, x, m0); //r = v - D x
+        for(int n = 0; n < Ntot; n++) {
+            r[n][0] = v[n][0] - Dphi[n][0];
+            r[n][1] = v[n][1] - Dphi[n][1];
+        }
 
         err = sqrt(std::real(dot(r, r))); 
         if (err < sap_tolerance * v_norm) {

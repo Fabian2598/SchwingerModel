@@ -48,7 +48,12 @@ spinor fgmresSAP(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             //----Gram-Schmidt process----//
             for (int i = 0; i <= j; i++) {
                 Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
-                w = w -  Hm[i][j] * VmT[i];
+                //w = w -  Hm[i][j] * VmT[i];
+				for(int n=0; n<Ntot; n++){
+					for(int l=0; l<2; l++){
+						w[n][l] -= Hm[i][j] * VmT[i][n][l];
+					}
+				}
             }
 
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
@@ -127,7 +132,15 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
     GaugeConf Gconf = GaugeConf(Nx, Nt); //Gauge configuration
     Gconf.setGconf(U); //Set the gauge configuration
     AMG amg = AMG(Gconf, m0,AMGV::nu1,AMGV::nu2);   //nu1 pre-smoothing it, nu2 post-smoothing it
+
+    clock_t start, end;
+    double elapsed_time;
+    double startT, endT;     
+    start = clock();
     amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
+    end = clock();
+    elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+    std::cout << "Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl;   
     //--------------------------------------------------//
 
     err = sqrt(std::real(dot(r, r))); //Initial error
@@ -144,7 +157,12 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             //Gram-Schmidt process to orthogonalize the vectors
             for (int i = 0; i <= j; i++) {
                 Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
-                w = w -  Hm[i][j] * VmT[i];
+                //w = w -  Hm[i][j] * VmT[i];
+                for(int n=0; n<Ntot; n++){
+					for(int l=0; l<2; l++){
+						w[n][l] -= Hm[i][j] * VmT[i][n][l];
+					}
+				}
             }
 
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||

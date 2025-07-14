@@ -14,8 +14,8 @@ set(SOURCES
     src/hmc.cpp                 #Hybrid Monte Carlo
 )
 
-set(NS "16")   #Lattice dimension x
-set(NT "16")   #Lattice dimension t
+set(NS "64")   #Lattice dimension x
+set(NT "64")   #Lattice dimension t
 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
