@@ -47,6 +47,12 @@ public:
 
 		interpolator_columns = std::vector<spinor>(AMGV::Ntest,
 			spinor( LV::Ntot, c_vector (2,0))); 
+
+		valuesDc = c_vector(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg, 0.0); //CSR matrix for the coarse grid operator
+		rowsDc = std::vector<int>(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg, 0); //Row indices of the coarse grid operator
+		colsDc = std::vector<int>(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg,0);
+	
+		//c_matrix DcMatrix = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
 	}
 	~AMG() { };
 
@@ -80,8 +86,12 @@ private:
 	GaugeConf GConf;
 	double m0; 
 	int nu1, nu2; 
-	int nonzero;
-	c_matrix valuesDc; //CSR matrix for the coarse grid operator
+	int nonzero = 0; //Count the number of non-zero elements in the coarse grid operator
+	c_vector valuesDc; //CSR matrix for the coarse grid operator
+	std::vector<int> rowsDc;
+	std::vector<int> colsDc;
+	 
+	//c_matrix DcMatrix;
 
 	/*
 	Interpolator times a spinor

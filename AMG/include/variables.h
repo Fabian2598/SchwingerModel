@@ -10,6 +10,7 @@ constexpr double pi=3.14159265359;
 
 extern double coarse_time; //Time spent in the coarse grid solver
 extern double smooth_time; //Time spent in the smoother
+extern double SAP_time;
 
 
 //------------Lattice parameters--------------//
@@ -100,8 +101,6 @@ extern std::vector<std::vector<int>> SAP_Blocks; //SAP_Blocks[number_of_block][v
 extern std::vector<int> SAP_RedBlocks; //Block index for the red blocks
 extern std::vector<int> SAP_BlackBlocks; //Block index for the black blocks
 
-
-extern std::vector<std::vector<std::complex<double>>> DcMatrix;
 
 void CheckBlocks(); //Check that Nx/block_x and Nt/block_t are integers, the same for Schwarz blocks
 void CheckAggregates(); //Check that the aggregates are initialized and have the correct size

@@ -3,7 +3,8 @@
 typedef std::complex<double> c_double;
 double coarse_time = 0.0; //Time spent in the coarse grid solver
 double smooth_time = 0.0; //Time spent in the smoother
-int nonzero = 0; //Count the number of non-zero elements in the coarse grid operator
+double SAP_time = 0.0; //Time spent in the SAP method
+
 
 std::vector<std::vector<int>>Coords = std::vector<std::vector<int>>(LV::Nx, std::vector<int>(LV::Nt, 0));
 void Coordinates() {
@@ -35,10 +36,6 @@ std::vector<std::vector<int>>SAP_Blocks = std::vector<std::vector<int>>(SAPV::sa
     std::vector<int>(SAPV::sap_x_elements*SAPV::sap_t_elements, 0));
 std::vector<int> SAP_RedBlocks = std::vector<int>(SAPV::sap_coloring_blocks, 0); //Red blocks
 std::vector<int> SAP_BlackBlocks = std::vector<int>(SAPV::sap_coloring_blocks, 0); //Black blocks
-
-//--Coarse grid operator--//
-std::vector<std::vector<std::complex<double>>> DcMatrix = std::vector<std::vector<std::complex<double>>> (AMGV::Ntest*AMGV::Nagg, 
-   std::vector<std::complex<double> >(AMGV::Ntest*AMGV::Nagg,0));
 
 
 namespace SAPV {

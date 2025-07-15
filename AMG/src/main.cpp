@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    double m0 = -0.1; 
+    double m0 = -0.18840579710144945; 
 
     //Default values in variables.cpp
     sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
@@ -111,9 +111,9 @@ int main(int argc, char **argv) {
     
     {
         double beta = 2;
-        int nconf = 15;
+        int nconf = 1;
         std::ostringstream NameData;
-        NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-01/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
+        NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
         //std::cout << "Reading conf from file: " << NameData.str() << std::endl;
         std::ifstream infile(NameData.str());
@@ -173,6 +173,7 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
+    printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
     MPI_Finalize();
     return 0;
 }

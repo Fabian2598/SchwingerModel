@@ -133,7 +133,12 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		spinor rhs = test_vectors[i]; //c_matrix rhs(Ntot, c_vector(2, 0)); //We can also try with rhs = 0 
 		
 		//The result will be stored in test_vectors[i]
-		SAP_parallel(GConf.Conf, rhs, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations,SAPV::sap_blocks_per_proc); 
+		double startT, endT;
+		startT = MPI_Wtime();
+		SAP_parallel(GConf.Conf, rhs, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations,SAPV::sap_blocks_per_proc);  
+		endT = MPI_Wtime();
+		SAP_time += endT - startT; 
+		
 		
 		//Sequential version for testing
 		//SAP(GConf.Conf, v0, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations);
@@ -218,6 +223,7 @@ spinor AMG::Pt_v(const spinor& v) {
 	dim(Dc) = Ntest Nagg x Ntest Nagg
 */
 void AMG::assembleDc() {
+	/*
 	nonzero = 0;
 	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
 		spinor e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
@@ -234,10 +240,9 @@ void AMG::assembleDc() {
 	}
 	std::cout << "Coarse grid operator assembled with " << nonzero << " non-zero elements" << std::endl;
 	std::cout << "Sparsity " << (double)nonzero / (AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg) << std::endl;
-	
-	/*
-	valuesDc = c_matrix(3,c_vector(nonzero,0));
-	int cont = 0;
+	*/
+
+	nonzero = 0;
 	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
 		spinor e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
 		spinor column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
@@ -245,14 +250,14 @@ void AMG::assembleDc() {
 			int m = i / AMGV::Nagg; //Test vector index
 			int a = i % AMGV::Nagg; //Aggregate index
 			if (column[m][a] != 0.0) {
-				valuesDc[0][cont] = i; //Row index of the coarse grid operator
-				valuesDc[1][cont] = j;  //Column index of the coarse grid operator
-				valuesDc[2][cont] = column[m][a];  //Value of the coarse grid operator
-				cont++;
+				rowsDc[nonzero] = i; //Row index of the coarse grid operator
+				colsDc[nonzero] = j;  //Column index of the coarse grid operator
+				valuesDc[nonzero] = column[m][a];  //Value of the coarse grid operator
+				nonzero++;
 			}
 		}
 	}
-	*/
+	
 
 }
 
@@ -267,6 +272,7 @@ spinor AMG::Pt_D_P(const spinor& v){
 	else{
 		spinor x(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
 		
+		/*
 		for(int n = 0; n < AMGV::Ntest; n++){
 			for(int alf = 0; alf<AMGV::Nagg; alf++){
 				int i = n * AMGV::Nagg + alf; //Index of the test vector and aggregate
@@ -277,16 +283,16 @@ spinor AMG::Pt_D_P(const spinor& v){
 				}
 			}
 		}
-		
-		/*
-		for(int i = 0; i < nonzero; i++){
-			int n = std::real (valuesDc[0][i]) / AMGV::Nagg; //Test vector index
-			int alf = (int) std::real (valuesDc[0][i]) % AMGV::Nagg; //Aggregate index
-			int m = std::real (valuesDc[1][i]) / AMGV::Nagg; //Test vector index
-			int a = (int) std::real (valuesDc[1][i]) % AMGV::Nagg; //Aggregate index
-			x[n][alf] += valuesDc[2][i] * v[m][a]; //Dc v			
-		}
 		*/
+		
+		for(int i = 0; i < nonzero; i++){
+			int n = rowsDc[i] / AMGV::Nagg; //Test vector index
+			int alf = rowsDc[i] % AMGV::Nagg; //Aggregate index
+			int m = colsDc[i] / AMGV::Nagg; //Test vector index
+			int a = colsDc[i] % AMGV::Nagg; //Aggregate index
+			x[n][alf] += valuesDc[i] * v[m][a]; //Dc v			
+		}
+		
 		return x;
 	}
 	
@@ -358,6 +364,7 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			SAP_parallel(GConf.Conf, phi, x, m0, nu2, SAPV::sap_blocks_per_proc); 
 			endT = MPI_Wtime();
 			smooth_time += endT - startT; //Add post-smoothing time
+			SAP_time += endT - startT; //Add post-smoothing time
 		}
 		Dphi = D_phi(GConf.Conf, x, m0); 
 
