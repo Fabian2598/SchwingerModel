@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 
     //Default values in variables.cpp
     sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
-    sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
+    sap_gmres_restarts = 1; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
     sap_gmres_tolerance = 1e-3; //GMRES tolerance for the Schwarz blocks
     sap_tolerance = 1e-10; //Tolerance for the SAP method
     sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
