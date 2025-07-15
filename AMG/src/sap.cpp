@@ -42,76 +42,107 @@ void SchwarzBlocks(){
 
 //x = I_B^T v --> Restriction of the vector v to the block B
 //dim(v) = 2 Ntot, dim(x) = 2 * sap_lattice_sites_per_block
-void It_B_v(const spinor& v, spinor& x, const int& block){
+spinor It_B_v(const spinor& v, const int& block){
     using namespace SAPV;
     //Schwarz blocks have to be initialized first before calling this function
+    spinor x(sap_lattice_sites_per_block, c_vector(2, 0)); //Initialize x to zero
+    /*
     if (!schwarz_blocks){
         std::cout << "Error: Schwarz blocks not initialized" << std::endl;
         exit(1);
     }
     //Checking dimensions
-    if ( checkSize(v, Ntot, 2)== true || checkSize(x, sap_lattice_sites_per_block, 2) == true){
+    if ( checkSize(v, Ntot, 2)== true){
         std::cout << "Error with vector dimensions in It_B_v" << std::endl;
         exit(1);
     } 
-    set_zeros(x,sap_lattice_sites_per_block,2); //Initialize the output vector to zero
+    */
 
     for (int j = 0; j < sap_lattice_sites_per_block; j++){
         //Writing result to x 
         x[j][0] = v[SAP_Blocks[block][j]][0];
         x[j][1] = v[SAP_Blocks[block][j]][1];
     }
+    return x;
 }
 
 // x = I_B v --> Interpolation of the vector v to the original lattice
 //dim(v) = 2 * sap_lattice_sites_per_block, dim(x) = 2 Ntot
-void I_B_v(const spinor& v, spinor& x,const int& block){
+spinor I_B_v(const spinor& v,const int& block){
     using namespace SAPV;
     //Schwarz blocks have to be initialized first before calling this function
+    /*
     if (!schwarz_blocks){
         std::cout << "Error: Schwarz blocks not initialized" << std::endl;
         exit(1);
     }
-    if ( checkSize(v, sap_lattice_sites_per_block, 2) == true ||  checkSize(x, Ntot, 2) == true ){
+    if ( checkSize(v, sap_lattice_sites_per_block, 2) == true){
         std::cout << "Error with dimensions in I_B_v" << std::endl;
         exit(1);
     } 
-    set_zeros(x,Ntot,2); //Initialize x to zero
+    */
+    spinor x(Ntot, c_vector(2, 0)); //Initialize x to zero
+
     for (int j = 0; j < sap_lattice_sites_per_block; j++){
         x[SAP_Blocks[block][j]][0] += v[j][0];
         x[SAP_Blocks[block][j]][1] += v[j][1];
     }
-
+    return x;
 }
 
 //Restriction of the Dirac operator to the block B
 //D_B v = I_B^T D I_B v  
 //dim(v) = 2 * sap_lattice_sites_per_block, dim(x) = 2 * sap_lattice_sites_per_block
-void D_B(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const int& block){
+spinor D_B(const c_matrix& U, const spinor& v, const double& m0,const int& block){
     using namespace SAPV;
-    if (checkSize(v, sap_lattice_sites_per_block, 2)==true || checkSize(x, sap_lattice_sites_per_block, 2) == true){
+    /*
+    if (checkSize(v, sap_lattice_sites_per_block, 2)==true){
         std::cout << "Error with vector dimensions in D_B" << std::endl;
         exit(1);
     }
-    spinor temp(Ntot, c_vector(2, 0)); //I_B v
-    I_B_v(v,temp,block); 
-    It_B_v( D_phi(U,temp, m0), x, block); //It_B_v sets x to zero first
+    */
+    //return I_B_v(D_phi(U, I_B_v(v, block), m0), block); //D_B v = I_B^T D I_B v
+
+    spinor Dv(sap_lattice_sites_per_block, c_vector(2, 0));
+    spinor phi = I_B_v(v, block); //Interpolation of the vector to the original lattice
+    for (int m = 0; m < sap_lattice_sites_per_block; m++) {
+		//n = x * Nt + t
+        int n = SAP_Blocks[block][m]; //n is the index of the lattice point in the block
+		Dv[m][0] = (m0 + 2) * phi[n][0] - 0.5 * ( 
+			U[n][0] * SignR[n][0] * (phi[RightPB[n][0]][0] - phi[RightPB[n][0]][1]) 
+		+   U[n][1] * SignR[n][1] * (phi[RightPB[n][1]][0] + I_number * phi[RightPB[n][1]][1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi[LeftPB[n][0]][0] + phi[LeftPB[n][0]][1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (phi[LeftPB[n][1]][0] - I_number * phi[LeftPB[n][1]][1])
+		);
+
+		Dv[m][1] = (m0 + 2) * phi[n][1] - 0.5 * ( 
+			U[n][0] * SignR[n][0] * (-phi[RightPB[n][0]][0] + phi[RightPB[n][0]][1]) 
+		+   U[n][1] * SignR[n][1] * (-I_number*phi[RightPB[n][1]][0] + phi[RightPB[n][1]][1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi[LeftPB[n][0]][0] + phi[LeftPB[n][0]][1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (I_number*phi[LeftPB[n][1]][0] + phi[LeftPB[n][1]][1])
+		);
+			
+	}
+
+    return Dv;
+    
 }
 
 //Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B 
-int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
+spinor gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, 
     const double& m0, const int& m, const int& restarts, const double& tol, const int& block,
     const bool& print_message) {
     using namespace SAPV;
+    
     if (print_message == true){
         std::cout << "------------------------------------------" << std::endl;
         std::cout << "|GMRES for D_B (block " << block << ") " << std::endl;
         std::cout << "|Restart length " << m << ". Restarts = " << restarts << std::endl;
     }
-    if (checkSize(phi, sap_lattice_sites_per_block, 2) == true || checkSize(x, sap_lattice_sites_per_block, 2) == true || checkSize(x, sap_lattice_sites_per_block, 2) == true){
-        std::cout << "Error with vector dimensions in gmres_D_B" << std::endl;
-        exit(1);
-    } 
+    //if (checkSize(phi, sap_lattice_sites_per_block, 2) == true){
+    //    std::cout << "Error with vector dimensions in gmres_D_B" << std::endl;
+    //    exit(1);
+    //} 
     if (m> sap_variables_per_block) {
         std::cout << "Error: restart length > sap_variables_per_block" << std::endl;
         exit(1);
@@ -135,12 +166,16 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
 
 
     spinor w(sap_lattice_sites_per_block, c_vector(2, 0)); //D*d
-    x = x0; //initial solution
+    spinor x = x0; //initial solution
     c_double beta; //not 1/g^2
 
-	spinor temp(sap_lattice_sites_per_block, c_vector(2, 0)); //I_B v
-    D_B(U, phi,temp, m0, block);
-    r = phi - temp; //r = b - A*x
+    //r = phi - D_B(U, phi, m0, block); //r = b - A*x
+    spinor temp =  D_B(U, phi, m0, block);
+    for(int i = 0; i < sap_lattice_sites_per_block; i++) {
+        r[i][0] = phi[i][0] - temp[i][0];
+        r[i][1] = phi[i][1] - temp[i][1];
+    }
+
 	
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
     err = sqrt(std::real(dot(r, r))); //Initial error
@@ -151,7 +186,7 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
-            D_B(U, VmT[j], w,m0, block); //w = D v_j  
+            w = D_B(U, VmT[j], m0, block); //w = D v_j  
 
             for (int i = 0; i <= j; i++) {
                 Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
@@ -185,8 +220,13 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
             }
         }
         //Compute the residual
-        D_B(U, x,temp, m0, block); //D_B x
-        r = phi - temp; 
+        //r = phi - D_B(U, x, m0, block); //D_B x; 
+        temp =  D_B(U, x, m0, block);
+        for(int i = 0; i < sap_lattice_sites_per_block; i++) {
+            r[i][0] = phi[i][0] - temp[i][0];
+            r[i][1] = phi[i][1] - temp[i][1];
+        }
+
         err = sqrt(std::real(dot(r, r)));
 
          if (err < tol * norm_phi) {
@@ -195,7 +235,7 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
                  std::cout << "------------------------------------------" << std::endl;
             }
              
-             return 1;
+             return x;
              
          }
          k++;
@@ -204,80 +244,30 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
       //  std::cout << "|GMRES for D_B (block " << block << ") did not converge in " << restarts << " restarts." << " Error " << err << std::endl;
     //
     //std::cout << "------------------------------------------" << std::endl;
-    return 0;
+    return x;
 }
 
 //A_B = I_B * D_B^-1 * I_B^T v --> Extrapolation of D_B^-1 to the original lattice.
 //dim(v) = 2 * Ntot, dim(x) = 2 Ntot
 //v: input, x: output
-void I_D_B_1_It(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const int& block){
+spinor I_D_B_1_It(const c_matrix& U, const spinor& v, const double& m0,const int& block){
     using namespace SAPV;
     bool print_message = false; //good for testing GMRES   
-    
-    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
+    /*
+    if (checkSize(v, Ntot, 2) == true){
         std::cout << "Error with vector dimensions in I_D_B_1_It" << std::endl;
         exit(1);
     } 
-    spinor temp(sap_lattice_sites_per_block, c_vector(2, 0)); 
-    spinor temp2(sap_lattice_sites_per_block, c_vector(2, 0)); 
-    It_B_v(v,temp,block); //temp = I_B^T v
-
-    gmres_D_B(U, temp, temp,temp2, m0, 
-       sap_gmres_restart_length, sap_gmres_restarts, sap_gmres_tolerance, 
-        block, print_message);  //temp2 = D_B^-1 I_B^T v 
-
-    I_B_v(temp2,x,block); //x = I_B D_B^-1 I_B^T v 
-}
-
-//Sequential version of the SAP method (used for testing)
-int SAP(const c_matrix& U, const spinor& v,spinor& x, const double& m0,const int& nu){
-    /*
-    Solves D x = v using the SAP method
     */
-   using namespace SAPV;
-    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
-        std::cout << "Error with vector dimensions in I_KD" << std::endl;
-        exit(1);
-    }  
-    double err;
-    double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
+    spinor x(Ntot, c_vector(2, 0)); //Initialize x to zero
+    spinor temp = It_B_v(v,block); //temp = I_B^T v
 
-    spinor temp(Ntot, c_vector(2, 0)); 
-    spinor r(Ntot, c_vector(2, 0)); //residual
-    r = v - D_phi(U, x, m0); //r = v - D x
-    for (int i = 0; i< nu; i++){
-        for (auto block : SAP_RedBlocks){
-            I_D_B_1_It(U,r,temp,m0,block);
-            //x = x + temp; //x = x + D_B^-1 r
-            for(int n = 0; n < Ntot; n++) {
-                x[n][0] += temp[n][0];
-                x[n][1] += temp[n][1];
-            }
-        }
-        
-        r = v - D_phi(U, x, m0); //r = v - D x
-        for (auto block : SAP_BlackBlocks){
-            I_D_B_1_It(U,r,temp,m0,block);
-            //x = x + temp; //x = x + D_B^-1 r
-            for(int n = 0; n < Ntot; n++) {
-                x[n][0] += temp[n][0];
-                x[n][1] += temp[n][1];
-            }
-           
-        }
-        r = v - D_phi(U, x, m0); //r = v - D x
-
-        err = sqrt(std::real(dot(r, r))); 
-        if (err < sap_tolerance * v_norm) {
-            //std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
-            return 1;
-        }
-    }
-    //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
-    return 0; 
+    return I_B_v(gmres_D_B(U, temp, temp, m0, 
+       sap_gmres_restart_length, sap_gmres_restarts, sap_gmres_tolerance, 
+        block, print_message),block); //x = I_B D_B^-1 I_B^T v 
 }
 
-int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc){
+spinor SAP_parallel(const c_matrix& U, const spinor& v, const double& m0,const int& nu,const int& blocks_per_proc){
     /*
     Solves D x = v using the SAP method
     */
@@ -285,10 +275,11 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
    int size, rank;
    MPI_Comm_size(MPI_COMM_WORLD, &size);
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (checkSize(v, Ntot, 2) == true || checkSize(x, Ntot, 2) == true){
+   
+    /*if (checkSize(v, Ntot, 2) == true){
         std::cout << "Error with vector dimensions in SAP" << std::endl;
         exit(1);
-    }  
+    } */ 
     if (blocks_per_proc * size != sap_coloring_blocks) {
         std::cout << "blocks_per_proc * no_of_mpi_processes /= sap_coloring_blocks" << std::endl;
         std::cout << "The workload on the processes is not the same. Some processors invert more SAP blocks" << std::endl;
@@ -298,7 +289,7 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
         std::cout << "Error: number of processes > number of blocks" << std::endl;
         exit(1);
     }
-
+    
 
     double err;
     double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
@@ -309,6 +300,7 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
 
     spinor temp(Ntot, c_vector(2, 0)); 
     spinor r(Ntot, c_vector(2, 0)); //residual
+    spinor x(Ntot, c_vector(2, 0)); //residual
 
     r = v - D_phi(U, x, m0); //r = v - D x
 
@@ -324,7 +316,7 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
         set_zeros(local_x,Ntot,2); //Initialize local_x to zero
         for (int b = start; b < end; b++) {
             int block = SAP_RedBlocks[b];
-            I_D_B_1_It(U, r, temp, m0, block);
+            temp = I_D_B_1_It(U, r, m0, block);
             //local_x = local_x + temp; // Local computation
             for(int n = 0; n < Ntot; n++) {
                 local_x[n][0] += temp[n][0];
@@ -363,7 +355,7 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
 
         for (int b = start; b < end; b++) {
             int block = SAP_BlackBlocks[b];
-            I_D_B_1_It(U, r, temp, m0, block);
+            temp = I_D_B_1_It(U, r, m0, block);
             //local_x = local_x + temp; // Local computation
             for(int n = 0; n < Ntot; n++) {
                 local_x[n][0] += temp[n][0];
@@ -398,11 +390,90 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
         err = sqrt(std::real(dot(r, r))); 
         if (err < sap_tolerance * v_norm) {
             //std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
-            return 1;
+            return x;
         }
     }
    //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
     
-    return 0; 
+    return x; 
+}
+/*
+phi has the original dimension, the output has block dimension
+*/
+spinor local_D(const c_matrix& U, const spinor& v, const double& m0,const int& block) {
+    using namespace SAPV;
+
+    spinor Dv(sap_lattice_sites_per_block, c_vector(2, 0));
+    spinor phi = I_B_v(v, block); //Interpolation of the vector to the original lattice
+    for (int m = 0; m < sap_lattice_sites_per_block; m++) {
+		//n = x * Nt + t
+        int n = SAP_Blocks[block][m]; //n is the index of the lattice point in the block
+		Dv[m][0] = (m0 + 2) * phi[n][0] - 0.5 * ( 
+			U[n][0] * SignR[n][0] * (phi[RightPB[n][0]][0] - phi[RightPB[n][0]][1]) 
+		+   U[n][1] * SignR[n][1] * (phi[RightPB[n][1]][0] + I_number * phi[RightPB[n][1]][1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi[LeftPB[n][0]][0] + phi[LeftPB[n][0]][1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (phi[LeftPB[n][1]][0] - I_number * phi[LeftPB[n][1]][1])
+		);
+
+		Dv[m][1] = (m0 + 2) * phi[n][1] - 0.5 * ( 
+			U[n][0] * SignR[n][0] * (-phi[RightPB[n][0]][0] + phi[RightPB[n][0]][1]) 
+		+   U[n][1] * SignR[n][1] * (-I_number*phi[RightPB[n][1]][0] + phi[RightPB[n][1]][1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi[LeftPB[n][0]][0] + phi[LeftPB[n][0]][1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (I_number*phi[LeftPB[n][1]][0] + phi[LeftPB[n][1]][1])
+		);
+			
+	}
+
+    return Dv; 
+}
+
+//Sequential version of the SAP method (used for testing)
+spinor SAP(const c_matrix& U, const spinor& v, const double& m0,const int& nu){
+    /*
+    Solves D x = v using the SAP method
+    */
+  
+    using namespace SAPV;
+    spinor x(Ntot, c_vector(2, 0)); //Initialize x to zero
+    //if (checkSize(v, Ntot, 2) == true){
+    //    std::cout << "Error with vector dimensions in I_KD" << std::endl;
+    //    exit(1);
+    //}  
+    double err;
+    double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
+
+    spinor temp(Ntot, c_vector(2, 0)); 
+    spinor r(Ntot, c_vector(2, 0)); //residual
+    r = v - D_phi(U, x, m0); //r = v - D x
+    for (int i = 0; i< nu; i++){
+        for (auto block : SAP_RedBlocks){
+            temp = I_D_B_1_It(U,r,m0,block);
+            //x = x + temp; //x = x + D_B^-1 r
+            for(int n = 0; n < Ntot; n++) {
+                x[n][0] += temp[n][0];
+                x[n][1] += temp[n][1];
+            }
+        }
+        
+        r = v - D_phi(U, x, m0); //r = v - D x
+        for (auto block : SAP_BlackBlocks){
+            temp = I_D_B_1_It(U,r,m0,block);
+            //x = x + temp; //x = x + D_B^-1 r
+            for(int n = 0; n < Ntot; n++) {
+                x[n][0] += temp[n][0];
+                x[n][1] += temp[n][1];
+            }
+           
+        }
+        r = v - D_phi(U, x, m0); //r = v - D x
+
+        err = sqrt(std::real(dot(r, r))); 
+        if (err < sap_tolerance * v_norm) {
+            //std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
+            return x;
+        }
+    }
+    //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
+    return x; 
 }
 

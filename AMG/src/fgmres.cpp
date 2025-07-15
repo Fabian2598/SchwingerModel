@@ -40,7 +40,7 @@ spinor fgmresSAP(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             //-----Preconditioner-----//
             //zm = M^-1. vm
             set_zeros(ZmT[j], Ntot, 2); //Initialize ZmT[j] to zero
-            SAP_parallel(U, VmT[j], ZmT[j], m0, 1,SAPV::sap_blocks_per_proc); //One SAP iteration
+            ZmT[j] = SAP_parallel(U, VmT[j], m0, 1,SAPV::sap_blocks_per_proc); //One SAP iteration
 
         
             w = D_phi(U, ZmT[j], m0); //w = D v_j

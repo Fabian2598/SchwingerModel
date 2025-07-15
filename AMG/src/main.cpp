@@ -25,6 +25,7 @@ int main(int argc, char **argv) {
     int rank, size; 
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    
 
     srand(19);
 
@@ -41,6 +42,7 @@ int main(int argc, char **argv) {
     sap_tolerance = 1e-10; //Tolerance for the SAP method
     sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
 
+    AMGV::SAP_test_vectors_iterations = 1;
     AMGV::gmres_restarts_coarse_level = 10; 
     AMGV::gmres_restart_length_coarse_level = 100; //GMRES restart length for the coarse level
     AMGV::gmres_tol_coarse_level = 0.1; //GMRES tolerance for the coarse level
@@ -118,9 +120,9 @@ int main(int argc, char **argv) {
         //std::cout << "Reading conf from file: " << NameData.str() << std::endl;
         std::ifstream infile(NameData.str());
         if (!infile) {
-            std::cerr << "File not found on rank " << rank << std::endl;
+           std::cerr << "File not found on rank " << rank << std::endl;
             MPI_Abort(MPI_COMM_WORLD, 1);
-        }
+       }
         int x, t, mu;
         double re, im;
         
@@ -138,7 +140,7 @@ int main(int argc, char **argv) {
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
     //Random right hand side
-    for(int i = 0; i < Ntot; i++) {
+    for(int i = 0; i <Ntot; i++) {
         rhs[i][0] = RandomU1();
         rhs[i][1] = RandomU1();
     }
@@ -147,12 +149,12 @@ int main(int argc, char **argv) {
     double elapsed_time;
     double startT, endT;
 
+    //int nu = 10;
+    //SAP(GConf.Conf, rhs, m0, nu);
+    //MPI_Finalize();
     
-    return 0;
-}
-
-/*
-if (rank == 0){
+    
+    if (rank == 0){
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
@@ -180,4 +182,38 @@ if (rank == 0){
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
     MPI_Finalize();
-*/
+      
+
+
+    return 0;
+}
+
+    /*
+    spinor RHS(sap_lattice_sites_per_block, c_vector(2, 0)); //random right hand side 
+   
+    //Random right hand side
+    for(int i = 0; i <sap_lattice_sites_per_block; i++) {
+        RHS[i][0] = RandomU1();
+        RHS[i][1] = RandomU1();
+    }
+
+    int block = 0;
+    spinor xv1 = D_B(GConf.Conf, RHS, m0,block);
+    for(int n = 0; n < 2; n++) {
+        std::cout << "xv1[" << n << "] = (" << xv1[n][0] << ", " << xv1[n][1] << ")" << std::endl;
+    }
+
+    spinor xv2 = local_D(GConf.Conf, RHS, m0,block);
+    for(int n = 0; n < 2; n++) {
+        std::cout << "xv2[" << n << "] = (" << xv2[n][0] << ", " << xv2[n][1] << ")" << std::endl;
+   }
+
+   //check if both are the same
+   for(int n = 0; n < 2; n++) {
+        if (std::abs(xv1[n][0] - xv2[n][0]) > 1e-10 || std::abs(xv1[n][1] - xv2[n][1]) > 1e-10) {
+            std::cout << "Error: xv1 and xv2 are not the same!" << std::endl;
+        } 
+    }
+     std::cout << "xv1 and xv2 are the same" << std::endl;
+    MPI_Finalize();
+    */

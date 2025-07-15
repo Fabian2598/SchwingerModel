@@ -1,6 +1,7 @@
 #include "amg.h"
 
 //Aggregates A_j_0 = L_j x {0}, A_j_1 = L_j x {1} (Volume times Spin component)
+
 void Aggregates() {
 	using namespace LV; //Lattice parameters namespace
 	for (int x = 0; x < block_x; x++) {
@@ -108,6 +109,7 @@ void AMG::orthonormalize(){
 	interpolator_columns = temp;
 }; 
 
+
 void AMG::setUpPhase(const double& eps,const int& Nit) {
 	//Call MPI for SAP parallelization
 	int rank;
@@ -135,13 +137,12 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		//The result will be stored in test_vectors[i]
 		double startT, endT;
 		startT = MPI_Wtime();
-		SAP_parallel(GConf.Conf, rhs, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations,SAPV::sap_blocks_per_proc);  
+		//Sequential version for testing
+		//SAP(GConf.Conf, rhs, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations);
+		test_vectors[i] = SAP_parallel(GConf.Conf, rhs, m0, AMGV::SAP_test_vectors_iterations,SAPV::sap_blocks_per_proc);  
 		endT = MPI_Wtime();
 		SAP_time += endT - startT; 
 		
-		
-		//Sequential version for testing
-		//SAP(GConf.Conf, v0, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations);
 	}
 
 	//This modifies interpolator_columns which is used in the interpolator NOT test_vectors
@@ -320,7 +321,7 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu1, 1e-10, false);
 			
 			//SAP(GConf.Conf, phi, x, m0, nu1); //sequential SAP for testing
-			SAP_parallel(GConf.Conf, phi, x, m0, nu1,SAPV::sap_blocks_per_proc); 
+			x = SAP_parallel(GConf.Conf, phi, m0, nu1,SAPV::sap_blocks_per_proc); 
 		} 
 
 		//*************Coarse grid correction*************//
@@ -361,7 +362,7 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			//Measure time spent smoothing
 			double startT, endT;
 			startT = MPI_Wtime();
-			SAP_parallel(GConf.Conf, phi, x, m0, nu2, SAPV::sap_blocks_per_proc); 
+			x = SAP_parallel(GConf.Conf, phi, m0, nu2, SAPV::sap_blocks_per_proc); 
 			endT = MPI_Wtime();
 			smooth_time += endT - startT; //Add post-smoothing time
 			SAP_time += endT - startT; //Add post-smoothing time

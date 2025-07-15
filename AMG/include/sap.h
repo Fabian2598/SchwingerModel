@@ -45,20 +45,20 @@ inline void set_zeros(spinor& v, const int& N1, const int& N2) {
     I_B^T v --> Restriction of the spinor v to the block B
     v: input, x: output
 */
-void It_B_v(const spinor& v,  spinor& x,const int& block);
+spinor It_B_v(const spinor& v, const int& block);
 
 /*
     I_B v --> Interpolation of the spinor v to the original lattice
     v: input, x: output
 */
-void I_B_v(const spinor& v, spinor& x ,const int& block);
+spinor I_B_v(const spinor& v, const int& block);
 
 /*
     Restriction of the Dirac operator to the block B. 
     D_B = I_B^T D I_B
     v: input, x: output
 */
-void D_B(const c_matrix& U, const spinor& v, spinor& x,const double& m0,const int& block);
+spinor D_B(const c_matrix& U, const spinor& v, const double& m0,const int& block);
 
 /*
     Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B 
@@ -77,7 +77,7 @@ void D_B(const c_matrix& U, const spinor& v, spinor& x,const double& m0,const in
 
     The convergence criterion is ||r|| < ||phi|| * tol
 */
-int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x, const double& m0, 
+spinor gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, 
     const int& m, const int& restarts, const double& tol, const int& block,const bool& print_message);
 
 /*
@@ -85,13 +85,8 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
     dim(v) = 2 * Ntot, dim(x) = 2 Ntot
     v: input, x: output 
 */
-void I_D_B_1_It(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const int& block);
+spinor I_D_B_1_It(const c_matrix& U, const spinor& v, const double& m0,const int& block);
 
-/*
-    Sequential version of the SAP method (used for testing)
-    dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
-*/
-int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu);
 
 /*
     Parallel version of the SAP method.
@@ -105,8 +100,13 @@ int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int
 
     The convergence criterion is ||r|| < ||phi|| * tol
 */
-int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc);
+spinor SAP_parallel(const c_matrix& U, const spinor& v,const double& m0,const int& nu,const int& blocks_per_proc);
 
+spinor SAP(const c_matrix& U, const spinor& v, const double& m0,const int& nu);
 
+/*
+    Computation of local D
+*/
+spinor local_D(const c_matrix& U, const spinor& v, const double& m0, const int& block);
 
 #endif
