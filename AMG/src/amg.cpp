@@ -111,9 +111,6 @@ void AMG::orthonormalize(){
 
 
 void AMG::setUpPhase(const double& eps,const int& Nit) {
-	//Call MPI for SAP parallelization
-	int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	using namespace AMGV; //AMG parameters namespace
 
@@ -135,13 +132,11 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		spinor rhs = test_vectors[i]; //c_matrix rhs(Ntot, c_vector(2, 0)); //We can also try with rhs = 0 
 		
 		//The result will be stored in test_vectors[i]
-		double startT, endT;
-		startT = MPI_Wtime();
-		//Sequential version for testing
-		//SAP(GConf.Conf, rhs, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations);
-		test_vectors[i] = SAP_parallel(GConf.Conf, rhs, m0, AMGV::SAP_test_vectors_iterations,SAPV::sap_blocks_per_proc);  
-		endT = MPI_Wtime();
-		SAP_time += endT - startT; 
+		clock_t startT, endT;
+		startT = clock();
+		test_vectors[i] = SAP(GConf.Conf, rhs, m0, AMGV::SAP_test_vectors_iterations);  
+		endT = clock();
+		SAP_time += double(endT - startT) / CLOCKS_PER_SEC; //Time for the SAP method
 		
 	}
 
@@ -152,9 +147,9 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	AMGV::SetUpDone = true; //Set the setup as done
 	assembleDc(); //Assemble the coarse grid operator
 	//Improving the interpolator quality by iterating over the two-grid method defined by the current test vectors
-	if (rank == 0){std::cout << "Improving interpolator" << std::endl;}
+	std::cout << "Improving interpolator" << std::endl;
 	for (int n = 0; n < Nit; n++) {
-		if (rank == 0){std::cout << "****** Bootstrap iteration " << n << " ******" << std::endl;}
+		std::cout << "****** Bootstrap iteration " << n << " ******" << std::endl;
 		for (int i = 0; i < Ntest; i++) {
 			//Number of two-grid iterations for each test vector 
 			int two_grid_iter = 1; 
@@ -173,8 +168,7 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	//In case I want to assemble the coarse grid matrix
 	//AMGV::SetUpDone = true; //Set the setup as done
 	//assembleDc(); //Assemble the coarse grid operator
-	if (rank == 0){std::cout << "Set-up phase finished" << std::endl;}
-	
+	std::cout << "Set-up phase finished" << std::endl;
 	
 }
 
@@ -224,25 +218,6 @@ spinor AMG::Pt_v(const spinor& v) {
 	dim(Dc) = Ntest Nagg x Ntest Nagg
 */
 void AMG::assembleDc() {
-	/*
-	nonzero = 0;
-	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
-		spinor e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
-		spinor column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
-		for(int i = 0; i < AMGV::Ntest*AMGV::Nagg; i++){
-			int m = i / AMGV::Nagg; //Test vector index
-			int a = i % AMGV::Nagg; //Aggregate index
-			DcMatrix[i][j] = 0.0; //Initialize the coarse grid operator entry
-			if (column[m][a] != 0.0) {
-				DcMatrix[i][j] = column[m][a]; 
-				nonzero++;
-			}
-		}
-	}
-	std::cout << "Coarse grid operator assembled with " << nonzero << " non-zero elements" << std::endl;
-	std::cout << "Sparsity " << (double)nonzero / (AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg) << std::endl;
-	*/
-
 	nonzero = 0;
 	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
 		spinor e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
@@ -272,20 +247,7 @@ spinor AMG::Pt_D_P(const spinor& v){
 	}
 	else{
 		spinor x(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
-		
-		/*
-		for(int n = 0; n < AMGV::Ntest; n++){
-			for(int alf = 0; alf<AMGV::Nagg; alf++){
-				int i = n * AMGV::Nagg + alf; //Index of the test vector and aggregate
-				for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
-					int m = j / AMGV::Nagg; //Test vector index
-					int a = j % AMGV::Nagg; //Aggregate index
-					x[n][alf] += DcMatrix[i][j] * v[m][a]; //Dc v
-				}
-			}
-		}
-		*/
-		
+
 		for(int i = 0; i < nonzero; i++){
 			int n = rowsDc[i] / AMGV::Nagg; //Test vector index
 			int alf = rowsDc[i] % AMGV::Nagg; //Aggregate index
@@ -321,12 +283,12 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu1, 1e-10, false);
 			
 			//SAP(GConf.Conf, phi, x, m0, nu1); //sequential SAP for testing
-			x = SAP_parallel(GConf.Conf, phi, m0, nu1,SAPV::sap_blocks_per_proc); 
+			x = SAP(GConf.Conf, phi, m0, nu1); 
 		} 
 
 		//*************Coarse grid correction*************//
-		double startT, endT;
-		startT = MPI_Wtime();
+		clock_t startT, endT;
+		startT = clock();
 		//x = x + P*Dc^-1 * P^H * (phi-D*x)  
 		spinor temp(LV::Ntot,c_vector(2,0));
 		spinor Dphi = D_phi(GConf.Conf, x, m0); //D x
@@ -351,8 +313,8 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			}
 		}
 	
-		endT = MPI_Wtime();
-		coarse_time += endT - startT; //Measuring time spent for solving the coarse level 
+		endT = clock();
+		coarse_time += double(endT - startT)/ CLOCKS_PER_SEC; //Measuring time spent for solving the coarse level 
 		//************************************************//
 		
 		//Post-smoothing
@@ -360,12 +322,12 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu2, 1e-10, false);
 			//SAP(GConf.Conf, phi, x, m0, nu2);
 			//Measure time spent smoothing
-			double startT, endT;
-			startT = MPI_Wtime();
-			x = SAP_parallel(GConf.Conf, phi, m0, nu2, SAPV::sap_blocks_per_proc); 
-			endT = MPI_Wtime();
-			smooth_time += endT - startT; //Add post-smoothing time
-			SAP_time += endT - startT; //Add post-smoothing time
+			clock_t startT, endT;
+			startT = clock();
+			x = SAP(GConf.Conf, phi, m0, nu2); 
+			endT = clock();
+			smooth_time += double(endT - startT)/CLOCKS_PER_SEC; //Add post-smoothing time
+			SAP_time += double(endT - startT)/CLOCKS_PER_SEC; //Add post-smoothing time
 		}
 		Dphi = D_phi(GConf.Conf, x, m0); 
 

@@ -40,7 +40,7 @@ spinor fgmresSAP(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             //-----Preconditioner-----//
             //zm = M^-1. vm
             set_zeros(ZmT[j], Ntot, 2); //Initialize ZmT[j] to zero
-            ZmT[j] = SAP_parallel(U, VmT[j], m0, 1,SAPV::sap_blocks_per_proc); //One SAP iteration
+            ZmT[j] = SAP(U, VmT[j], m0, 1); //One SAP iteration
 
         
             w = D_phi(U, ZmT[j], m0); //w = D v_j
@@ -124,9 +124,6 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
 
     r = phi - D_phi(U, x, m0); //r = b - A*x
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
-
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     
     //       Set up phase for the two-grid method         //
     GaugeConf Gconf = GaugeConf(Nx, Nt); //Gauge configuration

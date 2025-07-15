@@ -6,7 +6,7 @@
 #include <iomanip>
 #include "bi_cgstab.h"
 #include "fgmres.h"
-#include "mpi.h"
+
 
 //Formats decimal numbers
 //For opening file with confs 
@@ -21,12 +21,8 @@ static std::string format(const double& number) {
 int main(int argc, char **argv) {
 
     using namespace SAPV;
-    MPI_Init(&argc, &argv);
-    int rank, size; 
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    
 
+    
     srand(19);
 
     //srand(time(0));
@@ -36,8 +32,8 @@ int main(int argc, char **argv) {
     double m0 = -0.18840579710144945; 
 
     //Default values in variables.cpp
-    sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
-    sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
+    sap_gmres_restart_length = 50; //GMRES restart length for the Schwarz blocks. Set to 20 by default
+    sap_gmres_restarts = 1; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
     sap_gmres_tolerance = 1e-3; //GMRES tolerance for the Schwarz blocks
     sap_tolerance = 1e-10; //Tolerance for the SAP method
     sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
@@ -53,7 +49,14 @@ int main(int argc, char **argv) {
     FGMRESV::fgmres_tolerance = 1e-10; //Tolerance for FGMRES
     FGMRESV::fgmres_restart_length = 20; //Restart length for FGMRES
     FGMRESV::fgmres_restarts = 50; //Number of restarts for FGMRES
-    if (rank == 0){
+
+        std::cout << "********** Critical masses ********** " << std::endl;
+        std::cout << "* beta = 2, m0_crit = -0.1968(9)"  << std::endl;
+        std::cout << "* beta = 3, m0_crit = 0.1351(2)" << std::endl;
+        std::cout << "* beta = 4, m0_crit = 0.1033(1)" << std::endl;
+        std::cout << "* beta = 5, m0_crit = 0.0840(1)" << std::endl;
+        std::cout << "************************************* " << std::endl;
+
         std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
         std::cout << " Nx = " << Nx << " Nt = " << Nt << std::endl;
         std::cout << " Lattice dimension = " << (Nx * Nt) << std::endl;
@@ -65,10 +68,10 @@ int main(int argc, char **argv) {
         std::cout << "| x_elements = " << x_elements << " t_elements = " << t_elements << std::endl;
         std::cout << "| Each aggregate has x_elements * t_elements = " <<  x_elements * t_elements << " elements" << std::endl;
         std::cout << "| Number of aggregates = " << AMGV::Nagg << std::endl;
-    } 
+    
     Aggregates(); //build aggregates
     CheckAggregates();
-    if (rank == 0){
+
         std::cout << "----------------------------------" << std::endl;
         std::cout << " Variable blocking for SAP" << std::endl;
         std::cout << "| sap_block_x = " << sap_block_x << " sap_block_t = " << sap_block_t << std::endl;
@@ -77,16 +80,15 @@ int main(int argc, char **argv) {
         std::cout << "| D restricted to each block has (" << 2 * sap_lattice_sites_per_block << ")^2 = " << sap_variables_per_block*sap_variables_per_block << " entries" << std::endl;
         std::cout << "| Number of Schwarz blocks = " << N_sap_blocks << std::endl;
         std::cout << "| Red/Black blocks = " << sap_coloring_blocks << std::endl;
-        std::cout << "| Number of processes = " << size << std::endl;
+        std::cout << "| Number of processes = " << 1 << std::endl;
         std::cout << "| Number of blocks per process = " << sap_blocks_per_proc << std::endl;
         std::cout << "| GMRES restart length for SAP blocks = " << sap_gmres_restart_length << std::endl;
         std::cout << "| GMRES iterations for SAP blocks = " << sap_gmres_restarts << std::endl;
         std::cout << "| GMRES tolerance for SAP blocks = " << sap_gmres_tolerance << std::endl;
-    }
+    
     SchwarzBlocks(); //Builds the blocks for the Schwarz alternating method
     CheckBlocks(); //Check blocks dimensions
 
-    if (rank == 0){
         std::cout << "----------------------------------" << std::endl;
         std::cout << " Two-grid parameters" << std::endl;
         std::cout << "| Number of test vectors = " << AMGV::Ntest << std::endl;
@@ -103,7 +105,7 @@ int main(int argc, char **argv) {
         std::cout << "| FGMRES restarts = " << FGMRESV::fgmres_restarts << std::endl;
         std::cout << "| FGMRES tolerance = " << FGMRESV::fgmres_tolerance << std::endl;
         std::cout << "*****************************************************************************************************" << std::endl;
-    }
+    
     
     GaugeConf GConf = GaugeConf(Nx, Nt);
     GConf.initialize(); //Initialize a random gauge configuration
@@ -120,8 +122,7 @@ int main(int argc, char **argv) {
         //std::cout << "Reading conf from file: " << NameData.str() << std::endl;
         std::ifstream infile(NameData.str());
         if (!infile) {
-           std::cerr << "File not found on rank " << rank << std::endl;
-            MPI_Abort(MPI_COMM_WORLD, 1);
+           std::cerr << "File not found" << std::endl;
        }
         int x, t, mu;
         double re, im;
@@ -133,8 +134,7 @@ int main(int argc, char **argv) {
         GConf.setGconf(CONF);
         infile.close();
     }
-    MPI_Barrier(MPI_COMM_WORLD);
-   
+
 
 
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
@@ -153,37 +153,38 @@ int main(int argc, char **argv) {
     //SAP(GConf.Conf, rhs, m0, nu);
     //MPI_Finalize();
     
+ 
+    //Bi-cgstab inversion for comparison
+    std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
+    start = clock();
+    spinor x0(Ntot, c_vector(2, 0)); //Initial guess
+    spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, 100000, 1e-10, true);
+    end = clock();
+    elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+    std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;    
     
-    if (rank == 0){
-        //Bi-cgstab inversion for comparison
-        std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
-        start = clock();
-        spinor x0(Ntot, c_vector(2, 0)); //Initial guess
-        spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, 100000, 1e-10, true);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;    
-    }
+    std::cout << "\n\n";
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl;}   
-    startT = MPI_Wtime();
+    /*
+    std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl; 
+    start = clock();
     spinor xfgmres = fgmresSAP(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
-    endT = MPI_Wtime();
-    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
+    end = clock();
+    elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+    std::cout << "Elapsed time for FGMRES with SAP = " << elapsed_time << " seconds" << std::endl;
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
-    startT = MPI_Wtime();
+    std::cout << "\n\n";
+    */
+
+    std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;
+    start = clock();
     spinor xAMG = fgmresAMG(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
-    endT = MPI_Wtime();
-    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
-    printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
-    printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
-    printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
-    MPI_Finalize();
-      
-
+    end = clock();
+    elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+    std::cout << "Elapsed time for FGMRES with AMG = " << elapsed_time << " seconds" << std::endl;
+    std::cout << "coarse time = " << coarse_time << " seconds" << std::endl;
+    std::cout << "smooth time = " << smooth_time << " seconds" << std::endl;
+    std::cout << "SAP time = " << SAP_time << " seconds" << std::endl;
 
     return 0;
 }

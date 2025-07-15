@@ -1,7 +1,6 @@
 #ifndef SAP_H
 #define SAP_H
 #include "gmres.h"
-#include "mpi.h"
 
 /*
     Build the Schwarz blocks
@@ -89,7 +88,7 @@ spinor I_D_B_1_It(const c_matrix& U, const spinor& v, const double& m0,const int
 
 
 /*
-    Parallel version of the SAP method.
+    SAP method.
     Solves D x = v using the SAP method.
     U: gauge configuration,
     v: right-hand side,
@@ -100,8 +99,6 @@ spinor I_D_B_1_It(const c_matrix& U, const spinor& v, const double& m0,const int
 
     The convergence criterion is ||r|| < ||phi|| * tol
 */
-spinor SAP_parallel(const c_matrix& U, const spinor& v,const double& m0,const int& nu,const int& blocks_per_proc);
-
 spinor SAP(const c_matrix& U, const spinor& v, const double& m0,const int& nu);
 
 /*
