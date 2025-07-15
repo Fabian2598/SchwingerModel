@@ -147,7 +147,12 @@ int main(int argc, char **argv) {
     double elapsed_time;
     double startT, endT;
 
-    if (rank == 0){
+    
+    return 0;
+}
+
+/*
+if (rank == 0){
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
@@ -175,5 +180,4 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
     MPI_Finalize();
-    return 0;
-}
+*/
