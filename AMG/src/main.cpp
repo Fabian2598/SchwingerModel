@@ -112,7 +112,6 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    
     {
         double beta = 2;
         int nconf = 1;
@@ -136,7 +135,6 @@ int main(int argc, char **argv) {
     }
 
 
-
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
     //Random right hand side
@@ -149,11 +147,7 @@ int main(int argc, char **argv) {
     double elapsed_time;
     double startT, endT;
 
-    //int nu = 10;
-    //SAP(GConf.Conf, rhs, m0, nu);
-    //MPI_Finalize();
-    
- 
+            
     //Bi-cgstab inversion for comparison
     std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
     start = clock();
@@ -164,6 +158,7 @@ int main(int argc, char **argv) {
     std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;    
     
     std::cout << "\n\n";
+    
 
     /*
     std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl; 
@@ -176,6 +171,7 @@ int main(int argc, char **argv) {
     std::cout << "\n\n";
     */
 
+    
     std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;
     start = clock();
     spinor xAMG = fgmresAMG(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
@@ -185,14 +181,20 @@ int main(int argc, char **argv) {
     std::cout << "coarse time = " << coarse_time << " seconds" << std::endl;
     std::cout << "smooth time = " << smooth_time << " seconds" << std::endl;
     std::cout << "SAP time = " << SAP_time << " seconds" << std::endl;
+    
+
+
 
     return 0;
 }
 
+
+
+
+
     /*
     spinor RHS(sap_lattice_sites_per_block, c_vector(2, 0)); //random right hand side 
-   
-    //Random right hand side
+
     for(int i = 0; i <sap_lattice_sites_per_block; i++) {
         RHS[i][0] = RandomU1();
         RHS[i][1] = RandomU1();
@@ -210,11 +212,11 @@ int main(int argc, char **argv) {
    }
 
    //check if both are the same
-   for(int n = 0; n < 2; n++) {
+   for(int n = 0; n < sap_lattice_sites_per_block; n++) {
         if (std::abs(xv1[n][0] - xv2[n][0]) > 1e-10 || std::abs(xv1[n][1] - xv2[n][1]) > 1e-10) {
             std::cout << "Error: xv1 and xv2 are not the same!" << std::endl;
+            return 0;
         } 
     }
      std::cout << "xv1 and xv2 are the same" << std::endl;
-    MPI_Finalize();
-    */
+     */

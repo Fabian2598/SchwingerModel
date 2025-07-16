@@ -93,16 +93,10 @@ spinor I_B_v(const spinor& v,const int& block){
 //Restriction of the Dirac operator to the block B
 //D_B v = I_B^T D I_B v  
 //dim(v) = 2 * sap_lattice_sites_per_block, dim(x) = 2 * sap_lattice_sites_per_block
-spinor D_B(const c_matrix& U, const spinor& v, const double& m0,const int& block){
-    using namespace SAPV;
-    /*
-    if (checkSize(v, sap_lattice_sites_per_block, 2)==true){
-        std::cout << "Error with vector dimensions in D_B" << std::endl;
-        exit(1);
-    }
-    */
-    //return I_B_v(D_phi(U, I_B_v(v, block), m0), block); //D_B v = I_B^T D I_B v
 
+spinor D_B_old(const c_matrix& U, const spinor& v, const double& m0,const int& block){
+    using namespace SAPV;
+    //return I_B_v(D_phi(U, I_B_v(v, block), m0), block); //D_B v = I_B^T D I_B v
     spinor Dv(sap_lattice_sites_per_block, c_vector(2, 0));
     spinor phi = I_B_v(v, block); //Interpolation of the vector to the original lattice
     for (int m = 0; m < sap_lattice_sites_per_block; m++) {
@@ -128,6 +122,53 @@ spinor D_B(const c_matrix& U, const spinor& v, const double& m0,const int& block
     
 }
 
+
+spinor D_B(const c_matrix& U, const spinor& phi, const double& m0,const int& block) {
+    using namespace SAPV;
+
+    spinor Dv(sap_lattice_sites_per_block, c_vector(2, 0));
+    //dim(v) = 2 * sap_lattice_sites_per_block, dim(phi) = 2 * sap_lattice_sites_per_block
+
+    int RightPB_0, blockRPB_0; //Right periodic boundary in the 0-direction
+    int RightPB_1, blockRPB_1; //Right periodic boundary in the 1-direction
+    int LeftPB_0, blockLPB_0; //Left periodic boundary in the 0-direction
+    int LeftPB_1, blockLPB_1; //Left periodic boundary in the 1-direction
+    for (int m = 0; m < sap_lattice_sites_per_block; m++) {
+		//n = x * Nt + t
+        int n = SAP_Blocks[block][m]; //n is the index of the lattice point in the block
+        
+        //Get m and block for the neighbors
+        getMandBlock(RightPB[n][0], RightPB_0, blockRPB_0); //I could make an array with this info, but it would have to be for each block
+        getMandBlock(RightPB[n][1], RightPB_1, blockRPB_1); 
+        getMandBlock(LeftPB[n][0], LeftPB_0, blockLPB_0); 
+        getMandBlock(LeftPB[n][1], LeftPB_1, blockLPB_1); 
+        
+        c_vector phi_RPB_0 = (blockRPB_0 == block) ? phi[RightPB_0]: c_vector(2, 0);
+        c_vector phi_RPB_1 = (blockRPB_1 == block) ? phi[RightPB_1]: c_vector(2, 0);
+        c_vector phi_LPB_0 = (blockLPB_0 == block) ? phi[LeftPB_0]: c_vector(2, 0);
+        c_vector phi_LPB_1 = (blockLPB_1 == block) ? phi[LeftPB_1]: c_vector(2, 0);
+ 
+
+		Dv[m][0] = (m0 + 2) * phi[m][0] - 0.5 * ( 
+			U[n][0] * SignR[n][0] * (phi_RPB_0[0] - phi_RPB_0[1]) 
+		+   U[n][1] * SignR[n][1] * (phi_RPB_1[0] + I_number * phi_RPB_1[1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi_LPB_0[0] + phi_LPB_0[1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (phi_LPB_1[0] - I_number * phi_LPB_1[1])
+		);
+
+		Dv[m][1] = (m0 + 2) * phi[m][1] - 0.5 * ( 
+			U[n][0] * SignR[n][0] * (-phi_RPB_0[0] + phi_RPB_0[1]) 
+		+   U[n][1] * SignR[n][1] * (-I_number*phi_RPB_1[0] + phi_RPB_1[1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi_LPB_0[0] + phi_LPB_0[1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (I_number*phi_LPB_1[0] + phi_LPB_1[1])
+		);
+			
+	}
+
+    return Dv; 
+}
+
+
 //Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B 
 spinor gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, 
     const double& m0, const int& m, const int& restarts, const double& tol, const int& block,
@@ -139,10 +180,7 @@ spinor gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0,
         std::cout << "|GMRES for D_B (block " << block << ") " << std::endl;
         std::cout << "|Restart length " << m << ". Restarts = " << restarts << std::endl;
     }
-    //if (checkSize(phi, sap_lattice_sites_per_block, 2) == true){
-    //    std::cout << "Error with vector dimensions in gmres_D_B" << std::endl;
-    //    exit(1);
-    //} 
+
     if (m> sap_variables_per_block) {
         std::cout << "Error: restart length > sap_variables_per_block" << std::endl;
         exit(1);
@@ -182,7 +220,14 @@ spinor gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0,
     if (print_message == true){std::cout << "||phi|| * tol = " << norm_phi * tol << std::endl;}
     while (k < restarts) {
         beta = err + 0.0 * I_number;
-        VmT[0] = 1.0 / beta * r;
+
+        //VmT[0] = 1.0 / beta * r;
+        for(int n=0; n<sap_lattice_sites_per_block; n++){
+			for(int l=0; l<2; l++){
+				VmT[0][n][l] = 1.0 / beta * r[n][l];
+			}
+		}
+        
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
@@ -270,26 +315,44 @@ spinor I_D_B_1_It(const c_matrix& U, const spinor& v, const double& m0,const int
 /*
 phi has the original dimension, the output has block dimension
 */
-spinor local_D(const c_matrix& U, const spinor& v, const double& m0,const int& block) {
+spinor local_D(const c_matrix& U, const spinor& phi, const double& m0,const int& block) {
     using namespace SAPV;
 
     spinor Dv(sap_lattice_sites_per_block, c_vector(2, 0));
-    spinor phi = I_B_v(v, block); //Interpolation of the vector to the original lattice
+    //dim(v) = 2 * sap_lattice_sites_per_block, dim(phi) = 2 * sap_lattice_sites_per_block
+
+    int RightPB_0, blockRPB_0; //Right periodic boundary in the 0-direction
+    int RightPB_1, blockRPB_1; //Right periodic boundary in the 1-direction
+    int LeftPB_0, blockLPB_0; //Left periodic boundary in the 0-direction
+    int LeftPB_1, blockLPB_1; //Left periodic boundary in the 1-direction
     for (int m = 0; m < sap_lattice_sites_per_block; m++) {
 		//n = x * Nt + t
         int n = SAP_Blocks[block][m]; //n is the index of the lattice point in the block
-		Dv[m][0] = (m0 + 2) * phi[n][0] - 0.5 * ( 
-			U[n][0] * SignR[n][0] * (phi[RightPB[n][0]][0] - phi[RightPB[n][0]][1]) 
-		+   U[n][1] * SignR[n][1] * (phi[RightPB[n][1]][0] + I_number * phi[RightPB[n][1]][1])
-		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi[LeftPB[n][0]][0] + phi[LeftPB[n][0]][1])
-		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (phi[LeftPB[n][1]][0] - I_number * phi[LeftPB[n][1]][1])
+        
+        //Get m and block for the neighbors
+        getMandBlock(RightPB[n][0], RightPB_0, blockRPB_0); //I could make an array with this info, but it would have to be for each block
+        getMandBlock(RightPB[n][1], RightPB_1, blockRPB_1); 
+        getMandBlock(LeftPB[n][0], LeftPB_0, blockLPB_0); 
+        getMandBlock(LeftPB[n][1], LeftPB_1, blockLPB_1); 
+        
+        c_vector phi_RPB_0 = (blockRPB_0 == block) ? phi[RightPB_0]: c_vector(2, 0);
+        c_vector phi_RPB_1 = (blockRPB_1 == block) ? phi[RightPB_1]: c_vector(2, 0);
+        c_vector phi_LPB_0 = (blockLPB_0 == block) ? phi[LeftPB_0]: c_vector(2, 0);
+        c_vector phi_LPB_1 = (blockLPB_1 == block) ? phi[LeftPB_1]: c_vector(2, 0);
+ 
+
+		Dv[m][0] = (m0 + 2) * phi[m][0] - 0.5 * ( 
+			U[n][0] * SignR[n][0] * (phi_RPB_0[0] - phi_RPB_0[1]) 
+		+   U[n][1] * SignR[n][1] * (phi_RPB_1[0] + I_number * phi_RPB_1[1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi_LPB_0[0] + phi_LPB_0[1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (phi_LPB_1[0] - I_number * phi_LPB_1[1])
 		);
 
-		Dv[m][1] = (m0 + 2) * phi[n][1] - 0.5 * ( 
-			U[n][0] * SignR[n][0] * (-phi[RightPB[n][0]][0] + phi[RightPB[n][0]][1]) 
-		+   U[n][1] * SignR[n][1] * (-I_number*phi[RightPB[n][1]][0] + phi[RightPB[n][1]][1])
-		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi[LeftPB[n][0]][0] + phi[LeftPB[n][0]][1])
-		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (I_number*phi[LeftPB[n][1]][0] + phi[LeftPB[n][1]][1])
+		Dv[m][1] = (m0 + 2) * phi[m][1] - 0.5 * ( 
+			U[n][0] * SignR[n][0] * (-phi_RPB_0[0] + phi_RPB_0[1]) 
+		+   U[n][1] * SignR[n][1] * (-I_number*phi_RPB_1[0] + phi_RPB_1[1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi_LPB_0[0] + phi_LPB_0[1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (I_number*phi_LPB_1[0] + phi_LPB_1[1])
 		);
 			
 	}
@@ -314,7 +377,14 @@ spinor SAP(const c_matrix& U, const spinor& v, const double& m0,const int& nu){
 
     spinor temp(Ntot, c_vector(2, 0)); 
     spinor r(Ntot, c_vector(2, 0)); //residual
-    r = v - D_phi(U, x, m0); //r = v - D x
+
+    //r = v - D_phi(U, x, m0); //r = v - D x
+    temp = D_phi(U, x, m0); //D x
+    for(int n = 0; n < Ntot; n++) {
+        r[n][0] = v[n][0] - temp[n][0];
+        r[n][1] = v[n][1] - temp[n][1];
+    }
+    
     for (int i = 0; i< nu; i++){
         for (auto block : SAP_RedBlocks){
             temp = I_D_B_1_It(U,r,m0,block);
@@ -325,7 +395,13 @@ spinor SAP(const c_matrix& U, const spinor& v, const double& m0,const int& nu){
             }
         }
         
-        r = v - D_phi(U, x, m0); //r = v - D x
+        //r = v - D_phi(U, x, m0); //r = v - D x
+        temp = D_phi(U, x, m0); //D x
+        for(int n = 0; n < Ntot; n++) {
+            r[n][0] = v[n][0] - temp[n][0];
+            r[n][1] = v[n][1] - temp[n][1];
+        }
+
         for (auto block : SAP_BlackBlocks){
             temp = I_D_B_1_It(U,r,m0,block);
             //x = x + temp; //x = x + D_B^-1 r
@@ -335,7 +411,12 @@ spinor SAP(const c_matrix& U, const spinor& v, const double& m0,const int& nu){
             }
            
         }
-        r = v - D_phi(U, x, m0); //r = v - D x
+        //r = v - D_phi(U, x, m0); //r = v - D x
+        temp = D_phi(U, x, m0); //D x
+        for(int n = 0; n < Ntot; n++) {
+            r[n][0] = v[n][0] - temp[n][0];
+            r[n][1] = v[n][1] - temp[n][1];
+        }   
 
         err = sqrt(std::real(dot(r, r))); 
         if (err < sap_tolerance * v_norm) {
