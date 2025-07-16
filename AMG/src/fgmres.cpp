@@ -133,14 +133,13 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
     Gconf.setGconf(U); //Set the gauge configuration
     AMG amg = AMG(Gconf, m0,AMGV::nu1,AMGV::nu2);   //nu1 pre-smoothing it, nu2 post-smoothing it
 
-    clock_t start, end;
     double elapsed_time;
     double startT, endT;     
-    start = clock();
+    startT = MPI_Wtime();
     amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
-    end = clock();
-    elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-    std::cout << "Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl;   
+    endT = MPI_Wtime();
+    elapsed_time = endT - startT;
+    std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl;   
     //--------------------------------------------------//
 
     err = sqrt(std::real(dot(r, r))); //Initial error

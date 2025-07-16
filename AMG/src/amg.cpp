@@ -223,24 +223,6 @@ spinor AMG::Pt_v(const spinor& v) {
 	dim(Dc) = Ntest Nagg x Ntest Nagg
 */
 void AMG::assembleDc() {
-	/*
-	nonzero = 0;
-	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
-		spinor e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
-		spinor column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
-		for(int i = 0; i < AMGV::Ntest*AMGV::Nagg; i++){
-			int m = i / AMGV::Nagg; //Test vector index
-			int a = i % AMGV::Nagg; //Aggregate index
-			DcMatrix[i][j] = 0.0; //Initialize the coarse grid operator entry
-			if (column[m][a] != 0.0) {
-				DcMatrix[i][j] = column[m][a]; 
-				nonzero++;
-			}
-		}
-	}
-	std::cout << "Coarse grid operator assembled with " << nonzero << " non-zero elements" << std::endl;
-	std::cout << "Sparsity " << (double)nonzero / (AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg) << std::endl;
-	*/
 
 	nonzero = 0;
 	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
@@ -271,20 +253,7 @@ spinor AMG::Pt_D_P(const spinor& v){
 	}
 	else{
 		spinor x(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
-		
-		/*
-		for(int n = 0; n < AMGV::Ntest; n++){
-			for(int alf = 0; alf<AMGV::Nagg; alf++){
-				int i = n * AMGV::Nagg + alf; //Index of the test vector and aggregate
-				for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
-					int m = j / AMGV::Nagg; //Test vector index
-					int a = j % AMGV::Nagg; //Aggregate index
-					x[n][alf] += DcMatrix[i][j] * v[m][a]; //Dc v
-				}
-			}
-		}
-		*/
-		
+				
 		for(int i = 0; i < nonzero; i++){
 			int n = rowsDc[i] / AMGV::Nagg; //Test vector index
 			int alf = rowsDc[i] % AMGV::Nagg; //Aggregate index

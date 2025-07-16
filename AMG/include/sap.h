@@ -93,6 +93,8 @@ void I_D_B_1_It(const c_matrix& U, const spinor& v, spinor& x, const double& m0,
 */
 int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu);
 
+int SAPV2(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu);
+
 /*
     Parallel version of the SAP method.
     Solves D x = v using the SAP method.
@@ -106,7 +108,25 @@ int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int
     The convergence criterion is ||r|| < ||phi|| * tol
 */
 int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc);
+int SAP_parallelV2(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc);
 
+/*
+    Given a lattice point index n, it returns the corresponding 
+    SAP block index and the local index m within that block.
+*/
+inline void getMandBlock(const int& n, int &m, int &block) {
+    int x = n / LV::Nt; //x coordinate of the lattice point 
+    int t = n % LV::Nt; //t coordinate of the lattice point
+    //Reconstructing the block and m index from x and t
+    int block_x = x / SAPV::sap_x_elements; //Block index in the x direction
+    int block_t = t / SAPV::sap_t_elements; //Block index in the t direction
+    block = block_x * SAPV::sap_block_t + block_t; //Block index in the SAP method
 
+    int mx = x % SAPV::sap_x_elements; //x coordinate in the block
+    int mt = t % SAPV::sap_t_elements; //t coordinate in the block
+    m = mx * SAPV::sap_t_elements + mt; //Index in the block
+}
+
+void I_D_B_1_ItV2(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const int& block);
 
 #endif
