@@ -58,7 +58,7 @@ spinor I_B_v(const spinor& v, const int& block);
     D_B = I_B^T D I_B
     v: input, x: output
 */
-spinor D_B(const c_matrix& U, const spinor& v, const double& m0,const int& block);
+spinor D_B(const c_matrix& U, const spinor& phi, const double& m0,const int& block);
 
 /*
     Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B 
@@ -108,5 +108,20 @@ spinor SAP(const c_matrix& U, const spinor& v, const double& m0,const int& nu);
     Computation of local D
 */
 spinor local_D(const c_matrix& U, const spinor& v, const double& m0, const int& block);
+
+
+inline void getMandBlock(const int& n, int &m, int &block) {
+    int x = n / LV::Nt; //x coordinate of the lattice point 
+    int t = n % LV::Nt; //t coordinate of the lattice point
+    //Reconstructing the block and m index from x and t
+    int block_x = x / SAPV::sap_x_elements; //Block index in the x direction
+    int block_t = t / SAPV::sap_t_elements; //Block index in the t direction
+    block = block_x * SAPV::sap_block_t + block_t; //Block index in the SAP method
+
+    int mx = x % SAPV::sap_x_elements; //x coordinate in the block
+    int mt = t % SAPV::sap_t_elements; //t coordinate in the block
+    m = mx * SAPV::sap_t_elements + mt; //Index in the block
+}
+
 
 #endif

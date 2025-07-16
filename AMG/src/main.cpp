@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     double m0 = -0.18840579710144945; 
 
     //Default values in variables.cpp
-    sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
+    sap_gmres_restart_length = 50; //GMRES restart length for the Schwarz blocks. Set to 20 by default
     sap_gmres_restarts = 1; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
     sap_gmres_tolerance = 1e-3; //GMRES tolerance for the Schwarz blocks
     sap_tolerance = 1e-10; //Tolerance for the SAP method
@@ -149,10 +149,6 @@ int main(int argc, char **argv) {
     double elapsed_time;
     double startT, endT;
 
-    //int nu = 10;
-    //SAP(GConf.Conf, rhs, m0, nu);
-    //MPI_Finalize();
-    
     
     if (rank == 0){
         //Bi-cgstab inversion for comparison
