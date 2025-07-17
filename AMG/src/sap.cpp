@@ -558,10 +558,21 @@ int SAP_parallelV2(const c_matrix& U, const spinor& v,spinor &x, const double& m
         //x = x + global_x;
 
          //Check how to properly do this by looping over the red blocks only ...
-        for(int n = 0; n < Ntot; n++) {
+
+        
+        for (int b = 0; b < sap_coloring_blocks; b++) {
+            int block = SAP_RedBlocks[b];
+            for(int m = 0; m < sap_lattice_sites_per_block; m++) {
+                int n = SAP_Blocks[block][m];
+                x[n][0] += global_buffer[2*n]; 
+                x[n][1] += global_buffer[2*n+1];
+            }
+        }
+
+        /*for(int n = 0; n < Ntot; n++) {
             x[n][0] += global_buffer[2*n]; //global_x[n][0];
             x[n][1] += global_buffer[2*n+1]; //global_x[n][1];
-        }
+        }*/
         Dphi = D_phi(U, x, m0);
         //r = v - D_phi(U, x, m0); //r = v - D x
         for(int n = 0; n < Ntot; n++) {
@@ -614,11 +625,20 @@ int SAP_parallelV2(const c_matrix& U, const spinor& v,spinor &x, const double& m
         //    x[n][0] += global_x[n][0];
         //    x[n][1] += global_x[n][1];
         //}
-
+        for (int b = 0; b < sap_coloring_blocks; b++) {
+            int block = SAP_BlackBlocks[b];
+            for(int m = 0; m < sap_lattice_sites_per_block; m++) {
+                int n = SAP_Blocks[block][m];
+                x[n][0] += global_buffer[2*n]; 
+                x[n][1] += global_buffer[2*n+1];
+            }
+        }
+        /*
         for(int n = 0; n < Ntot; n++) {
             x[n][0] += global_buffer[2*n]; //global_x[n][0];
             x[n][1] += global_buffer[2*n+1]; //global_x[n][1];
         }
+        */
         Dphi = D_phi(U, x, m0);
         //r = v - D_phi(U, x, m0); //r = v - D x
         for(int n = 0; n < Ntot; n++) {

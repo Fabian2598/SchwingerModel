@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     //double m0 = -0.558;
-    double m0 = -0.18840579710144945; 
+    double m0 = -0.3;//-0.18840579710144945; 
 
     //Default values in variables.cpp
     sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    
+    /*
     {
         double beta = 2;
         int nconf = 1;
@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
         GConf.setGconf(CONF);
         infile.close();
     }
-    
+    */
    
 
 
@@ -153,11 +153,7 @@ int main(int argc, char **argv) {
     int nu = 1000;
 
 
-    startT = MPI_Wtime();
-    SAP_parallel(GConf.Conf, rhs,x, m0, nu,SAPV::sap_blocks_per_proc);
-    endT = MPI_Wtime();
-    elapsed_time = endT - startT;
-    std::cout << "Rank " << rank << " Elapsed time for SAP = " << elapsed_time << " seconds" << std::endl;
+    std::cout << "SAP " << nu << " iterations" << std::endl;
 
     startT = MPI_Wtime();
     SAP_parallelV2(GConf.Conf, rhs,x2, m0, nu,SAPV::sap_blocks_per_proc);
@@ -165,6 +161,15 @@ int main(int argc, char **argv) {
     elapsed_time = endT - startT;
     std::cout << "Rank " << rank << " Elapsed time for SAPV2 = " << elapsed_time << " seconds" << std::endl;
 
+
+    
+    startT = MPI_Wtime();
+    SAP_parallel(GConf.Conf, rhs,x, m0, nu,SAPV::sap_blocks_per_proc);
+    endT = MPI_Wtime();
+    elapsed_time = endT - startT;
+    std::cout << "Rank " << rank << " Elapsed time for SAP = " << elapsed_time << " seconds" << std::endl;
+
+    
 
     //check if both methods give the same result
     for(int i = 0; i < Ntot; i++) {
