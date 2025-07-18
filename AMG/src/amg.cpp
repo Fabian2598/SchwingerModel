@@ -66,20 +66,30 @@ void AMG::orthonormalize(){
 	*/
 
 	using namespace AMGV; //AMG parameters
-	std::vector<spinor> temp(Ntest, spinor( LV::Ntot, c_vector (2,0)));
-	std::vector<spinor> v_chopped(Ntest*Nagg, spinor(LV::Ntot, c_vector(2,0)));
 
 	//Getting the columns of the interpolator for the orthonormalization
+	spinor e_i(Ntest, c_vector(Nagg,0));
+	int index1, index2;
 	for(int i = 0; i < Ntest*Nagg; i++){
-		spinor e_i = canonical_vector(i, Ntest, Nagg);
+		//e_i = canonical_vector(i, Ntest, Nagg);
+		index1 = i / Nagg;
+		index2 = i % Nagg;
+		e_i[index1][index2] = 1.0;
 		v_chopped[i] = P_v(e_i); //Columns of the interpolator
+		e_i[index1][index2] = 0.0;
 	}
 
 	//Orthonormalization by applying Gram-Schmidt
+	c_double proj; 
 	for (int i = 0; i < Nagg; i++) {
 		for (int nt = 0; nt < Ntest; nt++) {
 			for (int j = 0; j < nt; j++) {
-				c_double proj = dot(v_chopped[nt*Nagg+i], v_chopped[j*Nagg+i]);
+				proj = 0;//dot(v_chopped[nt*Nagg+i], v_chopped[j*Nagg+i]);
+				for (int n = 0; n < LV::Ntot; n++) {
+        			for (int alf = 0; alf < 2; alf++) {
+            		proj += v_chopped[nt*Nagg+i][n][alf] * std::conj(v_chopped[j*Nagg+i][n][alf]);
+        			}
+    			}
 
 				for(int n=0; n<LV::Ntot; n++){
 					for(int alf=0; alf<2; alf++){
@@ -95,17 +105,25 @@ void AMG::orthonormalize(){
  	//We sum all the columns of the interpolator that belong to the same aggregate and store the result
 	//in a single vector. We do that for each aggregate. This enables us to have all the information of 
 	//the locally orthonormalized test vectors in a single vector.
+
+	for(int i = 0; i < Ntest; i++){
+		for(int n = 0; n < LV::Ntot; n++){
+			for(int alf=0; alf<2; alf++){
+				interpolator_columns[i][n][alf] = 0;
+			}
+		}
+	}
+
 	for(int i = 0; i < Ntest; i++){
 		for(int j = 0; j < Nagg; j++){
 			for(int n = 0; n < LV::Ntot; n++){
 				for(int alf=0; alf<2; alf++){
-					temp[i][n][alf] += v_chopped[i*Nagg + j][n][alf]; 
+					interpolator_columns[i][n][alf] += v_chopped[i*Nagg + j][n][alf];
 				}
 			}
 			
 		}
 	}
-	interpolator_columns = temp;
 }; 
 
 void AMG::setUpPhase(const double& eps,const int& Nit) {
@@ -148,8 +166,8 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	interpolator_columns = test_vectors; 
 	orthonormalize(); 
 	//For large problems this actually helps ...
-	AMGV::SetUpDone = true; //Set the setup as done
-	assembleDc(); //Assemble the coarse grid operator
+	//AMGV::SetUpDone = true; //Set the setup as done
+	//assembleDc(); //Assemble the coarse grid operator
 	//Improving the interpolator quality by iterating over the two-grid method defined by the current test vectors
 	if (rank == 0){std::cout << "Improving interpolator" << std::endl;}
 	for (int n = 0; n < Nit; n++) {
@@ -159,14 +177,14 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 			int two_grid_iter = 1; 
 			//Tolerance for the two-grid method, but in this case it is not relevant. Still, it is needed to call
 			//the function
-			int tolerance = 1e-10; 
+			double tolerance = 1e-10; 
 
 			test_vectors[i] = TwoGrid(two_grid_iter,tolerance, test_vectors[i], test_vectors[i], false); 
 		}
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
 		orthonormalize();
-		assembleDc(); //Assemble the coarse grid operator
+		//assembleDc(); //Assemble the coarse grid operator
 
 	}
 	//In case I want to assemble the coarse grid matrix
@@ -225,9 +243,12 @@ spinor AMG::Pt_v(const spinor& v) {
 void AMG::assembleDc() {
 
 	nonzero = 0;
+	spinor e_j(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Column of the coarse grid operator
+	spinor column(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Column of the coarse grid operator
+
 	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
-		spinor e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
-		spinor column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
+		e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
+		column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
 		for(int i = 0; i < AMGV::Ntest*AMGV::Nagg; i++){
 			int m = i / AMGV::Nagg; //Test vector index
 			int a = i % AMGV::Nagg; //Aggregate index

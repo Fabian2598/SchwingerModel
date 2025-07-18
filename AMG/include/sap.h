@@ -93,7 +93,6 @@ void I_D_B_1_It(const c_matrix& U, const spinor& v, spinor& x, const double& m0,
 */
 int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu);
 
-int SAPV2(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu);
 
 /*
     Parallel version of the SAP method.
@@ -108,7 +107,6 @@ int SAPV2(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const i
     The convergence criterion is ||r|| < ||phi|| * tol
 */
 int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc);
-int SAP_parallelV2(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc);
 
 /*
     Given a lattice point index n, it returns the corresponding 
@@ -127,6 +125,5 @@ inline void getMandBlock(const int& n, int &m, int &block) {
     m = mx * SAPV::sap_t_elements + mt; //Index in the block
 }
 
-void I_D_B_1_ItV2(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const int& block);
 
 #endif

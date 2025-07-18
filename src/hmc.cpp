@@ -156,6 +156,7 @@ void HMC::HMC_algorithm(){
 	GConf.initialization(); //Initialize the gauge configuration randomly
     for(int i = 0; i < Ntherm; i++) {HMC_Update();} //Thermalization
     therm = true; //Set the flag to true
+    std::cout << "Thermalization done" <<std::endl;
     for(int i = 0; i < Nmeas; i++) {
         HMC_Update();
         SpVector[i] = GConf.MeasureSp_HMC(); //Plaquettes are computed when the action is called

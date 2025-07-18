@@ -32,8 +32,8 @@ int main(int argc, char **argv) {
     
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    //double m0 = -0.558;
-    double m0 = -0.18840579710144945; 
+    //double m0 = 0;
+    double m0 = -0.18840579710144945;  
 
     //Default values in variables.cpp
     sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
     
     {
         double beta = 2;
-        int nconf = 1;
+        int nconf = 0;
         std::ostringstream NameData;
         NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
         GConf.setGconf(CONF);
         infile.close();
     }
-    
+     
    
 
 
@@ -150,42 +150,15 @@ int main(int argc, char **argv) {
     double elapsed_time;
     double startT, endT;
 
-    int nu = 1000;
-
-
-    startT = MPI_Wtime();
-    SAP_parallel(GConf.Conf, rhs,x, m0, nu,SAPV::sap_blocks_per_proc);
-    endT = MPI_Wtime();
-    elapsed_time = endT - startT;
-    std::cout << "Rank " << rank << " Elapsed time for SAP = " << elapsed_time << " seconds" << std::endl;
-
-    startT = MPI_Wtime();
-    SAP_parallelV2(GConf.Conf, rhs,x2, m0, nu,SAPV::sap_blocks_per_proc);
-    endT = MPI_Wtime();
-    elapsed_time = endT - startT;
-    std::cout << "Rank " << rank << " Elapsed time for SAPV2 = " << elapsed_time << " seconds" << std::endl;
-
-
-    //check if both methods give the same result
-    for(int i = 0; i < Ntot; i++) {
-        if (std::abs(x[i][0] - x2[i][0]) > 1e-10 || std::abs(x[i][1] - x2[i][1]) > 1e-10) {
-            std::cout << "SAP and SAPV2 give different results at index " << i << std::endl;
-            std::cout << "x: " << x[i][0] << " + " << x[i][1] << "i, x2: " << x2[i][0] << " + " << x2[i][1] << "i" << std::endl;
-            return 0;
-        }
-    }
-
-    std::cout << "SAP and SAPV2 give the same result." << std::endl;
-
-
-
-    /*
+   
+    
     if (rank == 0){
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
         spinor x0(Ntot, c_vector(2, 0)); //Initial guess
-        spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, 100000, 1e-10, true);
+        int max_iter = 10000;//100000; //Maximum number of iterations
+        spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;    
@@ -207,7 +180,7 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
-    */
+    
 
     MPI_Finalize();
 
