@@ -73,6 +73,8 @@ namespace FGMRESV {
     int fgmres_restarts = 50; //Number of restarts for FGMRES
 }
 
+std::vector<std::vector<c_double>>D_TEMP = std::vector<std::vector<c_double>>(LV::Ntot, std::vector<c_double>(2,0)); 
+
 
 void CheckBlocks(){
     bool check = true;

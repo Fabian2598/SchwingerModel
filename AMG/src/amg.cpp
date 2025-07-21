@@ -75,7 +75,7 @@ void AMG::orthonormalize(){
 		index1 = i / Nagg;
 		index2 = i % Nagg;
 		e_i[index1][index2] = 1.0;
-		v_chopped[i] = P_v(e_i); //Columns of the interpolator
+		P_v(e_i,v_chopped[i]); //Columns of the interpolator
 		e_i[index1][index2] = 0.0;
 	}
 
@@ -200,8 +200,8 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	x_i = P_ij v_j. dim(P) = 2 Ntot x Ntest Nagg, 
 	dim(v) = Ntest Nagg, dim(x) = 2 Ntot
 */
-spinor AMG::P_v(const spinor& v) {
-	spinor x(LV::Ntot, c_vector(2, 0));
+void AMG::P_v(const spinor& v,spinor& out) {
+	//spinor x(LV::Ntot, c_vector(2, 0));
 	//Loop over columns
 	using namespace AMGV; //AMG parameters namespace
 	int x_coord, t_coord, s_coord; //Coordinates of the lattice point
@@ -212,10 +212,10 @@ spinor AMG::P_v(const spinor& v) {
 		a = j % Nagg; //Number of aggregate
 		for (i = 0; i < Agg[a].size(); i++) {
 			x_coord = XCoord[Agg[a][i]], t_coord = TCoord[Agg[a][i]], s_coord = SCoord[Agg[a][i]];
-			x[Coords[x_coord][t_coord]][s_coord] += interpolator_columns[k][Coords[x_coord][t_coord]][s_coord] * v[k][a];			
+			out[Coords[x_coord][t_coord]][s_coord] += interpolator_columns[k][Coords[x_coord][t_coord]][s_coord] * v[k][a];			
 		}
 	}
-	return x;
+	//return x;
 }
 
 /*
@@ -224,10 +224,10 @@ spinor AMG::P_v(const spinor& v) {
 	dim(v) = 2 Ntot, dim(x) = Ntest Nagg
 */
 
-spinor AMG::Pt_v(const spinor& v) {
+void AMG::Pt_v(const spinor& v,spinor& out) {
 	//Restriction operator times a spinor
 	using namespace AMGV;
-	spinor x(Ntest, c_vector(Nagg, 0));
+	//spinor x(Ntest, c_vector(Nagg, 0));
 	int k, a;
 	int x_coord, t_coord, s_coord; //Coordinates of the lattice point
 	int i, j; //Loop indices
@@ -236,10 +236,10 @@ spinor AMG::Pt_v(const spinor& v) {
 		a = i % Nagg; //number of aggregate
 		for (j = 0; j < Agg[a].size(); j++) {
 			x_coord = XCoord[Agg[a][j]], t_coord = TCoord[Agg[a][j]], s_coord = SCoord[Agg[a][j]];
-			x[k][a] += std::conj(interpolator_columns[k][Coords[x_coord][t_coord]][s_coord]) * v[Coords[x_coord][t_coord]][s_coord];
+			out[k][a] += std::conj(interpolator_columns[k][Coords[x_coord][t_coord]][s_coord]) * v[Coords[x_coord][t_coord]][s_coord];
 		}
 	}
-	return x;
+	//return x;
 }
 
 /*
@@ -254,7 +254,10 @@ void AMG::assembleDc() {
 	int m, a;
 	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
 		e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
-		column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
+		P_v(e_j,P_TEMP);
+		D_TEMP = D_phi(GConf.Conf, P_TEMP,m0); //D P v
+		Pt_v(D_TEMP, column); //P^T D P v
+		//column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
 		for(int i = 0; i < AMGV::Ntest*AMGV::Nagg; i++){
 			m = i / AMGV::Nagg; //Test vector index
 			a = i % AMGV::Nagg; //Aggregate index
@@ -274,22 +277,25 @@ void AMG::assembleDc() {
 	Coarse grid matrix operator Dc = P^H D P times a spinor v
 	dim(Dc) = Ntest Nagg x Ntest Nagg, dim(v) = Ntest Nagg,
 */
-spinor AMG::Pt_D_P(const spinor& v){
+void AMG::Pt_D_P(const spinor& v,spinor& out){
 	if (AMGV::SetUpDone == false){
-		return Pt_v(D_phi(GConf.Conf,P_v(v),m0));
+		P_v(v,P_TEMP);
+		D_TEMP = D_phi(GConf.Conf, P_TEMP,m0); //D P v
+		Pt_v(D_TEMP, out); //P^T D P v
+		//return Pt_v(D_phi(GConf.Conf,P_v(v),m0));
 	}
 	else{
-		spinor x(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
+		//spinor x(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
 		int n, alf, m, a;		
 		for(int i = 0; i < nonzero; i++){
 			n = rowsDc[i] / AMGV::Nagg; //Test vector index
 			alf = rowsDc[i] % AMGV::Nagg; //Aggregate index
 			m = colsDc[i] / AMGV::Nagg; //Test vector index
 			a = colsDc[i] % AMGV::Nagg; //Aggregate index
-			x[n][alf] += valuesDc[i] * v[m][a]; //Dc v			
+			out[n][alf] += valuesDc[i] * v[m][a]; //Dc v			
 		}
 		
-		return x;
+		//return x;
 	}
 	
 }
@@ -330,7 +336,9 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 				temp[n][alf] = phi[n][alf] - Dphi[n][alf]; //temp = phi - D x
 			}
 		}
-		spinor Pt_r = Pt_v(temp); //Pt_r = P^H (phi - D x)
+		//spinor Pt_r = Pt_v(temp); //Pt_r = P^H (phi - D x)
+		spinor Pt_r(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
+		Pt_v(temp,Pt_r);
 		
 		/*
 			Bi-cgstab for solving the coarse system
@@ -338,11 +346,12 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		*/
 
 	  	//Using GMRES for the coarse grid solver
-		temp = P_v(gmres(AMGV::Ntest,AMGV::Nagg,GConf.Conf, Pt_r, Pt_r, m0,
-			AMGV::gmres_restart_length_coarse_level,AMGV::gmres_restarts_coarse_level,AMGV::gmres_tol_coarse_level,false));
+		P_v(gmres(AMGV::Ntest,AMGV::Nagg,GConf.Conf, Pt_r, Pt_r, m0,
+			AMGV::gmres_restart_length_coarse_level,AMGV::gmres_restarts_coarse_level,AMGV::gmres_tol_coarse_level,false),
+		P_TEMP);
 		for(int n = 0; n<LV::Ntot; n++){
 			for(int alf=0; alf<2; alf++){
-				x[n][alf] += temp[n][alf]; 
+				x[n][alf] += P_TEMP[n][alf]; 
 			}
 		}
 	
@@ -407,6 +416,7 @@ spinor AMG::bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, co
     c_double alpha, beta, rho_i, omega, rho_i_2;
     x = x0; //initial solution
 	
+/*
     r = phi - Pt_D_P(x); //r = b - A*x 
     r_tilde = r;
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
@@ -440,6 +450,7 @@ spinor AMG::bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, co
     if (print_message == true) {
         std::cout << "Bi-CG-stab for Dc did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
     }
+	*/
     return x;
 }
 
@@ -465,7 +476,8 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
     spinor x = x0; //initial solution
     c_double beta; //not 1/g^2 from simulations
 
-	r = (dim1 == LV::Ntot) ?  phi - D_phi(U,x,m0) : phi - Pt_D_P(x); //r = b - A*x
+	Pt_D_P(x,Pt_TEMP);
+	r =  phi - Pt_TEMP; //r = b - A*x
 	
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
 	//The convergence criterion is ||r|| < ||phi|| * tol
@@ -476,7 +488,7 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
 
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
-			w = (dim1 == LV::Ntot) ? D_phi(U,VmT[j],m0) : Pt_D_P(VmT[j]); //w = D v_j
+			Pt_D_P(VmT[j],w); //w = D v_j
 			//----Gram-Schmidt process----//
             for (int i = 0; i <= j; i++) {
                 Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)  
@@ -511,7 +523,8 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
         }
 
         //Compute the residual
-		r = (dim1 == LV::Ntot) ?  phi - D_phi(U,x,m0) : phi - Pt_D_P(x);
+		Pt_D_P(x,Pt_TEMP);
+		r = phi - Pt_TEMP;
         err = sqrt(std::real(dot(r, r)));
 
          if (err < tol* norm_phi) {

@@ -53,6 +53,8 @@ public:
 		colsDc = std::vector<int>(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg,0);
 		v_chopped = std::vector<spinor>(AMGV::Ntest*AMGV::Nagg, spinor(LV::Ntot, c_vector(2,0)));
 		//c_matrix DcMatrix = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
+		P_TEMP = spinor(LV::Ntot, c_vector(2,0)); //Temporary spinor for the coarse grid operator
+		Pt_TEMP = spinor(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Temporary spinor for the coarse grid operator
 	}
 	~AMG() { };
 
@@ -96,12 +98,12 @@ private:
 	/*
 	Interpolator times a spinor
 	*/
-	spinor P_v(const spinor& v); //P v
+	void P_v(const spinor& v,spinor& out); //P v
 
 	/*
 	Restriction operator times a spinor
 	*/
-	spinor Pt_v(const spinor& v); // P^T v
+	void Pt_v(const spinor& v,spinor& out); // P^T v
 
 	/*
 	Assemble the coarse grid operator Dc = P^H D P 
@@ -112,7 +114,7 @@ private:
 	/*
 	Coarse grid operator Dc = P^H D P times a spinor
     */
-	spinor Pt_D_P(const spinor& v); //Dc v = P^H D P v 
+	void Pt_D_P(const spinor& v,spinor& out); //Dc v = P^H D P v 
 
 	/*
 	Local orthonormalization of the test vectors
@@ -162,6 +164,8 @@ private:
 	std::vector<spinor> test_vectors; //test vectors[Ntest][Nx Nt][spin components], no color
 	std::vector<spinor> interpolator_columns; 
 	std::vector<spinor> v_chopped;
+	spinor Pt_TEMP;
+	spinor P_TEMP;
 	
 };
 

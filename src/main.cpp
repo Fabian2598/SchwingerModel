@@ -63,10 +63,7 @@ int main() {
         phi[n][0] = RandomU1(); //spin up
         phi[n][1] = RandomU1(); //spin down
     }
-    //D_D_dagger_phi(GConf.Conf,phi ,TEMP, 0); //Initialize TEMP for the first time
-    //conjugate_gradient(GConf.Conf, phi, TEMP,0);
 
-    
     if (Nm0 == 1) {
         Masses = { m0_min };
     }

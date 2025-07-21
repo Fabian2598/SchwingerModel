@@ -101,6 +101,8 @@ extern std::vector<std::vector<int>> SAP_Blocks; //SAP_Blocks[number_of_block][v
 extern std::vector<int> SAP_RedBlocks; //Block index for the red blocks
 extern std::vector<int> SAP_BlackBlocks; //Block index for the black blocks
 
+extern std::vector<std::vector<c_double>>D_TEMP;
+
 
 void CheckBlocks(); //Check that Nx/block_x and Nt/block_t are integers, the same for Schwarz blocks
 void CheckAggregates(); //Check that the aggregates are initialized and have the correct size
