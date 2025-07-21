@@ -7,111 +7,45 @@
 #include <complex>  
 #include <vector>
 
+/*
+    Given a gauge configuration, this program assembles the Dirac matrix for the Schwinger model.
+    Only the non-zero elements of the Dirac matrix are stored in a file.
+    The file format is:
+    row_index col_index real_part imag_part
+
+    The path to the configuration is specified in the code.
+    Lattice dimensions are set to 16x16.
+    The values of m0 and beta are read from the user. They have to coincide with the values used in the simulation.
+*/
+
 //-------Lattice dimensions-------//
-constexpr int Ns = 16, Nt = 16;
-constexpr int Ntot = Ns * Nt;
+constexpr int Nx = 16, Nt = 16;
+constexpr int Ntot = Nx * Nt;
 //--------------------------------//
 
 double pi = 3.14159265359;
+double m0, beta;
 typedef std::complex<double> c_double;
 typedef std::vector<c_double> c_vector;
 typedef std::vector<c_vector> c_matrix;
+typedef std::vector<c_vector> spinor;
 
 
 c_matrix Conf(Ntot, c_vector(2, 0)); //Gauge configuration
-std::vector<std::vector<int>>Coords(Ns, std::vector<int>(Nt, 0)); //Vectorized coordinates
-//Periodic boundary
-std::vector<std::vector<std::vector<int>>>LeftPB(Ns, std::vector<std::vector<int>>(Nt, std::vector<int>(2, 0))); 
-std::vector<std::vector<std::vector<int>>>RightPB(Ns, std::vector<std::vector<int>>(Nt, std::vector<int>(2, 0))); 
+std::vector<std::vector<int>>Coords(Nx, std::vector<int>(Nt, 0)); //Vectorized coordinates
 
-std::vector<c_matrix> gamma_mat(2,c_matrix(2, c_vector(2, 0)));  //Pauli matrices
+//---Neighbor coordinates---//
+std::vector<std::vector<int>>LeftPB = std::vector<std::vector<int>>(Ntot, std::vector<int>(2,0)); 
+std::vector<std::vector<int>>RightPB = std::vector<std::vector<int>>(Ntot, std::vector<int>(2,0)); 
+std::vector<std::vector<c_double>>SignL =std::vector<std::vector<c_double>>(Ntot,std::vector<c_double>(2,0)); 
+std::vector<std::vector<c_double>>SignR = std::vector<std::vector<c_double>>(Ntot,std::vector<c_double>(2,0)); 
+
 c_double I_number(0, 1); //imaginary number
-c_matrix Identity(Ntot, c_vector(2, 0));
-std::vector<std::vector<int>>hat_mu(Ntot, std::vector<int>(2, 0)); //hat_mu[mu][2] = {hat_mu_t, hat_mu_x}
-
-//Vectorized coordinates
-void Coordinates() {
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            Coords[x][t] = x * Nt + t;
-        }
-    }
-}
-
-inline int mod(int a, int b) {
-    int r = a % b;
-    return r < 0 ? r + b : r;
-}
-
-//Intialize gamma matrices, identity and unit vectors
-void initialize_matrices() {
-    //sigma_0 --> time
-    gamma_mat[0][0][0] = 0; gamma_mat[0][0][1] = 1;
-    gamma_mat[0][1][0] = 1; gamma_mat[0][1][1] = 0;
-    //simgma_1 --> space
-    gamma_mat[1][0][0] = 0; gamma_mat[1][0][1] = -I_number;
-    gamma_mat[1][1][0] = I_number; gamma_mat[1][1][1] = 0;
-    //2d identity
-    Identity[0][0] = 1; Identity[0][1] = 0;
-    Identity[1][0] = 0; Identity[1][1] = 1;
-    hat_mu[0] = { 1, 0 }; //hat_t
-    hat_mu[1] = { 0, 1 }; //hat_x
-}
-
-//right periodic boundary x+hat{mu}
-//left periodic boundary x-hat{mu}
-//hat_mu[0] = { 1, 0 }; //hat_t
-//hat_mu[1] = { 0, 1 }; //hat_x
-void periodic_boundary() {
-    for (int x = 0; x < Ns; x++) {
-        for (int t = 0; t < Nt; t++) {
-            for (int mu = 0; mu < 2; mu++) {
-                RightPB[x][t][mu] = Coords[mod(x + hat_mu[mu][1], Ns)][mod(t + hat_mu[mu][0], Nt)];
-                LeftPB[x][t][mu] = Coords[mod(x - hat_mu[mu][1], Ns)][mod(t - hat_mu[mu][0], Nt)];
-
-            }
-        }
-    }
-}
-
-//right fermionic boundary (antiperiodic in time) x+hat{mu}
-inline c_double rfb(const c_matrix& phi, const int& x, const int& t, const int& mu, const int& bet) {
-    //time
-    if (mu == 0) {
-        if (t == Nt - 1) {
-            return -phi[Coords[x][0]][bet];
-            //return phi[Coords[x][0]][bet];
-        }
-        else {
-            return phi[Coords[x][t + 1]][bet];
-        }
-    }
-    else {
-        //periodic
-        return phi[Coords[mod(x + 1, Ns)][t]][bet];
-    }
-}
-
-//left fermionic boundary (antiperiodic in time) x-hat{mu}
-inline c_double lfb(const c_matrix& phi, const int& x, const int& t, const int& mu, const int& bet) {
-    //time
-    if (mu == 0) {
-        if (t == 0) {
-            return -phi[Coords[x][Nt - 1]][bet];
-            //return phi[Coords[x][Nt - 1]][bet];
-        }
-        else {
-            return phi[Coords[x][t - 1]][bet];
-        }
-    }
-    else {
-        //periodic
-        return phi[Coords[mod(x - 1, Ns)][t]][bet];
-    }
-}
 
 
-//Random U1 variable
+/*
+    Random U(1) number --> For storing a random right hand side vector
+*/
 c_double RandomU1() {
     double cociente = ((double)rand() / (RAND_MAX));
     double theta = 2.0 * pi * cociente;
@@ -119,68 +53,118 @@ c_double RandomU1() {
     return z;
 }
 
-
-//D phi
-c_matrix D_phi(const c_matrix& U, const c_matrix& phi, const double& m0) {
-    int Ntot = Ns * Nt;
-    c_matrix Dphi(Ntot,c_vector(2, 0)); //Dphi[Ntot][2]
-    for (int x = 0; x < Ns; x++) {
+/*
+    Vectorized coordinate
+*/
+void Coordinates() {
+    for (int x = 0; x < Nx; x++) {
         for (int t = 0; t < Nt; t++) {
-            int n = Coords[x][t];
-            for (int alf = 0; alf < 2; alf++) {
-                Dphi[n][alf] = (m0 + 2) * phi[n][alf];
-                for (int bet = 0; bet < 2; bet++) {
-                    for (int mu = 0; mu < 2; mu++) {
-                        Dphi[n][alf] += -0.5 * (
-                            (Identity[alf][bet] - gamma_mat[mu][alf][bet]) * U[n][mu] * rfb(phi, x, t, mu, bet)
-                            + (Identity[alf][bet] + gamma_mat[mu][alf][bet]) * std::conj(U[LeftPB[x][t][mu]][mu]) * lfb(phi, x, t, mu, bet)
-                            );
-                    }
-                }
-            }
+            Coords[x][t] = x * Nt + t;
         }
     }
-    return Dphi;
 }
 
-c_matrix canonical_vector(const int& i, const int& N1, const int& N2) {
-    c_matrix e_i(N1, c_vector(N2, 0.0));
+/*
+	Modulo operation
+*/
+inline int mod(int a, int b) {
+	int r = a % b;
+	return r < 0 ? r + b : r;
+}
+
+/*
+	Periodic boundary conditions used for the link variables U_mu(n).
+	This function builds the RightPB and LeftPB, which
+	store the neighbor coordinates.
+	This prevents recalculation every time we call the operator D.
+	The function is only called once at the beginning of the program.
+
+	right periodic boundary x+hat{mu}
+	left periodic boundary x-hat{mu}
+	hat_mu[0] = { 1, 0 } --> hat_t
+	hat_mu[1] = { 0, 1 } --> hat_x
+*/
+inline void periodic_boundary() {
+	std::vector<std::vector<int>>hat_mu(2, std::vector<int>(2, 0));
+	hat_mu[0] = { 1, 0 }; //hat_t
+	hat_mu[1] = { 0, 1 }; //hat_x
+	for (int x = 0; x < Nx; x++) {
+		for (int t = 0; t < Nt; t++) {
+			for (int mu = 0; mu < 2; mu++) {
+				RightPB[Coords[x][t]][mu] = Coords[mod(x + hat_mu[mu][1], Nx)][mod(t + hat_mu[mu][0], Nt)]; 
+				LeftPB[Coords[x][t]][mu] = Coords[mod(x - hat_mu[mu][1], Nx)][mod(t - hat_mu[mu][0], Nt)];
+				SignR[Coords[x][t]][mu] = (mu == 0 && t == Nt - 1) ? -1 : 1; //sign for the right boundary in time
+				SignL[Coords[x][t]][mu] = (mu == 0 && t == 0) ? -1 : 1; //sign for the left boundary in time
+			}
+		}
+	}
+}
+
+/*
+    Dirac operator
+    U: gauge configuration
+    phi: spinor field
+    Dphi: result of the Dirac operator applied to phi
+    m0: mass parameter
+*/
+void D_phi(const c_matrix& U, const spinor& phi, spinor &Dphi,const double& m0) {
+	for (int n = 0; n < Ntot; n++) {
+		//n = x * Nt + t
+		Dphi[n][0] = (m0 + 2) * phi[n][0] -0.5 * ( 
+			U[n][0] * SignR[n][0] * (phi[RightPB[n][0]][0] - phi[RightPB[n][0]][1]) 
+		+   U[n][1] * SignR[n][1] * (phi[RightPB[n][1]][0] + I_number * phi[RightPB[n][1]][1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi[LeftPB[n][0]][0] + phi[LeftPB[n][0]][1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (phi[LeftPB[n][1]][0] - I_number * phi[LeftPB[n][1]][1])
+		);
+
+		Dphi[n][1] = (m0 + 2) * phi[n][1] -0.5 * ( 
+			U[n][0] * SignR[n][0] * (-phi[RightPB[n][0]][0] + phi[RightPB[n][0]][1]) 
+		+   U[n][1] * SignR[n][1] * (-I_number*phi[RightPB[n][1]][0] + phi[RightPB[n][1]][1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi[LeftPB[n][0]][0] + phi[LeftPB[n][0]][1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (I_number*phi[LeftPB[n][1]][0] + phi[LeftPB[n][1]][1])
+		);
+			
+	}
+	
+}
+
+/*
+    Canonical vector e_i used for extracting the columns of the Dirac matrix.
+*/
+spinor canonical_vector(const int& i, const int& N1, const int& N2) {
+    spinor e_i(N1, c_vector(N2, 0.0));
     int j = i / N2;
     int k = i % N2;
     e_i[j][k] = 1.0;
     return e_i;
 }
 
-//For writing the Dirac matrix
-void save_matrix(c_matrix& Matrix, char* Name) {
-    char NameData[500], Data_str[500];
-    sprintf(NameData, Name);
-    std::ofstream Datfile;
-    Datfile.open(NameData);
-    for (int i = 0; i < Matrix.size(); i++) {
-        for (int j = 0; j < Matrix[i].size(); j++) {
-            sprintf(Data_str, "%-30d%-30d%-30.17g%-30.17g\n", i, j, std::real(Matrix[i][j]), std::imag(Matrix[i][j]));
-            Datfile << Data_str;
-        }
+/*
+    Saves a spinor vector to a file.
+    The file format is:
+    row_index real_part imag_part
+    where row_index = 2*i for the first component and 2*i+1 for the second component.
+*/
+void save_vector(const spinor& psi, const std::string& Name) {
+    std::ofstream Datfile(Name);
+    if (!Datfile.is_open()) {
+        std::cerr << "Error opening file: " << Name << std::endl;
+        return;
     }
-    Datfile.close();
+    for (int i = 0; i < Ntot; i++) {
+        Datfile << 2*i
+                << std::setw(30) << std::setprecision(17) << std::real(psi[i][0])
+                << std::setw(30) << std::setprecision(17) << std::imag(psi[i][0])
+                << "\n";
+
+        Datfile << 2*i+1
+                << std::setw(30) << std::setprecision(17) << std::real(psi[i][1])
+                << std::setw(30) << std::setprecision(17) << std::imag(psi[i][1])
+                << "\n";
+    }
+
 }
 
-//For writing the right hand side
-void save_vector(c_matrix& Matrix, char* Name) {
-    char NameData[500], Data_str[500];
-    sprintf(NameData, Name);
-    std::ofstream Datfile;
-    Datfile.open(NameData);
-    for (int i = 0; i < Matrix.size(); i++) {
-        sprintf(Data_str, "%-30d%-30.17g%-30.17g\n", 2*i, std::real(Matrix[i][0]), std::imag(Matrix[i][0]));
-        Datfile << Data_str;
-        sprintf(Data_str, "%-30d%-30.17g%-30.17g\n", 2*i+1, std::real(Matrix[i][1]), std::imag(Matrix[i][1]));
-        Datfile << Data_str;
-    }
-    
-    Datfile.close();
-}
 
 
 //Formats decimal numbers
@@ -194,24 +178,32 @@ std::string format(const double& number) {
 
 
 int main() {
-    srand(time(0));//srand(0); //srand(time(0));
-    initialize_matrices(); //Initialize gamma matrices, identity and unit vectors
+    srand(time(0));
     Coordinates(); //Vectorized coordinates
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    std::cout << "Ns = " << Ns << " Nt = " << Nt << std::endl;
-    std::cout << "Dirac matrix dimension = " << (2 * Ntot) << " X " << (2 * Ntot) << std::endl;
-    //These parameter have to be same as in the simulation
-    double m0 = -0.81; 
-    double beta = 2;
-    std::cout << "m0 " << m0 << " beta " << beta << std::endl;
-    int n;// = 1; //Configuration number (this has to match the data file name)
-    
-    char PATH[500];
-    //Path to the configuration
 
-    for(n=0; n<1; n++) {
-    std::cout << "Configuration number  " << n << std::endl;
-    sprintf(PATH, "b2_16x16/m-016/2D_U1_Ns%d_Nt%d_b%s_m%s_%d.txt", Ns, Nt, format(beta).c_str(), format(-0.16).c_str(), n);
+    std::cout << "Assembling Dirac matrix for the Schwinger model" << std::endl;
+    std::cout << "Nx = " << Nx << " Nt = " << Nt << std::endl;
+    std::cout << "Dirac matrix dimension = " << (2 * Ntot) << " X " << (2 * Ntot) << std::endl;
+
+    std::cout << "m0 (the same as in the simulation) = ";
+    std::cin >> m0; //Mass parameter
+    std::cout << "beta (the same as in the simulation) = ";
+    std::cin >> beta; //Beta parameter
+    std::cout << " " << std::endl;
+    std::cout << "m0 = " << m0 << " beta = " << beta << std::endl;
+
+
+    //------Path to the configuration--------//
+    int n = 0; //Configuration number
+    std::string PATH = "2D_U1_Ns" + std::to_string(Nx) +
+                   "_Nt" + std::to_string(Nt) +
+                   "_b" + format(beta) +
+                   "_m" + format(m0) +
+                   "_" + std::to_string(n) + ".ctxt";
+    //--------------------------------------//
+   
+    
     std::cout << "Reading configuration from " << PATH << std::endl;
     std::ifstream infile(PATH);
     if (!infile) {
@@ -220,37 +212,57 @@ int main() {
     }
     int x, t, mu;
     double re, im;
+
     while (infile >> x >> t >> mu >> re >> im) {
         Conf[Coords[x][t]][mu] = c_double(re, im);
     }
     infile.close();
 
-    //Random right hand side//
-    c_matrix Phi(Ntot, c_vector(2, 0));
+    //--------Random right hand side--------//
+    spinor Phi(Ntot, c_vector(2, 0));
     for (int i = 0; i < Ntot; i++) {
         for (int j = 0; j < 2; j++) {
             Phi[i][j] = 1.0 * RandomU1();
         }
     }
+    std::string rhs_path = "RHS.txt";
+    save_vector(Phi, rhs_path); //Save the random right hand side vector
+    std::cout << "Random right hand side vector saved in " << rhs_path << std::endl;
+    //--------------------------------------//
 
-    //Store the matrix//
-    c_matrix D(2 * Ntot, c_vector(2 * Ntot, 0));
-    for (int col = 0; col < 2 * Ntot; col++) {
-        c_matrix v = canonical_vector(col, Ntot, 2);  
-        c_matrix Dv = D_phi(Conf, v, m0); //column
-        int count = 0;
-        for (int i = 0; i < Dv.size(); i++) {
-            for (int j = 0; j < Dv[i].size(); j++) {
-                D[count][col] = Dv[i][j];
-                count += 1;
+    //------------Store the matrix---------------//
+    std::string Name = "DiracMatrix.txt";
+    std::ofstream Datfile(Name);
+    if (!Datfile.is_open()) {
+        std::cerr << "Error opening file: " << Name << std::endl;
+        return 0;
+    }
+    
+    spinor Dv(Ntot, c_vector(2, 0)); //Result of the Dirac operator applied to the canonical vector, i.e. a column of D
+    spinor v(Ntot, c_vector(2, 0)); //Canonical vector
+    int row, col;
+    std::cout << "Writing Dirac matrix " << Name << std::endl;
+
+    //----Loop over the columns of the Dirac matrix----//
+    //The Dirac matrix is 2*Ntot x 2*Ntot, where
+    for (col = 0; col < 2 * Ntot; col++) {
+        v = canonical_vector(col, Ntot, 2);  
+        D_phi(Conf, v, Dv, m0); //Extracting the column
+        for (int n = 0; n < Ntot; n++) {
+            for (int mu = 0; mu < 2; mu++) {
+                row = 2 * n + mu; //Row index in the Dirac matrix
+
+                //We only store the non-zero elements of the Dirac matrix
+                if ( std::abs(std::real(Dv[n][mu])) > 1e-10 || std::abs(std::imag(Dv[n][mu])) > 1e-10 ){
+                    Datfile << row
+                    << std::setw(30) << col
+                    << std::setw(30) << std::setprecision(17) << std::real(Dv[n][mu])
+                    << std::setw(30) << std::setprecision(17) << std::imag(Dv[n][mu])
+                    << "\n";
+                }       
             }
         }
     }
-    char NameD[500], NamePhi[500];
-    //Save right hand side and dirac matrix
-    sprintf(NameD, "D%d.dat", n);  //sprintf(NamePhi, "Phi%d.dat", n);
-    save_matrix(D, NameD);
-    //save_vector(Phi, NamePhi);
-    }
+
     return 0;
 }

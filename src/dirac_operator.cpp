@@ -3,9 +3,9 @@
 c_double I_number(0, 1); //imaginary number
 
 
-spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0) {
+void D_phi(const c_matrix& U, const spinor& phi, spinor &Dphi,const double& m0) {
 	using namespace LV;
-	spinor Dphi(Ntot, c_vector(2, 0)); //Dphi[Nx Nt][2]
+	//spinor Dphi(Ntot, c_vector(2, 0)); //Dphi[Nx Nt][2]
 
 	//#pragma omp parallel for
 	for (int n = 0; n < Ntot; n++) {
@@ -26,13 +26,12 @@ spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0) {
 			
 	}
 	
-
-	return Dphi;
+	//return Dphi;
 }
 
-spinor D_dagger_phi(const c_matrix& U, const spinor& phi, const double& m0) {
+void D_dagger_phi(const c_matrix& U, const spinor& phi, spinor &Dphi,const double& m0) {
 	using namespace LV;
-	spinor Dphi(Ntot, c_vector(2, 0)); //Dphi[Nx Nt][2]
+	//spinor Dphi(Ntot, c_vector(2, 0)); //Dphi[Nx Nt][2]
 
 	//#pragma omp parallel for
 	for (int n = 0; n < Ntot; n++) {
@@ -53,14 +52,14 @@ spinor D_dagger_phi(const c_matrix& U, const spinor& phi, const double& m0) {
 			
 	}
 	
-
-	return Dphi;
+	//return Dphi;
 }
 
 
 //D D^dagger phi 
-spinor D_D_dagger_phi(const c_matrix& U, const spinor& phi, const double& m0) {
-	return D_phi(U, D_dagger_phi(U, phi, m0), m0);
+void D_D_dagger_phi(const c_matrix& U, const spinor& phi, spinor &Dphi,const double& m0) {
+	D_dagger_phi(U, phi, DTEMP, m0);
+	D_phi(U,  DTEMP, Dphi, m0);
 }
 
 

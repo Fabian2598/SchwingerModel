@@ -166,8 +166,8 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	interpolator_columns = test_vectors; 
 	orthonormalize(); 
 	//For large problems this actually helps ...
-	//AMGV::SetUpDone = true; //Set the setup as done
-	//assembleDc(); //Assemble the coarse grid operator
+	AMGV::SetUpDone = true; //Set the setup as done
+	assembleDc(); //Assemble the coarse grid operator
 	//Improving the interpolator quality by iterating over the two-grid method defined by the current test vectors
 	if (rank == 0){std::cout << "Improving interpolator" << std::endl;}
 	for (int n = 0; n < Nit; n++) {
@@ -184,12 +184,12 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
 		orthonormalize();
-		//assembleDc(); //Assemble the coarse grid operator
+		assembleDc(); //Assemble the coarse grid operator
 
 	}
 	//In case I want to assemble the coarse grid matrix
-	//AMGV::SetUpDone = true; //Set the setup as done
-	//assembleDc(); //Assemble the coarse grid operator
+	AMGV::SetUpDone = true; //Set the setup as done
+	assembleDc(); //Assemble the coarse grid operator
 	if (rank == 0){std::cout << "Set-up phase finished" << std::endl;}
 	
 	
@@ -204,11 +204,14 @@ spinor AMG::P_v(const spinor& v) {
 	spinor x(LV::Ntot, c_vector(2, 0));
 	//Loop over columns
 	using namespace AMGV; //AMG parameters namespace
-	for (int j = 0; j < Ntest * Nagg; j++) {
-		int k = j / Nagg; //Number of test vector
-		int a = j % Nagg; //Number of aggregate
-		for (int i = 0; i < Agg[a].size(); i++) {
-			int x_coord = XCoord[Agg[a][i]], t_coord = TCoord[Agg[a][i]], s_coord = SCoord[Agg[a][i]];
+	int x_coord, t_coord, s_coord; //Coordinates of the lattice point
+	int k, a;
+	int i, j; //Loop indices
+	for (j = 0; j < Ntest * Nagg; j++) {
+		k = j / Nagg; //Number of test vector
+		a = j % Nagg; //Number of aggregate
+		for (i = 0; i < Agg[a].size(); i++) {
+			x_coord = XCoord[Agg[a][i]], t_coord = TCoord[Agg[a][i]], s_coord = SCoord[Agg[a][i]];
 			x[Coords[x_coord][t_coord]][s_coord] += interpolator_columns[k][Coords[x_coord][t_coord]][s_coord] * v[k][a];			
 		}
 	}
@@ -225,11 +228,14 @@ spinor AMG::Pt_v(const spinor& v) {
 	//Restriction operator times a spinor
 	using namespace AMGV;
 	spinor x(Ntest, c_vector(Nagg, 0));
-	for (int i = 0; i < Ntest*Nagg; i++) {
-		int k = i / Nagg; //number of test vector
-		int a = i % Nagg; //number of aggregate
-		for (int j = 0; j < Agg[a].size(); j++) {
-			int x_coord = XCoord[Agg[a][j]], t_coord = TCoord[Agg[a][j]], s_coord = SCoord[Agg[a][j]];
+	int k, a;
+	int x_coord, t_coord, s_coord; //Coordinates of the lattice point
+	int i, j; //Loop indices
+	for (i = 0; i < Ntest*Nagg; i++) {
+		k = i / Nagg; //number of test vector
+		a = i % Nagg; //number of aggregate
+		for (j = 0; j < Agg[a].size(); j++) {
+			x_coord = XCoord[Agg[a][j]], t_coord = TCoord[Agg[a][j]], s_coord = SCoord[Agg[a][j]];
 			x[k][a] += std::conj(interpolator_columns[k][Coords[x_coord][t_coord]][s_coord]) * v[Coords[x_coord][t_coord]][s_coord];
 		}
 	}
@@ -245,13 +251,13 @@ void AMG::assembleDc() {
 	nonzero = 0;
 	spinor e_j(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Column of the coarse grid operator
 	spinor column(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Column of the coarse grid operator
-
+	int m, a;
 	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
 		e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
 		column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
 		for(int i = 0; i < AMGV::Ntest*AMGV::Nagg; i++){
-			int m = i / AMGV::Nagg; //Test vector index
-			int a = i % AMGV::Nagg; //Aggregate index
+			m = i / AMGV::Nagg; //Test vector index
+			a = i % AMGV::Nagg; //Aggregate index
 			if (column[m][a] != 0.0) {
 				rowsDc[nonzero] = i; //Row index of the coarse grid operator
 				colsDc[nonzero] = j;  //Column index of the coarse grid operator
@@ -274,12 +280,12 @@ spinor AMG::Pt_D_P(const spinor& v){
 	}
 	else{
 		spinor x(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
-				
+		int n, alf, m, a;		
 		for(int i = 0; i < nonzero; i++){
-			int n = rowsDc[i] / AMGV::Nagg; //Test vector index
-			int alf = rowsDc[i] % AMGV::Nagg; //Aggregate index
-			int m = colsDc[i] / AMGV::Nagg; //Test vector index
-			int a = colsDc[i] % AMGV::Nagg; //Aggregate index
+			n = rowsDc[i] / AMGV::Nagg; //Test vector index
+			alf = rowsDc[i] % AMGV::Nagg; //Aggregate index
+			m = colsDc[i] / AMGV::Nagg; //Test vector index
+			a = colsDc[i] % AMGV::Nagg; //Aggregate index
 			x[n][alf] += valuesDc[i] * v[m][a]; //Dc v			
 		}
 		

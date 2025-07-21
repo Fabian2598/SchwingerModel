@@ -29,6 +29,7 @@ target_include_directories("SM_${NS}x${NT}"
 )
 target_compile_options("SM_${NS}x${NT}" PRIVATE
 			-O3
+            -g #For profiling
 			#-fopenmp
 )
 

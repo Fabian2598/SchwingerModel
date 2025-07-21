@@ -36,8 +36,8 @@ int main(int argc, char **argv) {
     double m0 = -0.18840579710144945;  
 
     //Default values in variables.cpp
-    sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
-    sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
+    sap_gmres_restart_length = 2; //GMRES restart length for the Schwarz blocks. Set to 20 by default
+    sap_gmres_restarts = 5; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
     sap_gmres_tolerance = 1e-3; //GMRES tolerance for the Schwarz blocks
     sap_tolerance = 1e-10; //Tolerance for the SAP method
     sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     AMGV::gmres_tol_coarse_level = 0.1; //GMRES tolerance for the coarse level
     AMGV::nu1 = 0; //Pre-smoothing iterations
     AMGV::nu2 = 2; //Post-smoothing iterations
-    AMGV::Nit = 3; //Number of iterations for improving the interpolator
+    AMGV::Nit = 1; //Number of iterations for improving the interpolator
 
     FGMRESV::fgmres_tolerance = 1e-10; //Tolerance for FGMRES
     FGMRESV::fgmres_restart_length = 20; //Restart length for FGMRES
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
     double startT, endT;
 
    
-    
+    /*
     if (rank == 0){
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
@@ -170,6 +170,7 @@ int main(int argc, char **argv) {
     spinor xfgmres = fgmresSAP(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
+    */
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
