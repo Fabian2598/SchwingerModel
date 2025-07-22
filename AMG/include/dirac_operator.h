@@ -50,7 +50,8 @@ inline void periodic_boundary() {
 	U: gauge configuration
 	phi: spinor to apply the operator to
 	m0: mass parameter
+	out: spinor with the result of the operator application
 */
-spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0);
+void D_phi(const c_matrix& U, const spinor& phi, spinor &out,const double& m0);
 
 #endif

@@ -2,7 +2,7 @@
 
 
 //Solves Dx x = phi with the Bi-CGstab method
-spinor bi_cgstab(c_matrix (*func)(const c_matrix&, const spinor&, const double&), const int& dim1, const int& dim2,
+spinor bi_cgstab(void (*func)(const c_matrix&, const spinor&, spinor&,const double&), const int& dim1, const int& dim2,
 const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
 
     int k = 0; //Iteration number
@@ -17,7 +17,9 @@ const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const 
     spinor x(dim1, c_vector(dim2, 0)); //solution
     c_double alpha, beta, rho_i, omega, rho_i_2;;
     x = x0; //initial solution
-    r = phi - func(U, x, m0); //r = b - A*x
+    spinor Dphi(dim1, c_vector(dim2, 0)); //Temporary spinor for D x
+    func(U, x, Dphi, m0);
+    r = phi - Dphi; //r = b - A*x
     r_tilde = r;
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
 
@@ -30,7 +32,7 @@ const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const 
             beta = alpha * rho_i / (omega * rho_i_2); //beta_{i-1} = alpha_{i-1} * rho_{i-1} / (omega_{i-1} * rho_{i-2})
             d = r + beta * (d - omega * Ad); //d_i = r_{i-1} + beta_{i-1} * (d_{i-1} - omega_{i-1} * Ad_{i-1})
         }
-        Ad = func(U, d, m0);  //A d_i 
+        func(U, d, Ad, m0);  //A d_i 
         alpha = rho_i / dot(Ad, r_tilde); //alpha_i = rho_{i-1} / (Ad_i, r_tilde)
         s = r - alpha * Ad; //s = r_{i-1} - alpha_i * Ad_i
         err = sqrt(std::real(dot(s, s)));
@@ -42,7 +44,7 @@ const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const 
             }
             return x;
         }
-        t = func(U, s, m0);   //A s
+        func(U, s, t,m0);   //A s
         omega = dot(s, t) / dot(t, t); //omega_i = t^dagg . s / t^dagg . t
         r = s - omega * t; //r_i = s - omega_i * t
         x = x + alpha * d + omega * s; //x_i = x_{i-1} + alpha_i * d_i + omega_i * s

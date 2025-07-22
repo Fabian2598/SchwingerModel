@@ -10,24 +10,6 @@
 void SchwarzBlocks();
 
 /*
-    Check if the size of an input spinor is correct.
-    Returns true if the size is not correct, false otherwise.
-    Only performs the check if DEBUG is defined. Check config.h.
-*/
-inline bool checkSize(const spinor& v, const int& N1, const int& N2) {
-    //DEBUG defined in config.h.in
-    #ifdef DEBUG
-    int size1 = v.size(), size2 = v[0].size();
-    if (size1 != N1 || size2 != N2) {
-        std::cerr << "Error: Expected dimensions (" << N1 << ", " << N2 
-                  << "), but got (" << size1 << ", " << size2 << ")." << std::endl;
-        return true;
-    }
-    #endif
-    return false;
-}
-
-/*
     Set all elements of a spinor to zero.
     v: input spinor, N1: first index dimension, N2: second index dimension
 */
@@ -87,11 +69,6 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
 */
 void I_D_B_1_It(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const int& block);
 
-/*
-    Sequential version of the SAP method (used for testing)
-    dim(v) = 2 * Ntot, dim(x) = 2 * Ntot
-*/
-int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu);
 
 
 /*
@@ -106,7 +83,7 @@ int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int
 
     The convergence criterion is ||r|| < ||phi|| * tol
 */
-int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc);
+int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc);
 
 /*
     Given a lattice point index n, it returns the corresponding 

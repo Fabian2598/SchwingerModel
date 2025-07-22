@@ -1,7 +1,6 @@
 #include "gmres.h"
 #include <iomanip>
 
-
 spinor gmres(spinor (*func)(const c_matrix&, const spinor&, const double&), const int& dim1, const int& dim2,
 const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& m, const int& restarts, const double& tol, 
 const bool& print_message) { 
@@ -36,7 +35,7 @@ const bool& print_message) {
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
-            w = D_phi(U, VmT[j], m0); //w = D v_j
+            w = func(U, VmT[j], m0); //w = D v_j
 
             //This part, the Gram-Schmidt process, is the bottleneck of the algorithm
             for (int i = 0; i <= j; i++) {
