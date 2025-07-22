@@ -175,14 +175,15 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
 
 	spinor temp(sap_lattice_sites_per_block, c_vector(2, 0)); //I_B v
     D_B(U, phi,temp, m0, block);
-    r = phi - temp; //r = b - A*x
+    axpy(phi,temp,-1.0,r); //r = phi - D_B x0
 	
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
     double err = sqrt(std::real(dot(r, r))); //Initial error  ||r||_2
     if (print_message == true){std::cout << "||phi|| * tol = " << norm_phi * tol << std::endl;}
     while (k < restarts) {
         beta = err + 0.0 * I_number;
-        VmT[0] = 1.0 / beta * r;
+        //VmT[0] = 1.0 / beta * r;
+        scal(1.0 / beta, r, VmT[0]); 
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
@@ -200,7 +201,8 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
             }
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
             if (std::real(Hm[j + 1][j]) > 0) {
-                VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
+                //VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
+                scal(1.0 / Hm[j + 1][j], w, VmT[j + 1]); //Normalize the vector
             }
             //----Rotate the matrix----//
             rotation(cn, sn, Hm, j);
@@ -211,7 +213,7 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
         }        
         //Solve the upper triangular system//
 	
-		eta = solve_upper_triangular(Hm, gm,m);
+		solve_upper_triangular(Hm, gm,m,eta);
  
         for (int i = 0; i < sap_variables_per_block; i++) {
             int n = i / 2; int mu = i % 2; //Splitting the spin components
@@ -221,7 +223,7 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
         }
         //Compute the residual
         D_B(U, x,temp, m0, block); //D_B x
-        r = phi - temp; 
+        axpy(phi,temp,-1.0,r); //r = phi - D_B x
         err = sqrt(std::real(dot(r, r)));
 
          if (err < tol * norm_phi) {
@@ -263,7 +265,7 @@ int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int
 
     spinor Dphi(Ntot, c_vector(2, 0)); //Temporary spinor for D x
     D_phi(U, x, Dphi,m0);
-    r = v - Dphi; //r = v - D x
+    axpy(v,Dphi,-1.0,r); //r = v - D x
 
 
     //Prepare buffers for MPI communication
@@ -297,7 +299,8 @@ int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int
         }
 
         D_phi(U, x, Dphi,m0);
-        r = v - Dphi; //r = v - D x
+        //r = v - D x
+        axpy(v,Dphi,-1.0,r);
         //r = v - D_phi(U, x, m0); //r = v - D x
         for(int n = 0; n < Ntot; n++) {
             r[n][0] = v[n][0] - Dphi[n][0];
@@ -330,7 +333,8 @@ int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int
         }
 
         D_phi(U, x, Dphi,m0);
-        r = v - Dphi; //r = v - D x
+        //r = v - D x
+        axpy(v,Dphi,-1.0,r);
         //r = v - D_phi(U, x, m0); //r = v - D x
         for(int n = 0; n < Ntot; n++) {
             r[n][0] = v[n][0] - Dphi[n][0];

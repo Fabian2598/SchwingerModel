@@ -25,13 +25,13 @@ const bool& print_message) {
     spinor x = x0; //initial solution
     c_double beta;
 
-
-    r = phi - func(U, x, m0);//r = b - A*x
+    //r = b - A*x
+    axpy(phi,func(U, x, m0),-1.0,r);
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
     err = sqrt(std::real(dot(r, r))); //Initial error
     while (k < restarts) {
         beta = err + 0.0 * I_number;
-        VmT[0] = 1.0 / beta * r;
+        scal(1.0/beta, r, VmT[0]); //Normalize the residual
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
@@ -40,13 +40,18 @@ const bool& print_message) {
             //This part, the Gram-Schmidt process, is the bottleneck of the algorithm
             for (int i = 0; i <= j; i++) {
                 Hm[i][j] = dot(w, VmT[i]); //(v_i^dagger, w)
-                w = w -  Hm[i][j] * VmT[i];
+                
+                for(int i = 0; i < dim1; i++){
+                    for(int mu = 0; mu < dim2; mu++){
+                        w[i][mu] = w[i][mu] - Hm[i][j] * VmT[i][i][mu]; //w = w - (v_i^dagger, w) v_i
+                    }
+                }
             }
             //-------------------------//
 
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
             if (std::real(Hm[j + 1][j]) > 0) {
-                VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
+                scal(1.0 / Hm[j + 1][j], w, VmT[j + 1]); //Normalize the vector
             }
             //----Rotate the matrix----//
             rotation(cn, sn, Hm, j);
@@ -56,7 +61,7 @@ const bool& print_message) {
             gm[j] = std::conj(cn[j]) * gm[j];
         }        
         //Solve the upper triangular system//
-		eta = solve_upper_triangular(Hm, gm,m);
+		solve_upper_triangular(Hm, gm,m,eta);
         
         for (int i = 0; i < dim1*dim2; i++) {
             int n = i / dim2; int mu = i % dim2;
@@ -65,9 +70,10 @@ const bool& print_message) {
             }
         }
         //Compute the residual
-        r = phi - func(U, x, m0);
-        err = sqrt(std::real(dot(r, r)));
+        //r = phi - func(U, x, m0);
+        axpy(phi,func(U, x, m0),-1.0,r);
 
+        err = sqrt(std::real(dot(r, r)));
          if (err < tol* norm_phi) {
              if (print_message == true) {
                  std::cout << "GMRES converged in " << k + 1 << " iterations" << " Error " << err << std::endl;
@@ -98,14 +104,12 @@ void rotation(c_vector& cn, c_vector& sn, c_matrix& H, const int& j) {
 }
 
 //x = A^-1 b, A an upper triangular matrix of dimension n
-c_vector solve_upper_triangular(const c_matrix& A, const c_vector& b, const int& n) {
-	c_vector x(n, 0);
+void solve_upper_triangular(const c_matrix& A, const c_vector& b, const int& n, c_vector& out) {
 	for (int i = n - 1; i >= 0; i--) {
-		x[i] = b[i];
+		out[i] = b[i];
 		for (int j = i + 1; j < n; j++) {
-			x[i] -= A[i][j] * x[j];
+			out[i] -= A[i][j] * out[j];
 		}
-		x[i] /= A[i][i];
+		out[i] /= A[i][i];
 	}
-	return x;
 }

@@ -44,7 +44,7 @@ void PrintAggregates() {
 
 void normalize(spinor& v){
 	c_double norm = sqrt(std::real(dot(v,v))) + 0.0*I_number; 
-	v =  1.0/norm * v; 
+	scal(1.0/norm, v, v); //v = v / norm
 }
 
 spinor canonical_vector(const int& i, const int& N1, const int& N2) {
@@ -305,8 +305,6 @@ void AMG::Pt_D_P(const spinor& v,spinor& out){
 			a = colsDc[i] % AMGV::Nagg; //Aggregate index
 			out[n][alf] += valuesDc[i] * v[m][a]; //Dc v			
 		}
-		
-		//return x;
 	}
 	
 }
@@ -330,7 +328,6 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		//Pre-smoothing
 		if (nu1>0){
 			//gmres smoothing
-			
 			SAP(GConf.Conf, phi, x, m0, nu1,SAPV::sap_blocks_per_proc); 
 		} 
 
@@ -424,13 +421,19 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
 	spinor temp(dim1, c_vector(dim2, 0)); //Temporary spinor for P^T D P
 
 	Pt_D_P(x,temp);
-	r =  phi - temp; //r = b - A*x
+	//r =  phi - temp; 
+	for(int n = 0; n < dim1; n++){
+		for(int alf=0; alf<dim2; alf++){
+			r[n][alf] = phi[n][alf] - temp[n][alf];
+		}
+	}
+	
 	
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
 	//The convergence criterion is ||r|| < ||phi|| * tol
     while (k < restarts) {
         beta = sqrt(std::real(dot(r, r))) + 0.0 * I_number;
-        VmT[0] = 1.0 / beta * r;
+		scal(1.0/beta, r,VmT[0]); //VmT[0] = r / ||r||
         gm[0] = beta; //gm[0] = ||r||
 
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
@@ -450,7 +453,8 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
             
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
             if (std::real(Hm[j + 1][j]) > 0) {
-                VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
+				scal(1.0 / Hm[j + 1][j], w, VmT[j + 1]); //VmT[j + 1] = w / ||A v_j||
+                //VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
             }
             //----Rotate the matrix----//
             rotation(cn, sn, Hm, j); //Defined in include/gmres.h
@@ -460,7 +464,7 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
             gm[j] = std::conj(cn[j]) * gm[j];
         }        
         //Solve the upper triangular system//
-		eta = solve_upper_triangular(Hm, gm,m);
+		solve_upper_triangular(Hm, gm,m,eta);
  
         for (int i = 0; i < dim1 * dim2; i++) {
             int n = i / dim2; int mu = i % dim2;
@@ -471,7 +475,12 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
 
         //Compute the residual
 		Pt_D_P(x,temp);
-		r = phi - temp;
+		//r = phi - temp;
+		for(int n = 0; n < dim1; n++){
+			for(int alf=0; alf<dim2; alf++){
+				r[n][alf] = phi[n][alf] - temp[n][alf];
+			}
+		}
         err = sqrt(std::real(dot(r, r)));
 
          if (err < tol* norm_phi) {

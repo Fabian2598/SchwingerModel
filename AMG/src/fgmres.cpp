@@ -27,14 +27,14 @@ spinor fgmresSAP(const c_matrix& U, const spinor& phi, const spinor& x0, const d
  
     spinor Dphi(Ntot, c_vector(2, 0)); //Temporary spinor for D x
     D_phi(U, x,Dphi, m0);
-    r = phi - Dphi; //r = b - A*x
+    axpy(phi,Dphi, -1.0, r); //r = b - A*x
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
 
 
     err = sqrt(std::real(dot(r, r))); //Initial error
     while (k < restarts) {
         beta = err + 0.0 * I_number;
-        VmT[0] = 1.0 / beta * r;
+        scal(1.0/beta, r,VmT[0]); //VmT[0] = r / ||r||
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
@@ -59,7 +59,7 @@ spinor fgmresSAP(const c_matrix& U, const spinor& phi, const spinor& x0, const d
 
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
             if (std::real(Hm[j + 1][j]) > 0) {
-                VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
+                scal(1.0 / Hm[j + 1][j], w, VmT[j + 1]); //VmT[j + 1] = w / ||A v_j||
             }
             //----Rotate the matrix----//
             rotation(cn, sn, Hm, j);
@@ -69,7 +69,7 @@ spinor fgmresSAP(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             gm[j] = std::conj(cn[j]) * gm[j];
         }        
         //Solve the upper triangular system//
-		eta = solve_upper_triangular(Hm, gm,m);
+		solve_upper_triangular(Hm, gm,m,eta);
         
         for (int i = 0; i < 2 * Ntot; i++) {
             int n = i / 2; int mu = i % 2;
@@ -79,7 +79,7 @@ spinor fgmresSAP(const c_matrix& U, const spinor& phi, const spinor& x0, const d
         }
         //Compute the residual
         D_phi(U, x,Dphi, m0);
-        r = phi - Dphi;
+        axpy(r,Dphi, -1.0, r); //r = b - A*x
         err = sqrt(std::real(dot(r, r)));
          if (err < tol* norm_phi) {
              if (print_message == true) {
@@ -125,7 +125,7 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
 
     spinor Dphi(Ntot, c_vector(2, 0)); //Temporary spinor for D x
     D_phi(U, x, Dphi, m0);
-    r = phi - Dphi; //r = b - A*x
+    axpy(phi,Dphi, -1.0, r); //r = b - A*x
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
 
     int rank;
@@ -148,7 +148,7 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
     err = sqrt(std::real(dot(r, r))); //Initial error
     while (k < restarts) {
         beta = err + 0.0 * I_number;
-        VmT[0] = 1.0 / beta * r;
+        scal(1.0/beta, r,VmT[0]); //VmT[0] = r / ||r||
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
@@ -169,7 +169,7 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
 
             Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
             if (std::real(Hm[j + 1][j]) > 0) {
-                VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
+                scal(1.0 / Hm[j + 1][j], w, VmT[j + 1]); //VmT[j + 1] = w / ||A v_j||
             }
             //----Rotate the matrix----//
             rotation(cn, sn, Hm, j);
@@ -179,7 +179,7 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             gm[j] = std::conj(cn[j]) * gm[j];
         }        
         //Solve the upper triangular system//
-		eta = solve_upper_triangular(Hm, gm,m);
+		solve_upper_triangular(Hm, gm,m,eta);
         
         for (int i = 0; i < 2 * Ntot; i++) {
             int n = i / 2; int mu = i % 2;
@@ -189,7 +189,7 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
         }
         //Compute the residual
         D_phi(U, x, Dphi, m0);
-        r = phi - Dphi; //r = b - A*x
+        axpy(r,Dphi, -1.0, r); //r = b - A*x
         err = sqrt(std::real(dot(r, r)));
         
         //std::cout << "FGMRES iteration " << k + 1 << " Error " << std::setprecision(17) << err << "  from process " << rank << std::endl;

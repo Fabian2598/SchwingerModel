@@ -135,8 +135,6 @@ int main(int argc, char **argv) {
     }
     */     
    
-
-
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
     spinor x2(Ntot, c_vector(2, 0)); //solution vector 
@@ -157,7 +155,7 @@ int main(int argc, char **argv) {
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
         spinor x0(Ntot, c_vector(2, 0)); //Initial guess
-        int max_iter = 10000;//100000; //Maximum number of iterations
+        int max_iter = 100000;//100000; //Maximum number of iterations
         spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;

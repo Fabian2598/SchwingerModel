@@ -41,8 +41,9 @@ void rotation(c_vector& cn, c_vector& sn, c_matrix& H, const int& j);
     A: upper triangular matrix
     b: right-hand side vector
     n: dimension of the matrix
+    out: output vector where the solution will be stored
 */
-c_vector solve_upper_triangular(const c_matrix& A, const c_vector& b, const int& n);
+void solve_upper_triangular(const c_matrix& A, const c_vector& b, const int& n, c_vector& out);
 
 
 #endif 
