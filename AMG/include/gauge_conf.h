@@ -41,16 +41,11 @@ public:
 	*/
 	void setGconf(const std::vector<std::vector<std::complex<double>>>& CONF) {Conf = CONF;}
 
-	/*
-	save Gauge configuration
-	*/
-	void saveConf(char* Name); 
-
 	int getNx() const { return Nx; }
 	int getNt() const { return Nt; }
 
 	std::vector<std::vector<std::complex<double>>> Conf; //Conf[Nx Nt][2] 	
-	void printConf();
+
 private:
 	int Nx, Nt, Ntot;
 };

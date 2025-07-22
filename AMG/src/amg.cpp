@@ -31,6 +31,17 @@ void Aggregates() {
 }
 
 
+void PrintAggregates() {
+	for (int i = 0; i < AMGV::Nagg; i++) {
+		std::cout << "-------Aggregate-----" << i << std::endl;
+		for (int j = 0; j < LV::x_elements * LV::t_elements; j++) {
+			std::cout << Agg[i][j] << " ";
+		}
+		std::cout << std::endl;
+	}
+}
+
+
 void normalize(spinor& v){
 	c_double norm = sqrt(std::real(dot(v,v))) + 0.0*I_number; 
 	v =  1.0/norm * v; 
@@ -42,16 +53,6 @@ spinor canonical_vector(const int& i, const int& N1, const int& N2) {
 	int k = i % N2;
 	e_i[j][k] = 1.0;
 	return e_i;
-}
-
-void PrintAggregates() {
-	for (int i = 0; i < AMGV::Nagg; i++) {
-		std::cout << "-------Aggregate-----" << i << std::endl;
-		for (int j = 0; j < LV::x_elements * LV::t_elements; j++) {
-			std::cout << Agg[i][j] << " ";
-		}
-		std::cout << std::endl;
-	}
 }
 
 
@@ -153,11 +154,10 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		//The result will be stored in test_vectors[i]
 		double startT, endT;
 		startT = MPI_Wtime();
-		SAP_parallel(GConf.Conf, rhs, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations,SAPV::sap_blocks_per_proc);  
+		SAP(GConf.Conf, rhs, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations,SAPV::sap_blocks_per_proc);  
 		endT = MPI_Wtime();
 		SAP_time += endT - startT; 
-		
-		
+			
 		//Sequential version for testing
 		//SAP(GConf.Conf, v0, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations);
 	}
@@ -207,7 +207,6 @@ void AMG::P_v(const spinor& v,spinor& out) {
 			out[n][alf] = 0.0; //Initialize the output spinor
 		}
 	}
-
 	using namespace AMGV; //AMG parameters namespace
 	int x_coord, t_coord, s_coord; //Coordinates of the lattice point
 	int k, a;
@@ -237,7 +236,6 @@ void AMG::Pt_v(const spinor& v,spinor& out) {
 			out[n][alf] = 0.0; //Initialize the output spinor
 		}
 	}
-
 	int k, a;
 	int x_coord, t_coord, s_coord; //Coordinates of the lattice point
 	int i, j; //Loop indices
@@ -332,10 +330,8 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		//Pre-smoothing
 		if (nu1>0){
 			//gmres smoothing
-			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu1, 1e-10, false);
 			
-			//SAP(GConf.Conf, phi, x, m0, nu1); //sequential SAP for testing
-			SAP_parallel(GConf.Conf, phi, x, m0, nu1,SAPV::sap_blocks_per_proc); 
+			SAP(GConf.Conf, phi, x, m0, nu1,SAPV::sap_blocks_per_proc); 
 		} 
 
 		//*************Coarse grid correction*************//
@@ -354,11 +350,6 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		spinor Pt_r(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
 		Pt_v(temp,Pt_r);
 		
-		/*
-			Bi-cgstab for solving the coarse system
-			x = x + P_v(bi_cgstab(GConf.Conf, Pt_r, Pt_r, m0,AMGV::bi_cgstab_Dc_iterations,AMGV::bi_cgstab_Dc_iterations_tol,false)); 
-		*/
-
 	  	//Using GMRES for the coarse grid solver 
 		P_v(gmres(AMGV::Ntest,AMGV::Nagg,GConf.Conf, Pt_r, Pt_r, m0,
 			AMGV::gmres_restart_length_coarse_level,AMGV::gmres_restarts_coarse_level,AMGV::gmres_tol_coarse_level,false),
@@ -375,12 +366,10 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		
 		//Post-smoothing
 		if (nu2>0){
-			//x = gmres(LV::Ntot,2,GConf.Conf, phi, x, m0, AMGV::gmres_restarts_smoother, nu2, 1e-10, false);
-			//SAP(GConf.Conf, phi, x, m0, nu2);
 			//Measure time spent smoothing
 			double startT, endT;
 			startT = MPI_Wtime();
-			SAP_parallel(GConf.Conf, phi, x, m0, nu2, SAPV::sap_blocks_per_proc); 
+			SAP(GConf.Conf, phi, x, m0, nu2, SAPV::sap_blocks_per_proc); 
 			endT = MPI_Wtime();
 			smooth_time += endT - startT; //Add post-smoothing time
 			SAP_time += endT - startT; //Add post-smoothing time
@@ -409,63 +398,6 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		std::cout << "Two-grid did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
 	}
 	return x;
-}
-
-//Bi-cgstab for Dc^-1 phi = x
-//Coarse grid solver 
-spinor AMG::bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
-    //Dc^-1 phi = x
-	//Dc = P^T D P 
-	//The convergence criterion is ||r|| < ||phi|| * tol
-	int k = 0; //Iteration number
-    double err;
-	using namespace AMGV;
-    spinor r(Ntest, c_vector(Nagg, 0));  //r[coordinate][spin] residual
-    spinor r_tilde(Ntest, c_vector(Nagg, 0));  //r[coordinate][spin] residual
-    spinor d(Ntest, c_vector(Nagg, 0)); //search direction
-    spinor s(Ntest, c_vector(Nagg, 0));
-    spinor t(Ntest, c_vector(Nagg, 0));
-    spinor Ad(Ntest, c_vector(Nagg, 0)); //D*d
-    spinor x(Ntest, c_vector(Nagg, 0)); //solution
-    c_double alpha, beta, rho_i, omega, rho_i_2;
-    x = x0; //initial solution
-	
-/*
-    r = phi - Pt_D_P(x); //r = b - A*x 
-    r_tilde = r;
-	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
-    while (k<max_iter) {
-        rho_i = dot(r, r_tilde); //r . r_dagger
-        if (k == 0) {
-            d = r; //d_1 = r_0
-        }
-        else {
-            beta = alpha * rho_i / (omega * rho_i_2); //beta_{i-1} = alpha_{i-1} * rho_{i-1} / (omega_{i-1} * rho_{i-2})
-            d = r + beta * (d - omega * Ad); //d_i = r_{i-1} + beta_{i-1} * (d_{i-1} - omega_{i-1} * Ad_{i-1})
-        }
-        Ad = Pt_D_P(d);  //A d_i 
-        alpha = rho_i / dot(Ad, r_tilde); //alpha_i = rho_{i-1} / (Ad_i, r_tilde)
-        s = r - alpha * Ad; //s = r_{i-1} - alpha_i * Ad_i
-        err = sqrt(std::real(dot(s, s)));
-        if (err < tol*norm_phi) {
-            x = x + alpha * d;
-			if (print_message == true) {
-				std::cout << "Bi-CG-stab for Dc converged in " << k << " iterations" << " Error " << err << std::endl;
-			}
-            return x;
-        }
-        t = Pt_D_P(s);   //A s
-        omega = dot(s, t) / dot(t, t); //omega_i = t^dagg . s / t^dagg . t
-        r = s - omega * t; //r_i = s - omega_i * t
-        x = x + alpha * d + omega * s; //x_i = x_{i-1} + alpha_i * d_i + omega_i * s
-        rho_i_2 = rho_i; //rho_{i-2} = rho_{i-1}
-        k++;
-    }
-    if (print_message == true) {
-        std::cout << "Bi-CG-stab for Dc did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
-    }
-	*/
-    return x;
 }
 
 //Solves Dc or D psi = phi using GMRES
@@ -553,20 +485,4 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
     }
     	//std::cout << "GMRES did not converge in " << restarts << " restarts for tol = " << tol << " Error " << err << std::endl;
 	return x;
-}
-
-void save_spinor(spinor& phi,char* Name){
-    char NameData[500], Data_str[500];
-	sprintf(NameData, Name);
-	std::ofstream Datfile;
-	Datfile.open(NameData);
-	int size = phi.size();
-	int size2 = phi[0].size();
-	for (int i = 0; i < size; i++) {
-		for (int j = 0; j < size2; j++) {
-			sprintf(Data_str, "%-30d%-30d%-30.17g%-30.17g\n", i, j, std::real(phi[i][j]), std::imag(phi[i][j]));
-			Datfile << Data_str;
-		}
-	}
-	Datfile.close();
 }

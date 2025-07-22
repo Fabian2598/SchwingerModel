@@ -1,7 +1,6 @@
 #include "gmres.h"
 #include <iomanip>
 
-
 spinor gmres(spinor (*func)(const c_matrix&, const spinor&, const double&), const int& dim1, const int& dim2,
 const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& m, const int& restarts, const double& tol, 
 const bool& print_message) { 

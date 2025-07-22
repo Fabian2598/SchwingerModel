@@ -122,22 +122,6 @@ private:
 	void orthonormalize(); 
 
 	//-----Coarse grid solvers-----// 
-
-	/*
-	bi_cgstab for the coarse grid operator
-
-	U: gauge configuration
- 	phi: right hand side
- 	x0: initial guess
- 	m0: mass parameter
-	max_iter: maximum number of iterations
- 	tol: tolerance for the solver 
- 	print_message: if true, print the convergence message
-
-	The convergence criterion is ||D x - phi|| < ||phi|| * tol
-	*/
-	spinor bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0,
-		 const double& m0, const int& max_iter, const double& tol, const bool& print_message); //Dc^-1 phi
 	
 	/*
 	gmres for the coarse grid operator.
@@ -169,10 +153,6 @@ private:
 	
 };
 
-/*
-	This function is for writing a spinor to a file. Useful for testing.
-*/
-void save_spinor(spinor& phi,char* Name);
 
 
 #endif

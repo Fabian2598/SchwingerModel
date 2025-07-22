@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     //double m0 = 0;
-    double m0 = -0.18840579710144945;  
+    double m0 = -0.57;//-0.18840579710144945;  
 
     //Default values in variables.cpp
     sap_gmres_restart_length = 2; //GMRES restart length for the Schwarz blocks. Set to 20 by default

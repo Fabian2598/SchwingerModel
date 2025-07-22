@@ -241,59 +241,7 @@ int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
     return 0;
 }
 
-
-
-int SAP(const c_matrix& U, const spinor& v,spinor& x, const double& m0,const int& nu){
-    /*
-    Solves D x = v using the SAP method
-    */
-   using namespace SAPV;
-    
-    double err;
-    double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
-
-    spinor temp(sap_lattice_sites_per_block, c_vector(2, 0)); 
-    spinor r(Ntot, c_vector(2, 0)); //residual
-    spinor Dphi(Ntot, c_vector(2, 0)); //Temporary spinor for D x
-    D_phi(U, x, Dphi,m0);
-    r = v - Dphi; //r = v - D x
-    for (int i = 0; i< nu; i++){
-        for (auto block : SAP_RedBlocks){
-            I_D_B_1_It(U,r,temp,m0,block);
-            //x = x + temp; //x = x + D_B^-1 r
-            for(int n = 0; n < sap_lattice_sites_per_block; n++) {
-                x[SAP_Blocks[block][n]][0] += temp[n][0];
-                x[SAP_Blocks[block][n]][1] += temp[n][1];
-            }
-        }
-        
-        D_phi(U, x, Dphi,m0);
-        r = v - Dphi; //r = v - D x
-        for (auto block : SAP_BlackBlocks){
-            I_D_B_1_It(U,r,temp,m0,block);
-            //x = x + temp; //x = x + D_B^-1 r
-            for(int n = 0; n < sap_lattice_sites_per_block; n++) {
-                x[SAP_Blocks[block][n]][0] += temp[n][0];
-                x[SAP_Blocks[block][n]][1] += temp[n][1];
-            }
-           
-        }
-
-        D_phi(U, x, Dphi,m0);
-        r = v - Dphi; //r = v - D x
-
-        err = sqrt(std::real(dot(r, r))); 
-        if (err < sap_tolerance * v_norm) {
-            //std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
-            return 1;
-        }
-    }
-    //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
-    return 0; 
-}
-
-
-int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc){
+int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc){
     /*
     Solves D x = v using the SAP method
     */
@@ -570,5 +518,58 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
     
     return 0; 
 }
+
+*/
+
+
+/*
+SEQUENTIAL VERSION
+int SAP(const c_matrix& U, const spinor& v,spinor& x, const double& m0,const int& nu){
+
+   using namespace SAPV;
+    
+    double err;
+    double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
+
+    spinor temp(sap_lattice_sites_per_block, c_vector(2, 0)); 
+    spinor r(Ntot, c_vector(2, 0)); //residual
+    spinor Dphi(Ntot, c_vector(2, 0)); //Temporary spinor for D x
+    D_phi(U, x, Dphi,m0);
+    r = v - Dphi; //r = v - D x
+    for (int i = 0; i< nu; i++){
+        for (auto block : SAP_RedBlocks){
+            I_D_B_1_It(U,r,temp,m0,block);
+            //x = x + temp; //x = x + D_B^-1 r
+            for(int n = 0; n < sap_lattice_sites_per_block; n++) {
+                x[SAP_Blocks[block][n]][0] += temp[n][0];
+                x[SAP_Blocks[block][n]][1] += temp[n][1];
+            }
+        }
+        
+        D_phi(U, x, Dphi,m0);
+        r = v - Dphi; //r = v - D x
+        for (auto block : SAP_BlackBlocks){
+            I_D_B_1_It(U,r,temp,m0,block);
+            //x = x + temp; //x = x + D_B^-1 r
+            for(int n = 0; n < sap_lattice_sites_per_block; n++) {
+                x[SAP_Blocks[block][n]][0] += temp[n][0];
+                x[SAP_Blocks[block][n]][1] += temp[n][1];
+            }
+           
+        }
+
+        D_phi(U, x, Dphi,m0);
+        r = v - Dphi; //r = v - D x
+
+        err = sqrt(std::real(dot(r, r))); 
+        if (err < sap_tolerance * v_norm) {
+            //std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
+            return 1;
+        }
+    }
+    //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
+    return 0; 
+}
+
 
 */
