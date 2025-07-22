@@ -201,8 +201,13 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	dim(v) = Ntest Nagg, dim(x) = 2 Ntot
 */
 void AMG::P_v(const spinor& v,spinor& out) {
-	//spinor x(LV::Ntot, c_vector(2, 0));
 	//Loop over columns
+	for(int n = 0; n < LV::Ntot; n++){
+		for(int alf = 0; alf < 2; alf++){
+			out[n][alf] = 0.0; //Initialize the output spinor
+		}
+	}
+
 	using namespace AMGV; //AMG parameters namespace
 	int x_coord, t_coord, s_coord; //Coordinates of the lattice point
 	int k, a;
@@ -227,7 +232,12 @@ void AMG::P_v(const spinor& v,spinor& out) {
 void AMG::Pt_v(const spinor& v,spinor& out) {
 	//Restriction operator times a spinor
 	using namespace AMGV;
-	//spinor x(Ntest, c_vector(Nagg, 0));
+	for(int n = 0; n < Ntest; n++){
+		for(int alf = 0; alf < Nagg; alf++){
+			out[n][alf] = 0.0; //Initialize the output spinor
+		}
+	}
+
 	int k, a;
 	int x_coord, t_coord, s_coord; //Coordinates of the lattice point
 	int i, j; //Loop indices
@@ -345,13 +355,13 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			x = x + P_v(bi_cgstab(GConf.Conf, Pt_r, Pt_r, m0,AMGV::bi_cgstab_Dc_iterations,AMGV::bi_cgstab_Dc_iterations_tol,false)); 
 		*/
 
-	  	//Using GMRES for the coarse grid solver
+	  	//Using GMRES for the coarse grid solver 
 		P_v(gmres(AMGV::Ntest,AMGV::Nagg,GConf.Conf, Pt_r, Pt_r, m0,
 			AMGV::gmres_restart_length_coarse_level,AMGV::gmres_restarts_coarse_level,AMGV::gmres_tol_coarse_level,false),
-		P_TEMP);
+		temp);
 		for(int n = 0; n<LV::Ntot; n++){
 			for(int alf=0; alf<2; alf++){
-				x[n][alf] += P_TEMP[n][alf]; 
+				x[n][alf] += temp[n][alf]; 
 			}
 		}
 	
@@ -475,9 +485,10 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
     spinor w(dim1, c_vector(dim2, 0)); 
     spinor x = x0; //initial solution
     c_double beta; //not 1/g^2 from simulations
+	spinor temp(dim1, c_vector(dim2, 0)); //Temporary spinor for P^T D P
 
-	Pt_D_P(x,Pt_TEMP);
-	r =  phi - Pt_TEMP; //r = b - A*x
+	Pt_D_P(x,temp);
+	r =  phi - temp; //r = b - A*x
 	
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
 	//The convergence criterion is ||r|| < ||phi|| * tol
@@ -523,8 +534,8 @@ spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spin
         }
 
         //Compute the residual
-		Pt_D_P(x,Pt_TEMP);
-		r = phi - Pt_TEMP;
+		Pt_D_P(x,temp);
+		r = phi - temp;
         err = sqrt(std::real(dot(r, r)));
 
          if (err < tol* norm_phi) {

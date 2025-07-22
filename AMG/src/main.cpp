@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    
+    /*
     {
         double beta = 2;
         int nconf = 0;
@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
         GConf.setGconf(CONF);
         infile.close();
     }
-     
+    */     
    
 
 
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
     double startT, endT;
 
    
-    /*
+    
     if (rank == 0){
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;    
     }
-
+    /*
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl;}   
     startT = MPI_Wtime();
