@@ -249,7 +249,7 @@ void AMG::Pt_v(const spinor& v,spinor& out) {
 			out[k][a] += std::conj(interpolator_columns[k][Coords[x_coord][t_coord]][s_coord]) * v[Coords[x_coord][t_coord]][s_coord];
 		}
 	}
-	//return x;
+
 }
 
 /*
@@ -257,7 +257,6 @@ void AMG::Pt_v(const spinor& v,spinor& out) {
 	dim(Dc) = Ntest Nagg x Ntest Nagg
 */
 void AMG::assembleDc() {
-
 	nonzero = 0;
 	spinor e_j(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Column of the coarse grid operator
 	spinor column(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Column of the coarse grid operator
@@ -295,7 +294,11 @@ void AMG::Pt_D_P(const spinor& v,spinor& out){
 		//return Pt_v(D_phi(GConf.Conf,P_v(v),m0));
 	}
 	else{
-		//spinor x(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
+		for(int n = 0; n < AMGV::Ntest; n++){
+			for(int alf = 0; alf < AMGV::Nagg; alf++){
+				out[n][alf] = 0.0; //Initialize the output spinor
+			}
+		}
 		int n, alf, m, a;		
 		for(int i = 0; i < nonzero; i++){
 			n = rowsDc[i] / AMGV::Nagg; //Test vector index
