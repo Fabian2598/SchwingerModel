@@ -25,8 +25,9 @@ spinor fgmresSAP(const c_matrix& U, const spinor& phi, const spinor& x0, const d
     spinor x = x0; //initial solution
     c_double beta; //not 1/g^2 from lattice simulations 
  
-
-    r = phi - D_phi(U, x, m0); //r = b - A*x
+    spinor Dphi(Ntot, c_vector(2, 0)); //Temporary spinor for D x
+    D_phi(U, x,Dphi, m0);
+    r = phi - Dphi; //r = b - A*x
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
 
 
@@ -43,7 +44,7 @@ spinor fgmresSAP(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             SAP_parallel(U, VmT[j], ZmT[j], m0, 1,SAPV::sap_blocks_per_proc); //One SAP iteration
 
         
-            w = D_phi(U, ZmT[j], m0); //w = D v_j
+            D_phi(U, ZmT[j],w, m0); //w = D v_j
 
             //----Gram-Schmidt process----//
             for (int i = 0; i <= j; i++) {
@@ -77,7 +78,8 @@ spinor fgmresSAP(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             }
         }
         //Compute the residual
-        r = phi - D_phi(U, x, m0);
+        D_phi(U, x,Dphi, m0);
+        r = phi - Dphi;
         err = sqrt(std::real(dot(r, r)));
          if (err < tol* norm_phi) {
              if (print_message == true) {
@@ -121,8 +123,9 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
     spinor x = x0; //initial solution
     c_double beta;
 
-
-    r = phi - D_phi(U, x, m0); //r = b - A*x
+    spinor Dphi(Ntot, c_vector(2, 0)); //Temporary spinor for D x
+    D_phi(U, x, Dphi, m0);
+    r = phi - Dphi; //r = b - A*x
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
 
     int rank;
@@ -152,7 +155,7 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             set_zeros(ZmT[j], Ntot, 2); //Initialize ZmT[j] to zero
             ZmT[j] = amg.TwoGrid(1, 1e-10, ZmT[j], VmT[j], false); //One two-grid iteration
            
-            w = D_phi(U, ZmT[j], m0); //w = D v_j
+            D_phi(U, ZmT[j],w, m0); //w = D v_j
             //Gram-Schmidt process to orthogonalize the vectors
             for (int i = 0; i <= j; i++) {
                 Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
@@ -185,7 +188,8 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             }
         }
         //Compute the residual
-        r = phi - D_phi(U, x, m0);
+        D_phi(U, x, Dphi, m0);
+        r = phi - Dphi; //r = b - A*x
         err = sqrt(std::real(dot(r, r)));
         
         //std::cout << "FGMRES iteration " << k + 1 << " Error " << std::setprecision(17) << err << "  from process " << rank << std::endl;

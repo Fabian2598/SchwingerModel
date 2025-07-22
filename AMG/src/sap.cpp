@@ -254,7 +254,9 @@ int SAP(const c_matrix& U, const spinor& v,spinor& x, const double& m0,const int
 
     spinor temp(sap_lattice_sites_per_block, c_vector(2, 0)); 
     spinor r(Ntot, c_vector(2, 0)); //residual
-    r = v - D_phi(U, x, m0); //r = v - D x
+    spinor Dphi(Ntot, c_vector(2, 0)); //Temporary spinor for D x
+    D_phi(U, x, Dphi,m0);
+    r = v - Dphi; //r = v - D x
     for (int i = 0; i< nu; i++){
         for (auto block : SAP_RedBlocks){
             I_D_B_1_It(U,r,temp,m0,block);
@@ -265,8 +267,8 @@ int SAP(const c_matrix& U, const spinor& v,spinor& x, const double& m0,const int
             }
         }
         
-
-        r = v - D_phi(U, x, m0); //r = v - D x
+        D_phi(U, x, Dphi,m0);
+        r = v - Dphi; //r = v - D x
         for (auto block : SAP_BlackBlocks){
             I_D_B_1_It(U,r,temp,m0,block);
             //x = x + temp; //x = x + D_B^-1 r
@@ -276,7 +278,9 @@ int SAP(const c_matrix& U, const spinor& v,spinor& x, const double& m0,const int
             }
            
         }
-        r = v - D_phi(U, x, m0); //r = v - D x
+
+        D_phi(U, x, Dphi,m0);
+        r = v - Dphi; //r = v - D x
 
         err = sqrt(std::real(dot(r, r))); 
         if (err < sap_tolerance * v_norm) {
@@ -309,12 +313,14 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
     spinor temp(sap_lattice_sites_per_block, c_vector(2, 0)); 
     spinor r(Ntot, c_vector(2, 0)); //residual
 
-    r = v - D_phi(U, x, m0); //r = v - D x
+    spinor Dphi(Ntot, c_vector(2, 0)); //Temporary spinor for D x
+    D_phi(U, x, Dphi,m0);
+    r = v - Dphi; //r = v - D x
+
 
     //Prepare buffers for MPI communication
     c_vector local_buffer(Ntot * 2, 0);
     c_vector global_buffer(Ntot * 2, 0);
-    spinor Dphi;
     
     for (int i = 0; i< nu; i++){  
         for(int n = 0; n < Ntot * 2; n++) {
@@ -341,7 +347,9 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
             x[n][0] += global_buffer[2*n]; //global_x[n][0];
             x[n][1] += global_buffer[2*n+1]; //global_x[n][1];
         }
-        Dphi = D_phi(U, x, m0);
+
+        D_phi(U, x, Dphi,m0);
+        r = v - Dphi; //r = v - D x
         //r = v - D_phi(U, x, m0); //r = v - D x
         for(int n = 0; n < Ntot; n++) {
             r[n][0] = v[n][0] - Dphi[n][0];
@@ -372,7 +380,9 @@ int SAP_parallel(const c_matrix& U, const spinor& v,spinor &x, const double& m0,
             x[n][0] += global_buffer[2*n]; //global_x[n][0];
             x[n][1] += global_buffer[2*n+1]; //global_x[n][1];
         }
-        Dphi = D_phi(U, x, m0);
+
+        D_phi(U, x, Dphi,m0);
+        r = v - Dphi; //r = v - D x
         //r = v - D_phi(U, x, m0); //r = v - D x
         for(int n = 0; n < Ntot; n++) {
             r[n][0] = v[n][0] - Dphi[n][0];

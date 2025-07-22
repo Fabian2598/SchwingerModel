@@ -264,7 +264,7 @@ void AMG::assembleDc() {
 	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
 		e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
 		P_v(e_j,P_TEMP);
-		D_TEMP = D_phi(GConf.Conf, P_TEMP,m0); //D P v
+		D_phi(GConf.Conf, P_TEMP,D_TEMP,m0); //D P v
 		Pt_v(D_TEMP, column); //P^T D P v
 		//column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
 		for(int i = 0; i < AMGV::Ntest*AMGV::Nagg; i++){
@@ -289,7 +289,7 @@ void AMG::assembleDc() {
 void AMG::Pt_D_P(const spinor& v,spinor& out){
 	if (AMGV::SetUpDone == false){
 		P_v(v,P_TEMP);
-		D_TEMP = D_phi(GConf.Conf, P_TEMP,m0); //D P v
+		D_phi(GConf.Conf, P_TEMP,D_TEMP,m0); //D P v
 		Pt_v(D_TEMP, out); //P^T D P v
 		//return Pt_v(D_phi(GConf.Conf,P_v(v),m0));
 	}
@@ -343,7 +343,8 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		startT = MPI_Wtime();
 		//x = x + P*Dc^-1 * P^H * (phi-D*x)  
 		spinor temp(LV::Ntot,c_vector(2,0));
-		spinor Dphi = D_phi(GConf.Conf, x, m0); //D x
+		spinor Dphi(LV::Ntot,c_vector(2,0));
+		D_phi(GConf.Conf, x, Dphi,m0); //D x
 		for(int n = 0; n<LV::Ntot; n++){
 			for(int alf=0; alf<2; alf++){
 				temp[n][alf] = phi[n][alf] - Dphi[n][alf]; //temp = phi - D x
@@ -384,7 +385,7 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			smooth_time += endT - startT; //Add post-smoothing time
 			SAP_time += endT - startT; //Add post-smoothing time
 		}
-		Dphi = D_phi(GConf.Conf, x, m0); 
+		D_phi(GConf.Conf, x,Dphi, m0); 
 
 		//r = phi - D_phi(GConf.Conf, x, m0);		
 		for(int n = 0; n < LV::Ntot; n++){

@@ -36,7 +36,7 @@ const bool& print_message) {
         gm[0] = beta; //gm[0] = ||r||
         //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
         for (int j = 0; j < m; j++) {
-            w = D_phi(U, VmT[j], m0); //w = D v_j
+            w = func(U, VmT[j], m0); //w = D v_j
 
             //This part, the Gram-Schmidt process, is the bottleneck of the algorithm
             for (int i = 0; i <= j; i++) {
