@@ -41,9 +41,10 @@ void HMC::Force_G(GaugeConf& GConfig) {
 //Fermions force
 //2* Re[ Psi^dagger partial D / partial omega(n) D Psi], where Psi = (DD^dagger)^(-1)phi, phi = D chi
 void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
-    spinor psi;
-    psi = conjugate_gradient(GConfig.Conf, phi, m0);  //(DD^dagger)^-1 phi
-    Forces = phi_dag_partialD_phi(GConfig.Conf,psi,D_dagger_phi(GConfig.Conf, psi, m0)); //psi^dagger partial D / partial omega(n) D psi
+    spinor psi(LV::Ntot, c_vector(2, 0)); //psi[Ntot][2]
+    conjugate_gradient(GConfig.Conf, phi,psi, m0);  //(DD^dagger)^-1 phi
+    D_dagger_phi(GConfig.Conf, psi,TEMP, m0);
+    Forces = phi_dag_partialD_phi(GConfig.Conf,psi,TEMP); //psi^dagger partial D / partial omega(n) D psi
     Force_G(GConfig); //Gauge force 
 }
 
@@ -100,7 +101,8 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
 	}
     //Fermions contribution
     //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
-	action += std::real( dot( conjugate_gradient(GConfig.Conf, phi, m0), phi)); 
+    conjugate_gradient(GConfig.Conf, phi,TEMP, m0);
+	action += std::real( dot( TEMP, phi)); 
     return action;
 }
 
@@ -126,8 +128,8 @@ void HMC::HMC_Update() {
     //spinor chi = RandomChi();
     RandomCHI();
 
-
-    spinor phi = D_phi(GConf.Conf, chi, m0);
+    spinor phi(LV::Ntot, c_vector(2, 0)); //phi[Ntot][2]
+    D_phi(GConf.Conf, chi,phi, m0);
     Leapfrog(phi); //Evolve [Pi] and [U] 
     double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
     double r = rand_range(0, 1);
@@ -156,6 +158,7 @@ void HMC::HMC_algorithm(){
 	GConf.initialization(); //Initialize the gauge configuration randomly
     for(int i = 0; i < Ntherm; i++) {HMC_Update();} //Thermalization
     therm = true; //Set the flag to true
+    std::cout << "Thermalization done" <<std::endl;
     for(int i = 0; i < Nmeas; i++) {
         HMC_Update();
         SpVector[i] = GConf.MeasureSp_HMC(); //Plaquettes are computed when the action is called

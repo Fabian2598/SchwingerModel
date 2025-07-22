@@ -14,8 +14,8 @@ set(SOURCES
     src/hmc.cpp                 #Hybrid Monte Carlo
 )
 
-set(NS "64")   #Lattice dimension x
-set(NT "64")   #Lattice dimension t
+set(NS "128")   #Lattice dimension x
+set(NT "128")   #Lattice dimension t
 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
@@ -29,6 +29,7 @@ target_include_directories("SM_${NS}x${NT}"
 )
 target_compile_options("SM_${NS}x${NT}" PRIVATE
 			-O3
+            -g #For profiling
 			#-fopenmp
 )
 

@@ -51,7 +51,7 @@ public:
 		valuesDc = c_vector(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg, 0.0); //CSR matrix for the coarse grid operator
 		rowsDc = std::vector<int>(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg, 0); //Row indices of the coarse grid operator
 		colsDc = std::vector<int>(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg,0);
-	
+		v_chopped = std::vector<spinor>(AMGV::Ntest*AMGV::Nagg, spinor(LV::Ntot, c_vector(2,0)));
 		//c_matrix DcMatrix = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
 	}
 	~AMG() { };
@@ -161,6 +161,7 @@ private:
 
 	std::vector<spinor> test_vectors; //test vectors[Ntest][Nx Nt][spin components], no color
 	std::vector<spinor> interpolator_columns; 
+	std::vector<spinor> v_chopped;
 	
 };
 

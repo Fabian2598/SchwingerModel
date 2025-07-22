@@ -19,7 +19,6 @@ int main() {
     CG::max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
     CG::tol = 1e-10; //Tolerance for convergence
     //---Input data---//
-    
     std::cout << "  -----------------------------" << std::endl;
     std::cout << "|  Two-flavor Schwinger model   |" << std::endl;
     std::cout << "| Hybrid Monte Carlo simulation |" << std::endl;
@@ -46,6 +45,12 @@ int main() {
     std::cout << "Save configurations yes/no (1 or 0): ";
     std::cin >> saveconf;
     std::cout << " " << std::endl;
+    
+   /*
+    m0_min = -0.18, m0_max = -0.18,  Nm0 = 1, MD_steps = 30, 
+    trajectory_length = 1, beta = 4, Ntherm = 10, Nmeas = 2, 
+    Nsteps = 0, saveconf = 0; 
+    */
 
     std::vector<double> Masses(Nm0);
     
@@ -53,6 +58,13 @@ int main() {
     periodic_boundary(); //Compute right and left periodic boundary
     
 	GaugeConf GConf = GaugeConf(LV::Nx, LV::Nt);  //Gauge configuration
+    spinor phi(LV::Ntot, c_vector(2, 0)); //Fermion field
+    for(int n = 0; n < LV::Ntot; n++) {
+        phi[n][0] = RandomU1(); //spin up
+        phi[n][1] = RandomU1(); //spin down
+    }
+    //D_D_dagger_phi(GConf.Conf,phi ,TEMP, 0); //Initialize TEMP for the first time
+    //conjugate_gradient(GConf.Conf, phi, TEMP,0);
 
     
     if (Nm0 == 1) {

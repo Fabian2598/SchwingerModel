@@ -6,6 +6,10 @@
 #include "gauge_conf.h"
 #include "conjugate_gradient.h"
 
+/*
+    Measure the pion correlator
+*/
+
 std::vector<c_matrix> Confs; //Confs[conf][coordinate][spin]
 
 int nconf; //This could be an input parameter from terminal

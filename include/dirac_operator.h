@@ -55,7 +55,7 @@ inline void periodic_boundary() {
 	phi: spinor to apply the operator to
 	m0: mass parameter
 */
-spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0);
+void D_phi(const c_matrix& U, const spinor& phi, spinor &Dphi, const double& m0);
 
 
 /*
@@ -64,14 +64,14 @@ spinor D_phi(const c_matrix& U, const spinor& phi, const double& m0);
 	phi: spinor to apply the operator to
 	m0: mass parameter
 */
-spinor D_dagger_phi(const c_matrix& U, const spinor& phi, const double& m0);
+void D_dagger_phi(const c_matrix& U, const spinor& phi, spinor &Dphi, const double& m0);
 
 
 /*
 	Application of D D^+
 	It just calls the previous functions
 */
-spinor D_D_dagger_phi(const c_matrix& U, const spinor& phi, const double& m0);
+void D_D_dagger_phi(const c_matrix& U, const spinor& phi, spinor &Dphi,const double& m0);
 
 /*
 	2* Re ( left^+ d D / d omega(z) right )

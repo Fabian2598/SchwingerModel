@@ -2,7 +2,7 @@
 
 //Conjugate gradient for computing (DD^dagger)^-1 phi, where phi is a vector represented by a matrix
 //phi[Ntot][2]
-spinor conjugate_gradient(const c_matrix& U, const spinor& phi, const double& m0) {
+int conjugate_gradient(const c_matrix& U, const spinor& phi, spinor& x,const double& m0) {
     //int max_iter = 10000;
     //double tol = 1e-10; //maybe I lower the tolerance later
     int k = 0; //Iteration number
@@ -13,14 +13,14 @@ spinor conjugate_gradient(const c_matrix& U, const spinor& phi, const double& m0
     spinor r(LV::Ntot, c_vector(2, 0));  //r[coordinate][spin] residual
     spinor d(LV::Ntot, c_vector(2, 0)); //search direction
     spinor Ad(LV::Ntot, c_vector(2, 0)); //DD^dagger*d
-    spinor x(LV::Ntot, c_vector(2, 0)); //solution
+    //spinor x(LV::Ntot, c_vector(2, 0)); //solution
     c_double alpha, beta;
 
 	x = phi;
-    Ad = D_D_dagger_phi(U, x, m0); //DD^dagger*x
+    D_D_dagger_phi(U, x, Ad, m0); //DD^dagger*x
     for(int n = 0; n<LV::Ntot; n++){
-            r[n][0] = phi[n][0] - Ad[n][0];
-            r[n][1] = phi[n][1] - Ad[n][1];
+        r[n][0] = phi[n][0] - Ad[n][0];
+        r[n][1] = phi[n][1] - Ad[n][1];
     }
 
     d = r; //initial search direction
@@ -28,7 +28,7 @@ spinor conjugate_gradient(const c_matrix& U, const spinor& phi, const double& m0
     double phi_norm2 = sqrt(std::real(dot(phi, phi)));
 
     while (k<CG::max_iter) {
-        Ad = D_D_dagger_phi(U, d, m0); //DD^dagger*d 
+        D_D_dagger_phi(U, d,Ad, m0); //DD^dagger*d 
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
 
         //x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i
@@ -47,7 +47,7 @@ spinor conjugate_gradient(const c_matrix& U, const spinor& phi, const double& m0
 		err = sqrt(err_sqr); // err = sqrt(err_sqr)
         if (err < CG::tol*phi_norm2) {
             //std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
-            return x;
+            return 1;
         }
 
         beta = err_sqr / r_norm2; //beta = (r_{i+1},r_{i+1})/(r_i,r_i)
@@ -64,7 +64,7 @@ spinor conjugate_gradient(const c_matrix& U, const spinor& phi, const double& m0
         k++;
     }
     std::cout << "CG did not converge in " << CG::max_iter << " iterations" << " Error " << err << std::endl;
-    return x;
+    return 0;
 }
 
 // D x = phi
@@ -87,7 +87,9 @@ spinor bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, const d
     spinor x(LV::Ntot, c_vector(2, 0)); //solution
     c_double alpha, beta, rho_i, omega, rho_i_2;
     x = x0; //initial solution
-    r = phi - D_phi(U, x, m0); //r = b - A*x
+     D_phi(U, x, TEMP, m0);
+    r = phi - TEMP; //r = b - A*x
+    r = 
     r_tilde = r;
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
     while (k<max_iter) {
@@ -99,7 +101,7 @@ spinor bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             beta = alpha * rho_i / (omega * rho_i_2); //beta_{i-1} = alpha_{i-1} * rho_{i-1} / (omega_{i-1} * rho_{i-2})
             d = r + beta * (d - omega * Ad); //d_i = r_{i-1} + beta_{i-1} * (d_{i-1} - omega_{i-1} * Ad_{i-1})
         }
-        Ad = D_phi(U, d, m0);  //A d_i 
+        D_phi(U, d, Ad,m0);  //A d_i 
         alpha = rho_i / dot(Ad, r_tilde); //alpha_i = rho_{i-1} / (Ad_i, r_tilde)
         s = r - alpha * Ad; //s = r_{i-1} - alpha_i * Ad_i
         err = sqrt(std::real(dot(s, s)));
@@ -110,7 +112,7 @@ spinor bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, const d
             }
             return x;
         }
-        t = D_phi(U, s, m0);   //A s
+        D_phi(U, s,t, m0);   //A s
         omega = dot(s, t) / dot(t, t); //omega_i = t^dagg . s / t^dagg . t
         r = s - omega * t; //r_i = s - omega_i * t
         x = x + alpha * d + omega * s; //x_i = x_{i-1} + alpha_i * d_i + omega_i * s
