@@ -21,20 +21,6 @@ inline void set_zeros(spinor& v, const int& N1, const int& N2) {
     }
 }
 
-//Schwarz blocks have to be initialized first before calling the I_B operators
-
-/*
-    I_B^T v --> Restriction of the spinor v to the block B
-    v: input, x: output
-*/
-void It_B_v(const spinor& v,  spinor& x,const int& block);
-
-/*
-    I_B v --> Interpolation of the spinor v to the original lattice
-    v: input, x: output
-*/
-void I_B_v(const spinor& v, spinor& x ,const int& block);
-
 /*
     Restriction of the Dirac operator to the block B. 
     D_B = I_B^T D I_B
@@ -85,26 +71,6 @@ private:
 */
 extern GMRES_D_B gmres_DB;
 
-
-/*
-    Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B 
-    U: gauge configuration,
-    phi: right-hand side,
-    x0: initial guess, 
-    x: output
-    phi: right-hand side
-    m0: mass parameter,
-    m: restart length,
-    restarts: number of restarts,
-    tol: tolerance for convergence,
-    block: Schwarz block index,
-    print_message: if true, prints convergence messages
-    Returns 1 if converged, 0 if not converged.
-
-    The convergence criterion is ||r|| < ||phi|| * tol
-*/
-int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x, const double& m0, 
-    const int& m, const int& restarts, const double& tol, const int& block,const bool& print_message);
 
 /*
     A_B v = I_B * D_B^-1 * I_B^T v --> Extrapolation of D_B^-1 to the original lattice.

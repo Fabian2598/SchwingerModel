@@ -100,12 +100,13 @@ class GMRES{
                 Hm[i][j] = 0.0; //Hm matrix
             }
         }
+        
         for(int i = 0; i < m; i++) {
             sn[i] = 0.0; //sn vector
             cn[i] = 0.0; //cn vector
             eta[i] = 0.0; //eta vector
         }
-        //r[0][0] = 0.0;
+
         for(int i = 0; i < dim1; i++) {
             for(int j = 0; j < dim2; j++) {
                 r[i][j] = 0.0; //r vector

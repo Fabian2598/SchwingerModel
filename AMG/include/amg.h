@@ -41,7 +41,37 @@ public:
 	test_vectors: Test vectors for the AMG method
 	interpolator_columns: locally orthonormalized columns of the interpolator
 	*/
-	AMG(const GaugeConf & GConf, const double& m0, const int& nu1, const int& nu2) : GConf(GConf), m0(m0), nu1(nu1), nu2(nu2) {	
+
+	//----------------------------//
+	//GMRES for the coarsest level
+	class GMRES_COARSE_LEVEL : public GMRES {
+	public:
+    	GMRES_COARSE_LEVEL(const int& dim1, const int& dim2, const int& m, const int& restarts, const double& tol, AMG* parent) : 
+		GMRES(dim1, dim2, m, restarts, tol), parent(parent) {}
+    
+    	~GMRES_COARSE_LEVEL() { };
+    
+	private:
+		AMG* parent; //Pointer to the enclosing AMG instance
+    	/*
+    	Implementation of the function that computes the matrix-vector product for the fine level
+    	*/
+    	void func(const spinor& in, spinor& out) override {
+        	parent->Pt_D_P(in,out);
+    	}
+	};
+
+	GMRES_COARSE_LEVEL gmres_c_level;
+	//-----------------------------------//
+
+	AMG(const GaugeConf & GConf, const double& m0, const int& nu1, const int& nu2) 
+	: GConf(GConf), m0(m0), nu1(nu1), nu2(nu2),
+	  gmres_c_level(AMGV::Ntest, AMGV::Nagg,
+                    AMGV::gmres_restart_length_coarse_level,
+                    AMGV::gmres_restarts_coarse_level,
+                    AMGV::gmres_tol_coarse_level,
+                    this) 
+	{	
 		test_vectors = std::vector<spinor>(AMGV::Ntest,
 		spinor( LV::Ntot, c_vector (2,0))); 
 
@@ -55,6 +85,7 @@ public:
 		//c_matrix DcMatrix = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
 		P_TEMP = spinor(LV::Ntot, c_vector(2,0)); //Temporary spinor for the coarse grid operator
 		Pt_TEMP = spinor(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Temporary spinor for the coarse grid operator
+
 	}
 	~AMG() { };
 
@@ -150,7 +181,7 @@ private:
 	std::vector<spinor> v_chopped;
 	spinor Pt_TEMP;
 	spinor P_TEMP;
-	
+		
 };
 
 

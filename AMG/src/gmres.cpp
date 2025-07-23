@@ -11,6 +11,7 @@ int GMRES::gmres(const spinor& phi, const spinor& x0, spinor& x,const bool& prin
     //r = b - A*x
     func(x, Dx);
     axpy(phi,Dx,-1.0,r);
+    
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
     err = sqrt(std::real(dot(r, r))); //Initial error
     while (k < restarts) {
@@ -55,7 +56,7 @@ int GMRES::gmres(const spinor& phi, const spinor& x0, spinor& x,const bool& prin
         //r = phi - func(U, x, m0);
         func(x, Dx);
         axpy(phi,Dx,-1.0,r);
-
+        
         err = sqrt(std::real(dot(r, r)));
          if (err < tol* norm_phi) {
              if (print_message == true) {
