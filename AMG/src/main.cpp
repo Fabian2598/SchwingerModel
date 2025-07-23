@@ -134,7 +134,9 @@ int main(int argc, char **argv) {
         infile.close();
     }
         
-   
+    gmres_DB.set_params(GConf.Conf,m0); //Setting parameters for GMRES for the Schwarz blocks
+
+    
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
     spinor x2(Ntot, c_vector(2, 0)); //solution vector 

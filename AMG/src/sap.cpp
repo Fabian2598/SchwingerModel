@@ -119,6 +119,10 @@ void D_B(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const i
     
 }
 
+
+GMRES_D_B gmres_DB(SAPV::sap_lattice_sites_per_block, 2, SAPV::sap_gmres_restart_length, SAPV::sap_gmres_restarts, 
+    SAPV::sap_gmres_tolerance); //Define the GMRES solver for D_B
+
 //A_B = I_B * D_B^-1 * I_B^T v --> Extrapolation of D_B^-1 to the original lattice.
 //dim(v) = 2 * Ntot, dim(x) = 2 Ntot
 //v: input, x: output
@@ -136,111 +140,9 @@ void I_D_B_1_It(const c_matrix& U, const spinor& v, spinor& x, const double& m0,
     }
      
     set_zeros(x,sap_lattice_sites_per_block,2); //Initialize x to zero
-    gmres_D_B(U, temp, temp,x, m0, 
-       sap_gmres_restart_length, sap_gmres_restarts, sap_gmres_tolerance, 
-        block, print_message);  
-}
 
-
-//Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B 
-int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
-    const double& m0, const int& m, const int& restarts, const double& tol, const int& block,
-    const bool& print_message) {
-    using namespace SAPV;
-   
-    if (m> sap_variables_per_block) {
-        std::cout << "Error: restart length > sap_variables_per_block" << std::endl;
-        exit(1);
-    }
-    
-    int k = 0; //Iteration number (restart cycle)
-
-    spinor r(sap_lattice_sites_per_block, c_vector(2, 0));  //r[coordinate][spin] residual
-    
-    //VmT[column vector index][vector arrange in matrix form]
-    std::vector<spinor> VmT(m+1, spinor(sap_lattice_sites_per_block, c_vector(2, 0))); //V matrix transpose --> dimensions exchanged
-
-    c_matrix Hm(m+1 , c_vector(m, 0)); //H matrix (Hessenberg matrix)
-    c_vector gm(m + 1, 0); 
-
-    //Elements of rotation matrix |sn[i]|^2 + |cn[i]|^2 = 1
-    c_vector sn(m, 0);
-    c_vector cn(m, 0);
-    c_vector eta(m, 0);
-
-
-    spinor w(sap_lattice_sites_per_block, c_vector(2, 0)); //D*d
-    x = x0; //initial solution
-    c_double beta; //not 1/g^2
-
-	spinor temp(sap_lattice_sites_per_block, c_vector(2, 0)); //I_B v
-    D_B(U, phi,temp, m0, block);
-    axpy(phi,temp,-1.0,r); //r = phi - D_B x0
-	
-	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
-    double err = sqrt(std::real(dot(r, r))); //Initial error  ||r||_2
-    if (print_message == true){std::cout << "||phi|| * tol = " << norm_phi * tol << std::endl;}
-    while (k < restarts) {
-        beta = err + 0.0 * I_number;
-        //VmT[0] = 1.0 / beta * r;
-        scal(1.0 / beta, r, VmT[0]); 
-        gm[0] = beta; //gm[0] = ||r||
-        //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
-        for (int j = 0; j < m; j++) {
-            D_B(U, VmT[j], w,m0, block); //w = D v_j  
-
-            for (int i = 0; i <= j; i++) {
-                Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
-
-                //w = w -  Hm[i][j] * VmT[i];
-				for(int n=0; n<sap_lattice_sites_per_block; n++){
-					for(int l=0; l<2; l++){
-						w[n][l] -= Hm[i][j] * VmT[i][n][l];
-					}
-				}
-            }
-            Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
-            if (std::real(Hm[j + 1][j]) > 0) {
-                //VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
-                scal(1.0 / Hm[j + 1][j], w, VmT[j + 1]); //Normalize the vector
-            }
-            //----Rotate the matrix----//
-            rotation(cn, sn, Hm, j);
-
-            //Rotate gm
-            gm[j + 1] = -sn[j] * gm[j];
-            gm[j] = std::conj(cn[j]) * gm[j];
-        }        
-        //Solve the upper triangular system//
-	
-		solve_upper_triangular(Hm, gm,m,eta);
- 
-        for (int i = 0; i < sap_variables_per_block; i++) {
-            int n = i / 2; int mu = i % 2; //Splitting the spin components
-            for (int j = 0; j < m; j++) {
-                x[n][mu] = x[n][mu] + eta[j] * VmT[j][n][mu]; 
-            }
-        }
-        //Compute the residual
-        D_B(U, x,temp, m0, block); //D_B x
-        axpy(phi,temp,-1.0,r); //r = phi - D_B x
-        err = sqrt(std::real(dot(r, r)));
-
-         if (err < tol * norm_phi) {
-             if (print_message == true) {
-                 std::cout << "|GMRES for D_B (block " << block << ") converged in " << k + 1 << " restarts." << " Error " << err << std::endl;
-                 std::cout << "------------------------------------------" << std::endl;
-            }
-             return 1;
-             
-         }
-         k++;
-    }
-    //if (print_message == true) {
-      //  std::cout << "|GMRES for D_B (block " << block << ") did not converge in " << restarts << " restarts." << " Error " << err << std::endl;
-    //
-    //std::cout << "------------------------------------------" << std::endl;
-    return 0;
+    gmres_DB.set_block(block); //Set the block index for the GMRES_D_B operator
+    gmres_DB.gmres(temp,temp,x, print_message); //Call the GMRES solver 
 }
 
 int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc){
@@ -342,6 +244,111 @@ int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int
     
     return 0; 
 }
+
+
+/*
+
+//Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B 
+int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x,
+    const double& m0, const int& m, const int& restarts, const double& tol, const int& block,
+    const bool& print_message) {
+    using namespace SAPV;
+   
+    if (m> sap_variables_per_block) {
+        std::cout << "Error: restart length > sap_variables_per_block" << std::endl;
+        exit(1);
+    }
+    
+    int k = 0; //Iteration number (restart cycle)
+
+    spinor r(sap_lattice_sites_per_block, c_vector(2, 0));  //r[coordinate][spin] residual
+    
+    //VmT[column vector index][vector arrange in matrix form]
+    std::vector<spinor> VmT(m+1, spinor(sap_lattice_sites_per_block, c_vector(2, 0))); //V matrix transpose --> dimensions exchanged
+
+    c_matrix Hm(m+1 , c_vector(m, 0)); //H matrix (Hessenberg matrix)
+    c_vector gm(m + 1, 0); 
+
+    //Elements of rotation matrix |sn[i]|^2 + |cn[i]|^2 = 1
+    c_vector sn(m, 0);
+    c_vector cn(m, 0);
+    c_vector eta(m, 0);
+
+
+    spinor w(sap_lattice_sites_per_block, c_vector(2, 0)); //D*d
+    x = x0; //initial solution
+    c_double beta; //not 1/g^2
+
+	spinor temp(sap_lattice_sites_per_block, c_vector(2, 0)); //I_B v
+    D_B(U, phi,temp, m0, block);
+    axpy(phi,temp,-1.0,r); //r = phi - D_B x0
+	
+	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
+    double err = sqrt(std::real(dot(r, r))); //Initial error  ||r||_2
+    if (print_message == true){std::cout << "||phi|| * tol = " << norm_phi * tol << std::endl;}
+    while (k < restarts) {
+        beta = err + 0.0 * I_number;
+        //VmT[0] = 1.0 / beta * r;
+        scal(1.0 / beta, r, VmT[0]); 
+        gm[0] = beta; //gm[0] = ||r||
+        //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
+        for (int j = 0; j < m; j++) {
+            D_B(U, VmT[j], w,m0, block); //w = D v_j  
+
+            for (int i = 0; i <= j; i++) {
+                Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)
+
+                //w = w -  Hm[i][j] * VmT[i];
+				for(int n=0; n<sap_lattice_sites_per_block; n++){
+					for(int l=0; l<2; l++){
+						w[n][l] -= Hm[i][j] * VmT[i][n][l];
+					}
+				}
+            }
+            Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
+            if (std::real(Hm[j + 1][j]) > 0) {
+                //VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
+                scal(1.0 / Hm[j + 1][j], w, VmT[j + 1]); //Normalize the vector
+            }
+            //----Rotate the matrix----//
+            rotation(cn, sn, Hm, j);
+
+            //Rotate gm
+            gm[j + 1] = -sn[j] * gm[j];
+            gm[j] = std::conj(cn[j]) * gm[j];
+        }        
+        //Solve the upper triangular system//
+	
+		solve_upper_triangular(Hm, gm,m,eta);
+ 
+        for (int i = 0; i < sap_variables_per_block; i++) {
+            int n = i / 2; int mu = i % 2; //Splitting the spin components
+            for (int j = 0; j < m; j++) {
+                x[n][mu] = x[n][mu] + eta[j] * VmT[j][n][mu]; 
+            }
+        }
+        //Compute the residual
+        D_B(U, x,temp, m0, block); //D_B x
+        axpy(phi,temp,-1.0,r); //r = phi - D_B x
+        err = sqrt(std::real(dot(r, r)));
+
+         if (err < tol * norm_phi) {
+             if (print_message == true) {
+                 std::cout << "|GMRES for D_B (block " << block << ") converged in " << k + 1 << " restarts." << " Error " << err << std::endl;
+                 std::cout << "------------------------------------------" << std::endl;
+            }
+             return 1;
+             
+         }
+         k++;
+    }
+    //if (print_message == true) {
+      //  std::cout << "|GMRES for D_B (block " << block << ") did not converge in " << restarts << " restarts." << " Error " << err << std::endl;
+    //
+    //std::cout << "------------------------------------------" << std::endl;
+    return 0;
+}
+*/
 
 
 /*

@@ -43,6 +43,50 @@ void I_B_v(const spinor& v, spinor& x ,const int& block);
 void D_B(const c_matrix& U, const spinor& v, spinor& x,const double& m0,const int& block);
 
 /*
+    Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B     
+*/
+class GMRES_D_B : public GMRES {
+    public:GMRES_D_B(const int& dim1, const int& dim2, const int& m, const int& restarts, const double& tol) :
+     GMRES(dim1, dim2, m, restarts, tol) {
+        if (m > SAPV::sap_variables_per_block) {
+            std::cout << "Error: restart length > sap_variables_per_block" << std::endl;
+            exit(1);
+        }
+    };
+    ~GMRES_D_B() { };
+
+    /*
+    Set the block index for the GMRES_D_B operator.
+    */
+    void set_block(const int& block_index) { 
+        block = block_index;
+    }
+
+    void set_params(const c_matrix& conf, const double& bare_mass){
+        U = &conf;
+        m0 = &bare_mass;
+    }
+    
+private:
+    const c_matrix* U; 
+    const double* m0; 
+    int block; //block index for the Schwarz block
+
+    /*
+    Implementation of the function that computes the matrix-vector product for the fine level
+    */
+    void func(const spinor& in, spinor& out) override { 
+        D_B(*U, in, out, *m0, block);
+    }
+};
+
+/*
+    GMRES solver for D_B
+*/
+extern GMRES_D_B gmres_DB;
+
+
+/*
     Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B 
     U: gauge configuration,
     phi: right-hand side,

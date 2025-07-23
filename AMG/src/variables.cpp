@@ -40,20 +40,20 @@ std::vector<int> SAP_BlackBlocks = std::vector<int>(SAPV::sap_coloring_blocks, 0
 
 namespace SAPV {
     bool schwarz_blocks = false; //Schwarz blocks are not initialized by default
-    int sap_gmres_restart_length = 20; //GMRES restart length for the Schwarz blocks. Set to 20 by default
-    int sap_gmres_restarts = 10; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
-    double sap_gmres_tolerance = 1e-10; //GMRES tolerance for the Schwarz blocks
+    int sap_gmres_restart_length = 2; //GMRES restart length for the Schwarz blocks. Set to 20 by default
+    int sap_gmres_restarts = 5; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
+    double sap_gmres_tolerance = 1e-3; //GMRES tolerance for the Schwarz blocks
     double sap_tolerance = 1e-10; //Tolerance for the SAP method
     int sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
 }
 
 namespace AMGV {
-    int SAP_test_vectors_iterations = 2; //Number of SAP iterations to smooth test vectors
+    int SAP_test_vectors_iterations = 1; //Number of SAP iterations to smooth test vectors
     bool aggregates_initialized = false;  //Aggregates are not initialized by default
     //Parameters for the coarse level solver. They can be changed in the main function
     int gmres_restarts_coarse_level = 10; 
-    int gmres_restart_length_coarse_level = 250; //GMRES restart length for the coarse level
-    double gmres_tol_coarse_level = 1e-10; //GMRES tolerance for the coarse level
+    int gmres_restart_length_coarse_level = 100; //GMRES restart length for the coarse level
+    double gmres_tol_coarse_level = 0.1; //GMRES tolerance for the coarse level
 
     int gmres_restarts_smoother = 20; //Iterations for GMRES as a smoother (SAP is the default)
 
@@ -61,7 +61,7 @@ namespace AMGV {
     double bi_cgstab_Dc_iterations_tol = 1e-10; //Tolerance for the bi-cgstab method
     int nu1 = 0; //Pre-smoothing iterations
     int nu2 = 2; //Post-smoothing iterations
-    int Nit = 3; //Number of iterations for improving the interpolator
+    int Nit = 1; //Number of iterations for improving the interpolator
 
     bool SetUpDone = false; //Set to true when the setup is done
 }
