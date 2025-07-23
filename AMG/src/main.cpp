@@ -32,27 +32,10 @@ int main(int argc, char **argv) {
     
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    //double m0 = 0;
-    double m0 = -0.18840579710144945;//-0.57;
+    //double m0 = -0.57;
+    double m0 = -0.18840579710144945;
 
-    //Default values in variables.cpp
-    sap_gmres_restart_length = 2; //GMRES restart length for the Schwarz blocks. Set to 20 by default
-    sap_gmres_restarts = 5; //GMRES iterations for the Schwarz blocks. Set to 10 by default.
-    sap_gmres_tolerance = 1e-3; //GMRES tolerance for the Schwarz blocks
-    sap_tolerance = 1e-10; //Tolerance for the SAP method
-    sap_blocks_per_proc = 1; //Number of blocks per process for the parallel SAP method
-
-    AMGV::SAP_test_vectors_iterations = 1; //Number of iterations for smoothing the test vectors
-    AMGV::gmres_restarts_coarse_level = 10; 
-    AMGV::gmres_restart_length_coarse_level = 100; //GMRES restart length for the coarse level
-    AMGV::gmres_tol_coarse_level = 0.1; //GMRES tolerance for the coarse level
-    AMGV::nu1 = 0; //Pre-smoothing iterations
-    AMGV::nu2 = 2; //Post-smoothing iterations
-    AMGV::Nit = 1; //Number of iterations for improving the interpolator
-
-    FGMRESV::fgmres_tolerance = 1e-10; //Tolerance for FGMRES
-    FGMRESV::fgmres_restart_length = 20; //Restart length for FGMRES
-    FGMRESV::fgmres_restarts = 50; //Number of restarts for FGMRES
+    //Parameters in variables.cpp
     if (rank == 0){
         std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
         std::cout << " Nx = " << Nx << " Nt = " << Nt << std::endl;
@@ -133,14 +116,15 @@ int main(int argc, char **argv) {
         GConf.setGconf(CONF);
         infile.close();
     }
-        
+    
+
     gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
 
     
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
-    spinor x2(Ntot, c_vector(2, 0)); //solution vector 
     //Random right hand side
+    //rhs[0][0] = 1.0;
     for(int i = 0; i < Ntot; i++) {
         rhs[i][0] = RandomU1();
         rhs[i][1] = RandomU1();
@@ -151,17 +135,27 @@ int main(int argc, char **argv) {
     double startT, endT;
 
    
-    /*
+    
     if (rank == 0){
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
         spinor x0(Ntot, c_vector(2, 0)); //Initial guess
-        int max_iter = 100000;//100000; //Maximum number of iterations
+        int max_iter = 10000;//100000; //Maximum number of iterations
         spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;    
+        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;  
+        
+        int len = 100;
+        int restarts = 20;
+        spinor xgmres(Ntot,c_vector(2));
+        GMRES_fine_level gmres_fine_level(Ntot, 2, len, restarts,1e-10,GConf.Conf, m0);
+        start = clock();
+        gmres_fine_level.gmres(rhs,x0,xgmres,true);
+        end = clock();
+        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+        std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl;  
     }
     
     
@@ -171,9 +165,9 @@ int main(int argc, char **argv) {
     spinor xfgmres = fgmresSAP(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
-    */
-
+    
     MPI_Barrier(MPI_COMM_WORLD);
+
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
     startT = MPI_Wtime();
     spinor xAMG = fgmresAMG(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
