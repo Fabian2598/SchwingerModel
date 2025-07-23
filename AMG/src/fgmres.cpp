@@ -79,7 +79,7 @@ spinor fgmresSAP(const c_matrix& U, const spinor& phi, const spinor& x0, const d
         }
         //Compute the residual
         D_phi(U, x,Dphi, m0);
-        axpy(r,Dphi, -1.0, r); //r = b - A*x
+        axpy(phi,Dphi, -1.0, r); //r = b - A*x
         err = sqrt(std::real(dot(r, r)));
          if (err < tol* norm_phi) {
              if (print_message == true) {
@@ -189,7 +189,7 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
         }
         //Compute the residual
         D_phi(U, x, Dphi, m0);
-        axpy(r,Dphi, -1.0, r); //r = b - A*x
+        axpy(phi,Dphi, -1.0, r); //r = b - A*x
         err = sqrt(std::real(dot(r, r)));
         
         //std::cout << "FGMRES iteration " << k + 1 << " Error " << std::setprecision(17) << err << "  from process " << rank << std::endl;

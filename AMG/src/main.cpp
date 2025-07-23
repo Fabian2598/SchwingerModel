@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     //double m0 = 0;
-    double m0 = -0.57;//-0.18840579710144945;  
+    double m0 = -0.18840579710144945;//-0.57;
 
     //Default values in variables.cpp
     sap_gmres_restart_length = 2; //GMRES restart length for the Schwarz blocks. Set to 20 by default
@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    /*
+    
     {
         double beta = 2;
         int nconf = 0;
@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
         GConf.setGconf(CONF);
         infile.close();
     }
-    */     
+        
    
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
     double startT, endT;
 
    
-    
+    /*
     if (rank == 0){
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
@@ -161,7 +161,8 @@ int main(int argc, char **argv) {
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;    
     }
-    /*
+    
+    
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl;}   
     startT = MPI_Wtime();

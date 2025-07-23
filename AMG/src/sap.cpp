@@ -302,10 +302,6 @@ int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int
         //r = v - D x
         axpy(v,Dphi,-1.0,r);
         //r = v - D_phi(U, x, m0); //r = v - D x
-        for(int n = 0; n < Ntot; n++) {
-            r[n][0] = v[n][0] - Dphi[n][0];
-            r[n][1] = v[n][1] - Dphi[n][1];
-        }
 
 
         //set_zeros(local_x,Ntot,2); //Initialize local_x to zero
@@ -335,11 +331,6 @@ int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int
         D_phi(U, x, Dphi,m0);
         //r = v - D x
         axpy(v,Dphi,-1.0,r);
-        //r = v - D_phi(U, x, m0); //r = v - D x
-        for(int n = 0; n < Ntot; n++) {
-            r[n][0] = v[n][0] - Dphi[n][0];
-            r[n][1] = v[n][1] - Dphi[n][1];
-        }
 
         err = sqrt(std::real(dot(r, r))); 
         if (err < sap_tolerance * v_norm) {
