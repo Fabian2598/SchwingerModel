@@ -207,3 +207,31 @@ spinor fgmresAMG(const c_matrix& U, const spinor& phi, const spinor& x0, const d
     }
     return x;
 }
+
+
+//FGMRES still uses these functions
+void rotation(c_vector& cn, c_vector& sn, c_matrix& H, const int& j) {
+    //Rotation of the column elements that are <j
+    for (int i = 0; i < j; i++) {
+		c_double temp = std::conj(cn[i]) * H[i][j] + std::conj(sn[i]) * H[i + 1][j];
+		H[i + 1][j] = -sn[i] * H[i][j] + cn[i] * H[i + 1][j];
+		H[i][j] = temp;
+    }
+    //Rotation of the diagonal and element right below the diagonal
+    c_double den = sqrt(std::conj(H[j][j] ) * H[j][j] + std::conj(H[j + 1][j]) * H[j + 1][j]);
+	sn[j] = H[j + 1][j] / den; cn[j] = H[j][j] / den;
+	H[j][j] = std::conj(cn[j]) * H[j][j] + std::conj(sn[j]) * H[j + 1][j];
+    H[j + 1][j] = 0.0;
+
+}
+
+//x = A^-1 b, A an upper triangular matrix of dimension n
+void solve_upper_triangular(const c_matrix& A, const c_vector& b, const int& n, c_vector& out) {
+	for (int i = n - 1; i >= 0; i--) {
+		out[i] = b[i];
+		for (int j = i + 1; j < n; j++) {
+			out[i] -= A[i][j] * out[j];
+		}
+		out[i] /= A[i][i];
+	}
+}

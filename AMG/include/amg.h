@@ -41,7 +41,38 @@ public:
 	test_vectors: Test vectors for the AMG method
 	interpolator_columns: locally orthonormalized columns of the interpolator
 	*/
-	AMG(const GaugeConf & GConf, const double& m0, const int& nu1, const int& nu2) : GConf(GConf), m0(m0), nu1(nu1), nu2(nu2) {	
+
+	//----------------------------//
+	//GMRES for the coarsest level//
+	//    We use a nested class   //
+	class GMRES_COARSE_LEVEL : public GMRES {
+	public:
+    	GMRES_COARSE_LEVEL(const int& dim1, const int& dim2, const int& m, const int& restarts, const double& tol, AMG* parent) : 
+		GMRES(dim1, dim2, m, restarts, tol), parent(parent) {}
+    
+    	~GMRES_COARSE_LEVEL() { };
+    
+	private:
+		AMG* parent; //Pointer to the enclosing AMG instance
+    	/*
+    	Implementation of the function that computes the matrix-vector product for the fine level
+    	*/
+    	void func(const spinor& in, spinor& out) override {
+        	parent->Pt_D_P(in,out);
+    	}
+	};
+
+	GMRES_COARSE_LEVEL gmres_c_level;
+	//-----------------------------------//
+
+	AMG(const GaugeConf & GConf, const double& m0, const int& nu1, const int& nu2) 
+	: GConf(GConf), m0(m0), nu1(nu1), nu2(nu2),
+	  gmres_c_level(AMGV::Ntest, AMGV::Nagg,
+                    AMGV::gmres_restart_length_coarse_level,
+                    AMGV::gmres_restarts_coarse_level,
+                    AMGV::gmres_tol_coarse_level,
+                    this) 
+	{	
 		test_vectors = std::vector<spinor>(AMGV::Ntest,
 		spinor( LV::Ntot, c_vector (2,0))); 
 
@@ -123,28 +154,6 @@ private:
 
 	//-----Coarse grid solvers-----// 
 	
-	/*
-	gmres for the coarse grid operator.
-		It can also be used for smoothing at the fine level. 
-
-	dim1: dimension of the first index of the spinor 
-  	dim2: dimension of the second index of the spinor 	
-		-> For instance, at the finest level dim1 = Nx*Nt, dim2 = 2 (spin components).
- 		   For the coarse level, dim1 = Ntest, dim2 = Nagg (test vectors and aggregates).
-
-	U: gauge configuration
- 	phi: right hand side
- 	x0: initial guess
- 	m0: mass parameter
-	m: restart length
-  	restarts: number of restarts of length m
- 	tol: tolerance for the solver 
- 	print_message: if true, print the convergence message
-
-	The convergence criterion is ||D x - phi|| < ||phi|| * tol
-	*/
-	spinor gmres(const int& dim1, const int& dim2,const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message);
-
 	std::vector<spinor> test_vectors; //test vectors[Ntest][Nx Nt][spin components], no color
 	std::vector<spinor> interpolator_columns; 
 	std::vector<spinor> v_chopped;

@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
         infile.close();
     }
         
-    gmres_DB.set_params(GConf.Conf,m0); //Setting parameters for GMRES for the Schwarz blocks
+    gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
 
     
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 

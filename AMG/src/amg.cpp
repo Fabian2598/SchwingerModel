@@ -347,10 +347,11 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		spinor Pt_r(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
 		Pt_v(temp,Pt_r);
 		
-	  	//Using GMRES for the coarse grid solver 
-		P_v(gmres(AMGV::Ntest,AMGV::Nagg,GConf.Conf, Pt_r, Pt_r, m0,
-			AMGV::gmres_restart_length_coarse_level,AMGV::gmres_restarts_coarse_level,AMGV::gmres_tol_coarse_level,false),
-		temp);
+		//Using GMRES for the coarse grid solver 
+		spinor gmresResult(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
+		gmres_c_level.gmres(Pt_r,Pt_r,gmresResult,false);
+		P_v(gmresResult,temp);
+
 		for(int n = 0; n<LV::Ntot; n++){
 			for(int alf=0; alf<2; alf++){
 				x[n][alf] += temp[n][alf]; 
@@ -394,104 +395,5 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 	if (print_message == true){
 		std::cout << "Two-grid did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
 	}
-	return x;
-}
-
-//Solves Dc or D psi = phi using GMRES
-spinor AMG::gmres(const int& dim1, const int& dim2,const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& m, const int& restarts, const double& tol, const bool& print_message) {
-    int k = 0; //Iteration number (restart cycle)
-    double err;
-
-    spinor r(dim1, c_vector(dim2, 0));  //residual
-   
-    //VmT[column vector index][vector arrange in matrix form]
-    std::vector<spinor> VmT(m+1, spinor(dim1, c_vector(dim2, 0))); //V matrix transpose
-
-    spinor Hm(m+1 , c_vector(m, 0)); //H matrix (Hessenberg matrix)
-    c_vector gm(m + 1, 0); 
-
-    //Elements of rotation matrix |sn[i]|^2 + |cn[i]|^2 = 1 for Givens rotation
-    c_vector sn(m, 0);
-    c_vector cn(m, 0);
-    c_vector eta(m, 0);
-
-    spinor w(dim1, c_vector(dim2, 0)); 
-    spinor x = x0; //initial solution
-    c_double beta; //not 1/g^2 from simulations
-	spinor temp(dim1, c_vector(dim2, 0)); //Temporary spinor for P^T D P
-
-	Pt_D_P(x,temp);
-	//r =  phi - temp; 
-	for(int n = 0; n < dim1; n++){
-		for(int alf=0; alf<dim2; alf++){
-			r[n][alf] = phi[n][alf] - temp[n][alf];
-		}
-	}
-	
-	
-	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
-	//The convergence criterion is ||r|| < ||phi|| * tol
-    while (k < restarts) {
-        beta = sqrt(std::real(dot(r, r))) + 0.0 * I_number;
-		scal(1.0/beta, r,VmT[0]); //VmT[0] = r / ||r||
-        gm[0] = beta; //gm[0] = ||r||
-
-        //-----Arnoldi process to build the Krylov basis and the Hessenberg matrix-----//
-        for (int j = 0; j < m; j++) {
-			Pt_D_P(VmT[j],w); //w = D v_j
-			//----Gram-Schmidt process----//
-            for (int i = 0; i <= j; i++) {
-                Hm[i][j] = dot(w, VmT[i]); //  (v_i^dagger, w)  
-				     
-                //w = w -  Hm[i][j] * VmT[i];
-				for(int n=0; n<dim1; n++){
-					for(int l=0; l<dim2; l++){
-						w[n][l] -= Hm[i][j] * VmT[i][n][l];
-					}
-				}
-            }
-            
-            Hm[j + 1][j] = sqrt(std::real(dot(w, w))); //H[j+1][j] = ||A v_j||
-            if (std::real(Hm[j + 1][j]) > 0) {
-				scal(1.0 / Hm[j + 1][j], w, VmT[j + 1]); //VmT[j + 1] = w / ||A v_j||
-                //VmT[j + 1] = 1.0 / Hm[j + 1][j] * w;
-            }
-            //----Rotate the matrix----//
-            rotation(cn, sn, Hm, j); //Defined in include/gmres.h
-
-            //Rotate gm
-            gm[j + 1] = -sn[j] * gm[j];
-            gm[j] = std::conj(cn[j]) * gm[j];
-        }        
-        //Solve the upper triangular system//
-		solve_upper_triangular(Hm, gm,m,eta);
- 
-        for (int i = 0; i < dim1 * dim2; i++) {
-            int n = i / dim2; int mu = i % dim2;
-            for (int j = 0; j < m; j++) {
-                x[n][mu] = x[n][mu] + eta[j] * VmT[j][n][mu]; 
-            }
-        }
-
-        //Compute the residual
-		Pt_D_P(x,temp);
-		//r = phi - temp;
-		for(int n = 0; n < dim1; n++){
-			for(int alf=0; alf<dim2; alf++){
-				r[n][alf] = phi[n][alf] - temp[n][alf];
-			}
-		}
-        err = sqrt(std::real(dot(r, r)));
-
-         if (err < tol* norm_phi) {
-             if (print_message == true) {
-                 std::cout << "GMRES converged in " << k + 1 << " iterations" << " Error " << err << std::endl;
-             }
-             return x;
-         }
-
-         k++;
-    }
-    	//std::cout << "GMRES did not converge in " << restarts << " restarts for tol = " << tol << " Error " << err << std::endl;
 	return x;
 }

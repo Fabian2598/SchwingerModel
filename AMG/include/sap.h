@@ -85,27 +85,6 @@ private:
 */
 extern GMRES_D_B gmres_DB;
 
-
-/*
-    Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B 
-    U: gauge configuration,
-    phi: right-hand side,
-    x0: initial guess, 
-    x: output
-    phi: right-hand side
-    m0: mass parameter,
-    m: restart length,
-    restarts: number of restarts,
-    tol: tolerance for convergence,
-    block: Schwarz block index,
-    print_message: if true, prints convergence messages
-    Returns 1 if converged, 0 if not converged.
-
-    The convergence criterion is ||r|| < ||phi|| * tol
-*/
-int gmres_D_B(const c_matrix& U, const spinor& phi, const spinor& x0, spinor& x, const double& m0, 
-    const int& m, const int& restarts, const double& tol, const int& block,const bool& print_message);
-
 /*
     A_B v = I_B * D_B^-1 * I_B^T v --> Extrapolation of D_B^-1 to the original lattice.
     dim(v) = 2 * Ntot, dim(x) = 2 Ntot
