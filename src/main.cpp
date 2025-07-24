@@ -46,12 +46,6 @@ int main() {
     std::cin >> saveconf;
     std::cout << " " << std::endl;
     
-   /*
-    m0_min = -0.18, m0_max = -0.18,  Nm0 = 1, MD_steps = 30, 
-    trajectory_length = 1, beta = 4, Ntherm = 10, Nmeas = 2, 
-    Nsteps = 0, saveconf = 0; 
-    */
-
     std::vector<double> Masses(Nm0);
     
 	Coordinates(); //Compute vectorized coordinates

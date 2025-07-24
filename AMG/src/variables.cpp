@@ -52,7 +52,7 @@ namespace AMGV {
     bool aggregates_initialized = false;  //Aggregates are not initialized by default
     //Parameters for the coarse level solver. They can be changed in the main function
     int gmres_restarts_coarse_level = 10; 
-    int gmres_restart_length_coarse_level = 250; //GMRES restart length for the coarse level
+    int gmres_restart_length_coarse_level = 20; //GMRES restart length for the coarse level
     double gmres_tol_coarse_level = 0.1; //GMRES tolerance for the coarse level
 
     int gmres_restarts_smoother = 20; //Iterations for GMRES as a smoother (SAP is the default)
@@ -71,6 +71,11 @@ namespace FGMRESV {
     double fgmres_tolerance = 1e-10; //Tolerance for FGMRES
     int fgmres_restart_length = 20; //Restart length for FGMRES
     int fgmres_restarts = 50; //Number of restarts for FGMRES
+}
+
+namespace CG{
+    int max_iter = 100000;
+    double tol = 1e-10;
 }
 
 std::vector<std::vector<c_double>>D_TEMP = std::vector<std::vector<c_double>>(LV::Ntot, std::vector<c_double>(2,0)); 

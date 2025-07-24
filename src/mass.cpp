@@ -15,7 +15,7 @@ std::vector<c_matrix> Confs; //Confs[conf][coordinate][spin]
 int nconf; //This could be an input parameter from terminal
 double m0, beta; //Mass and coupling constant
 
-int max_iter = 10000;
+int max_iter = 100000;
 std::vector<std::vector<double>> CorrMat; //Correlation function for each conf.
 std::vector<double> Corr(LV::Nt,0), dCorr(LV::Nt,0); //Correlation function averaged over configurations and its error
 

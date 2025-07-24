@@ -73,6 +73,11 @@ namespace FGMRESV {
     extern int fgmres_restarts; //Number of restarts for FGMRES
 }
 
+namespace CG{
+    extern int max_iter;
+    extern double tol;
+}
+
 
 //Coordinates vectorization for the lattice points
 extern std::vector<std::vector<int>>Coords; 

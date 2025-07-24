@@ -149,8 +149,8 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		//test_vectors[i] = gmres(LV::Ntot,2,GConf.Conf, test_vectors[i], test_vectors[i], m0, 20, 20, 1e-10, false);
 		
 		//Right hand side of the linear system 
-		spinor rhs = test_vectors[i]; //c_matrix rhs(Ntot, c_vector(2, 0)); //We can also try with rhs = 0 
-		
+		//spinor rhs = test_vectors[i]; //spinor rhs(Ntot, c_vector(2, 0)); //We can also try with rhs = 0 
+		spinor rhs(LV::Ntot, c_vector(2, 0));
 		//The result will be stored in test_vectors[i]
 		double startT, endT;
 		startT = MPI_Wtime();
@@ -166,8 +166,9 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	interpolator_columns = test_vectors; 
 	orthonormalize(); 
 	//For large problems this actually helps ...
-	AMGV::SetUpDone = true; //Set the setup as done
-	assembleDc(); //Assemble the coarse grid operator
+	//AMGV::SetUpDone = true; //Set the setup as done
+	//assembleDc(); //Assemble the coarse grid operator
+	
 	//Improving the interpolator quality by iterating over the two-grid method defined by the current test vectors
 	if (rank == 0){std::cout << "Improving interpolator" << std::endl;}
 	for (int n = 0; n < Nit; n++) {
@@ -184,7 +185,7 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
 		orthonormalize();
-		assembleDc(); //Assemble the coarse grid operator
+		//assembleDc(); //Assemble the coarse grid operator
 
 	}
 	//In case I want to assemble the coarse grid matrix

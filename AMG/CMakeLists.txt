@@ -5,15 +5,16 @@ project(TwoGrid VERSION 1.0)
 
 #Source files
 set(SRC_FILES 
-    src/variables.cpp       #Relevant parameters for the method
-    src/gauge_conf.cpp      #Gauge configuration class
-    src/dirac_operator.cpp  #Implementation of the Dirac operator
-    src/bi_cgstab.cpp       #Bi-CGStab solver for comparison
-    src/sap.cpp             #Schwarz alternating method
-    src/amg.cpp             #Two-grid implementation 
-    src/main.cpp            #Main program
-    src/gmres.cpp           #GMRES solver for comparison
-    src/fgmres.cpp          #Flexible GMRES solver that uses the two-grid preconditioner
+    src/variables.cpp           #Relevant parameters for the method
+    src/gauge_conf.cpp          #Gauge configuration class
+    src/dirac_operator.cpp      #Implementation of the Dirac operator
+    src/bi_cgstab.cpp           #Bi-CGStab solver for comparison
+    src/conjugate_gradient.cpp  #Conjugate gradient for solving normal equations
+    src/sap.cpp                 #Schwarz alternating method
+    src/amg.cpp                 #Two-grid implementation 
+    src/main.cpp                #Main program
+    src/gmres.cpp               #GMRES solver for comparison
+    src/fgmres.cpp              #Flexible GMRES solver that uses the two-grid preconditioner
 )
 
 #--------------------------Lattice dimensions---------------------------#
@@ -41,7 +42,7 @@ set(SAP_BLOCK_T "4")
 #-----------------------------------------------------------------------#
 
 #Number of test vectors
-set(NTEST "20") 
+set(NTEST "10") 
 #The coarse grid matrix dimension is NTEST * 2 * BLOCK_X * BLOCK_T
 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
@@ -56,7 +57,7 @@ target_include_directories("SM_${NS}x${NT}"
 target_compile_options("SM_${NS}x${NT}" PRIVATE
             #-Wall
 			-O3
-            -g
+            #-g
 			#-fopenmp
 )
 

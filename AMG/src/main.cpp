@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iomanip>
 #include "bi_cgstab.h"
+#include "conjugate_gradient.h"
 #include "fgmres.h"
 #include "mpi.h"
 
@@ -96,9 +97,9 @@ int main(int argc, char **argv) {
     
     {
         double beta = 2;
-        int nconf = 0;
+        int nconf = 3;
         std::ostringstream NameData;
-        NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
+        NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
         //std::cout << "Reading conf from file: " << NameData.str() << std::endl;
         std::ifstream infile(NameData.str());
@@ -115,6 +116,9 @@ int main(int argc, char **argv) {
         }
         GConf.setGconf(CONF);
         infile.close();
+        if (rank == 0){
+            std::cout << "Conf read from " << NameData.str() << std::endl;
+        }
     }
     
 
@@ -135,7 +139,7 @@ int main(int argc, char **argv) {
     double startT, endT;
 
    
-    
+   
     if (rank == 0){
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
@@ -147,24 +151,36 @@ int main(int argc, char **argv) {
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;  
         
-        int len = 100;
-        int restarts = 20;
+        int len = AMGV::gmres_restart_length_coarse_level;
+        int restarts = 1000; //If the restart length is too large this could be problematic ...
         spinor xgmres(Ntot,c_vector(2));
         GMRES_fine_level gmres_fine_level(Ntot, 2, len, restarts,1e-10,GConf.Conf, m0);
         start = clock();
         gmres_fine_level.gmres(rhs,x0,xgmres,true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl;  
+        std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl; 
+        std::cout << "Inverting the normal equations with CG" << std::endl; 
+        spinor xCG(Ntot,c_vector(2,0));
+        start = clock();
+        conjugate_gradient(GConf.Conf, rhs, xCG, m0);
+        end = clock();
+        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+        std::cout << "Elapsed time for CG = " << elapsed_time << " seconds" << std::endl;  
+
     }
+  
     
-    
+/*
+
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl;}   
     startT = MPI_Wtime();
     spinor xfgmres = fgmresSAP(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
+
+*/
     
     MPI_Barrier(MPI_COMM_WORLD);
 

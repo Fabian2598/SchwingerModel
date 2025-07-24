@@ -87,7 +87,7 @@ spinor bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, const d
     spinor x(LV::Ntot, c_vector(2, 0)); //solution
     c_double alpha, beta, rho_i, omega, rho_i_2;
     x = x0; //initial solution
-     D_phi(U, x, TEMP, m0);
+    D_phi(U, x, TEMP, m0);
     r = phi - TEMP; //r = b - A*x
     r = 
     r_tilde = r;
@@ -99,11 +99,21 @@ spinor bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, const d
         }
         else {
             beta = alpha * rho_i / (omega * rho_i_2); //beta_{i-1} = alpha_{i-1} * rho_{i-1} / (omega_{i-1} * rho_{i-2})
-            d = r + beta * (d - omega * Ad); //d_i = r_{i-1} + beta_{i-1} * (d_{i-1} - omega_{i-1} * Ad_{i-1})
+            //d = r + beta * (d - omega * Ad); //d_i = r_{i-1} + beta_{i-1} * (d_{i-1} - omega_{i-1} * Ad_{i-1})
+            for(int i = 0; i < LV::Ntot; i++) {
+                for(int j = 0; j < 2; j++) {
+                    d[i][j] = r[i][j] + beta * (d[i][j] - omega * Ad[i][j]); //d_i = r_{i-1} + beta_{i-1} * (d_{i-1} - omega_{i-1} * Ad_{i-1})
+                }
+            }
         }
         D_phi(U, d, Ad,m0);  //A d_i 
         alpha = rho_i / dot(Ad, r_tilde); //alpha_i = rho_{i-1} / (Ad_i, r_tilde)
-        s = r - alpha * Ad; //s = r_{i-1} - alpha_i * Ad_i
+        //s = r - alpha * Ad; //s = r_{i-1} - alpha_i * Ad_i
+        for(int i = 0; i < LV::Ntot; i++) {
+            for (int j = 0; j < 2; j++) {
+                s[i][j] = r[i][j] - alpha * Ad[i][j]; //s_i = r_{i-1} - alpha_i * Ad_i
+            }
+        }
         err = sqrt(std::real(dot(s, s)));
         if (err < tol * norm_phi) {
             x = x + alpha * d;
@@ -115,7 +125,18 @@ spinor bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0, const d
         D_phi(U, s,t, m0);   //A s
         omega = dot(s, t) / dot(t, t); //omega_i = t^dagg . s / t^dagg . t
         r = s - omega * t; //r_i = s - omega_i * t
-        x = x + alpha * d + omega * s; //x_i = x_{i-1} + alpha_i * d_i + omega_i * s
+        for(int i = 0; i < LV::Ntot; i++) {
+            for (int j = 0; j < 2; j++) {
+                r[i][j] = s[i][j] - omega * t[i][j]; //x_i = x_{i-1} + alpha_i * d_i + omega_i * s_i
+            }
+        }
+
+        //x = x + alpha * d + omega * s; //x_i = x_{i-1} + alpha_i * d_i + omega_i * s
+         for(int i = 0; i < LV::Ntot; i++) {
+            for (int j = 0; j < 2; j++) {
+                x[i][j] = x[i][j] + alpha * d[i][j] + omega * s[i][j]; //x_i = x_{i-1} + alpha_i * d_i + omega_i * s_i
+            }
+        }
         rho_i_2 = rho_i; //rho_{i-2} = rho_{i-1}
         k++;
     }
