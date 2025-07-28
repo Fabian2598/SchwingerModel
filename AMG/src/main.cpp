@@ -125,21 +125,38 @@ int main(int argc, char **argv) {
     gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
 
     
-    spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
-    spinor x(Ntot, c_vector(2, 0)); //solution vector 
-    //Random right hand side
-    //rhs[0][0] = 1.0;
-    for(int i = 0; i < Ntot; i++) {
-        rhs[i][0] = RandomU1();
-        rhs[i][1] = RandomU1();
+    spinor rhs(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //random right hand side 
+    spinor x(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //solution vector 
+    spinor xTest(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //solution vector 
+    for(int i = 0; i < AMGV::Ntest; i++) {
+        for(int j = 0; j<AMGV::Nagg; j++){
+            rhs[i][j] = RandomU1();
+            rhs[i][j] = RandomU1();
+        }  
     }
 
     clock_t start, end;
     double elapsed_time;
     double startT, endT;
 
+    AMG amg = AMG(GConf, m0,AMGV::nu1,AMGV::nu2);   //nu1 pre-smoothing it, nu2 post-smoothing it
+    amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
+
+    amg.Pt_D_P(rhs,x);
+
+    //Testing coarse links
+    amg.initializeCoarseLinks();
+    amg.Pt_D_P_Test(rhs,xTest);
+
+    for(int i = 0; i < AMGV::Ntest; i++) {
+        for(int j = 0; j<AMGV::Nagg; j++){
+            std::cout << "xTest " << xTest[i][j] << "    " << x[i][j] << std::endl;
+        }
+    }
+
+
    
-   
+   /*
     if (rank == 0){
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
@@ -169,7 +186,7 @@ int main(int argc, char **argv) {
         std::cout << "Elapsed time for CG = " << elapsed_time << " seconds" << std::endl;  
 
     }
-  
+  */
     
 /*
 
@@ -181,7 +198,7 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
 
 */
-    
+    /*
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
@@ -192,7 +209,7 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
-    
+    */
 
     MPI_Finalize();
 

@@ -126,3 +126,11 @@ void CheckAggregates(){
         exit(1);
     }
 }
+
+
+std::vector<std::vector<int>> LatticeBlocks = std::vector<std::vector<int>> (LV::Nblocks, std::vector<int>(LV::lattice_sites_per_block));
+int RightPB_blocks[LV::Nblocks][2];
+int LeftPB_blocks[LV::Nblocks][2];
+c_double SignL_blocks[LV::Nblocks][2];
+c_double SignR_blocks[LV::Nblocks][2];
+

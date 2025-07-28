@@ -13,6 +13,8 @@
 */
 void Aggregates();
 
+void MakeBlocks();
+
 /*
 	Print the aggregates. Useful for debugging.
 */
@@ -86,6 +88,12 @@ public:
 		//c_matrix DcMatrix = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
 		P_TEMP = spinor(LV::Ntot, c_vector(2,0)); //Temporary spinor for the coarse grid operator
 		Pt_TEMP = spinor(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Temporary spinor for the coarse grid operator
+
+
+		Aqps = std::vector<std::vector<spinor>>(LV::Nblocks,std::vector<spinor>(AMGV::Ntest, spinor(AMGV::Ntest, c_vector(2,0)))); 
+		Bqps = std::vector<std::vector<spinor>>(LV::Nblocks,std::vector<spinor>(AMGV::Ntest, spinor(AMGV::Ntest, c_vector(2,0)))); 
+		Zqps = std::vector<std::vector<spinor>>(LV::Nblocks,std::vector<spinor>(AMGV::Ntest, spinor(AMGV::Ntest, c_vector(2,0)))); 
+		Yqps = std::vector<std::vector<spinor>>(LV::Nblocks,std::vector<spinor>(AMGV::Ntest, spinor(AMGV::Ntest, c_vector(2,0)))); 
 	}
 	~AMG() { };
 
@@ -115,6 +123,15 @@ public:
 	spinor TwoGrid(const int& max_iter, const double& tol,
 		const spinor& x0, const spinor& phi,const bool& print_message);
 
+	/*
+	Coarse grid operator Dc = P^H D P times a spinor
+    */
+	void Pt_D_P(const spinor& v,spinor& out); //Dc v = P^H D P v 
+
+	void Pt_D_P_Test(const spinor& v,spinor& out);
+
+	void initializeCoarseLinks();
+
 private:
 	GaugeConf GConf;
 	double m0; 
@@ -142,23 +159,24 @@ private:
 	*/
 	void assembleDc();
 
-	/*
-	Coarse grid operator Dc = P^H D P times a spinor
-    */
-	void Pt_D_P(const spinor& v,spinor& out); //Dc v = P^H D P v 
+	
 
 	/*
 	Local orthonormalization of the test vectors
 	*/
 	void orthonormalize(); 
 
-	//-----Coarse grid solvers-----// 
 	
 	std::vector<spinor> test_vectors; //test vectors[Ntest][Nx Nt][spin components], no color
 	std::vector<spinor> interpolator_columns; 
 	std::vector<spinor> v_chopped;
 	spinor Pt_TEMP;
 	spinor P_TEMP;
+
+	std::vector<std::vector<spinor>> Aqps; 
+	std::vector<std::vector<spinor>> Bqps;
+	std::vector<std::vector<spinor>> Zqps;
+	std::vector<std::vector<spinor>> Yqps;
 	
 };
 

@@ -21,8 +21,10 @@ namespace LV {
     constexpr int Nt = NT; 
     constexpr int block_x = BLOCK_X; 
     constexpr int block_t = BLOCK_T; 
+    constexpr int Nblocks = block_x * block_t;
     constexpr int x_elements = Nx/block_x; //Number of elements in the x direction
     constexpr int t_elements = Nt/block_t; //Number of elements in the t direction
+    constexpr int lattice_sites_per_block = x_elements * t_elements;
     constexpr int Ntot = Nx*Nt; //Total number of lattice points
 }
 
@@ -107,6 +109,13 @@ extern std::vector<int> SAP_RedBlocks; //Block index for the red blocks
 extern std::vector<int> SAP_BlackBlocks; //Block index for the black blocks
 
 extern std::vector<std::vector<c_double>>D_TEMP;
+
+extern c_double P0[2][2], P1[2][2], M0[2][2], M1[2][2];
+extern std::vector<std::vector<int>> LatticeBlocks;
+extern int LeftPB_blocks[LV::Nblocks][2];
+extern int RightPB_blocks[LV::Nblocks][2];
+extern c_double SignL_blocks[LV::Nblocks][2];
+extern c_double SignR_blocks[LV::Nblocks][2];
 
 
 void CheckBlocks(); //Check that Nx/block_x and Nt/block_t are integers, the same for Schwarz blocks

@@ -41,6 +41,28 @@ void PrintAggregates() {
 	}
 }
 
+void MakeBlocks(){
+	using namespace LV; //Lattice parameters namespace
+	int count; 
+	for (int x = 0; x < block_x; x++) {
+		for (int t = 0; t < block_t; t++) {
+				int block = block_x * Nblocks + block_t;
+				int x0 = x * x_elements, t0 = t * t_elements;
+				int x1 = (x + 1) * x_elements, t1 = (t + 1) * t_elements;
+            	count = 0;  
+            	//Filling the block with the coordinates of the lattice points
+            	for(int x = x0; x < x1; x++) {
+                	for (int t = t0; t < t1; t++) {
+                    	LatticeBlocks[block][count++] = x * Nt+ t; 
+                    	
+					}
+            	}
+			}
+		}
+	}
+
+
+
 
 void normalize(spinor& v){
 	c_double norm = sqrt(std::real(dot(v,v))) + 0.0*I_number; 
@@ -250,6 +272,153 @@ void AMG::Pt_v(const spinor& v,spinor& out) {
 	}
 
 }
+
+void AMG::initializeCoarseLinks(){
+	//Aqps = A[q][p][s][mu]
+
+	c_double P0[2][2], P1[2][2], M0[2][2], M1[2][2]; 
+	
+	P0[0][0] = 1.0; P0[0][1] = 1.0;
+	P0[1][0] = 1.0; P0[1][1] = 1.0; 
+
+	P1[0][0] = 1.0; P1[0][1] = -I_number;
+	P1[1][0] = I_number; P1[1][1] = 1.0; 
+
+	M0[0][0] = 1.0; M0[0][1] = -1.0;
+	M0[1][0] = -1.0; M0[1][1] = 1.0; 
+
+	M1[0][0] = 1.0; M1[0][1] = I_number;
+	M1[1][0] = -I_number; M1[1][1] = 1.0; 
+
+	c_matrix &U = GConf.Conf;
+
+	c_double R, L; 
+	int l_b, r_b;
+	int n;
+
+	for(int q = 0; q < LV::Nblocks; q++){
+	for(int p = 0; p < AMGV::Ntest; p++){
+	for(int s = 0; s < AMGV::Ntest; s++){
+	
+
+		//Run n in the block defined by q 
+		for(int i = 0; i<LV::lattice_sites_per_block; i++){
+		for(int alf = 0; alf< 2; alf ++){
+		for(int bet=0; bet<2; bet++){
+			n = LatticeBlocks[q][i];
+
+			//mu = 0
+			L = P0[alf][bet] * std::conj(interpolator_columns[p][n][alf]) * std::conj(U[LeftPB[n][0]][0]);
+			R = 0.0;
+			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), LeftPB[n][0]) != LatticeBlocks[q].end()){
+				R =  interpolator_columns[s][LeftPB[n][0]][bet];
+			}
+
+			Aqps[q][p][s][0] +=  L * R; 
+
+			R = 0.0;
+			l_b = LeftPB_blocks[q][0]; //q-hat{0}
+			if(std::find(LatticeBlocks[l_b].begin(), LatticeBlocks[l_b].end(), LeftPB[n][0]) != LatticeBlocks[l_b].end()){
+				R = interpolator_columns[s][LeftPB[n][0]][bet];
+			}
+
+			Bqps[q][p][s][0] += L * R;
+
+
+			//mu = 1
+			L =  P1[alf][bet] * std::conj(interpolator_columns[p][n][alf]) * std::conj(U[LeftPB[n][1]][1]);
+			R = 0.0;
+			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), LeftPB[n][1]) != LatticeBlocks[q].end()){
+				//If n+mu is in the lattice block, the R /= 0
+				R =  interpolator_columns[s][LeftPB[n][1]][bet];
+			}
+			Aqps[q][p][s][1] += P1[alf][bet] * L * std::conj(U[LeftPB[n][1]][1]) * R; 
+
+			R = 0.0;
+			l_b = LeftPB_blocks[q][1]; //q-hat{1}
+			if(std::find(LatticeBlocks[l_b].begin(), LatticeBlocks[l_b].end(), LeftPB[n][0]) != LatticeBlocks[l_b].end()){
+				R = interpolator_columns[s][LeftPB[n][1]][bet];
+			}
+			
+			Bqps[q][p][s][1] += L * R;
+
+			//Now the same with Y and Z
+
+			//mu = 0 
+			L = M0[alf][bet] * std::conj(interpolator_columns[p][n][alf]) * U[n][0];
+			R = 0.0;
+			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), RightPB[n][0]) != LatticeBlocks[q].end()){
+				R =  interpolator_columns[s][RightPB[n][0]][bet];
+			}
+
+			Zqps[q][p][s][0] +=  L * R; 
+
+			R = 0.0;
+			r_b = RightPB_blocks[q][0]; //q+hat{0}
+			if(std::find(LatticeBlocks[r_b].begin(), LatticeBlocks[r_b].end(), RightPB[n][0]) != LatticeBlocks[r_b].end()){
+				R = interpolator_columns[s][RightPB[n][0]][bet];
+			}
+
+			Yqps[q][p][s][0] += L * R;
+
+			//mu = 1
+			L = M1[alf][bet] * std::conj(interpolator_columns[p][n][alf]) * U[n][1];
+			R = 0.0;
+			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), RightPB[n][1]) != LatticeBlocks[q].end()){
+				R =  interpolator_columns[s][RightPB[n][1]][bet];
+			}
+
+			Zqps[q][p][s][1] +=  L * R; 
+
+			R = 0.0;
+			r_b = RightPB_blocks[q][1]; //q+hat{1}
+			if(std::find(LatticeBlocks[r_b].begin(), LatticeBlocks[r_b].end(), RightPB[n][1]) != LatticeBlocks[r_b].end()){
+				R = interpolator_columns[s][RightPB[n][1]][bet];
+			}
+
+			Yqps[q][p][s][1] += L * R;
+			
+					
+		}
+		}
+		}
+				
+				
+	}
+	}
+	}
+
+
+}
+
+/*
+	Coarse grid matrix operator Dc = P^H D P times a spinor v
+	dim(Dc) = Ntest Nagg x Ntest Nagg, dim(v) = Ntest Nagg,
+	Testing ...
+*/
+void AMG::Pt_D_P_Test(const spinor& v,spinor& out){
+	int q, qmu, q_mu;
+	for(int ag = 0; ag < AMGV::Nagg; ag++ ){
+	for(int nt = 0; nt < AMGV::Ntest; nt++){
+		out[nt][ag] = (m0 + 2) * v[nt][ag];
+			for(int mu = 0; mu<2; mu++){
+			for(int s = 0; s<AMGV::Ntest; s++){
+				//q is the lattice block associated with the aggregate Aq 
+				q = ag/2;
+				out[nt][ag] += -0.5 * (Aqps[q][nt][s][mu] + Zqps[q][nt][s][mu]) * v[s][q];
+
+				qmu = RightPB_blocks[q][mu]; //q+mu
+				out[nt][ag] += -0.5 * Yqps[q][nt][s][mu] * v[s][qmu];
+
+				q_mu = LeftPB_blocks[q][mu]; //q-mu
+				out[nt][ag] += -0.5 * Bqps[q][nt][s][mu] * v[s][q_mu];
+			}
+			}
+	}
+	}
+	
+}
+
 
 /*
 	Assemble the coarse grid operator Dc = P^H D P 
