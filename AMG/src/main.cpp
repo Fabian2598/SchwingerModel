@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
         rhs[i][0] = RandomU1();
         rhs[i][1] = RandomU1();
     }
-
+    */
     clock_t start, end;
     double elapsed_time;
     double startT, endT;
