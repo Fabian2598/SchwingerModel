@@ -132,7 +132,7 @@ public:
 
 	void initializeCoarseLinks();
 
-private:
+//private:
 	GaugeConf GConf;
 	double m0; 
 	int nu1, nu2; 

@@ -25,6 +25,7 @@ namespace LV {
     constexpr int x_elements = Nx/block_x; //Number of elements in the x direction
     constexpr int t_elements = Nt/block_t; //Number of elements in the t direction
     constexpr int lattice_sites_per_block = x_elements * t_elements;
+    constexpr int variables_per_agg = lattice_sites_per_block;
     constexpr int Ntot = Nx*Nt; //Total number of lattice points
 }
 

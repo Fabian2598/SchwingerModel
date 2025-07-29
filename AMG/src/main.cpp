@@ -33,6 +33,7 @@ int main(int argc, char **argv) {
     
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
+    MakeBlocks();
     //double m0 = -0.57;
     double m0 = -0.18840579710144945;
 
@@ -128,13 +129,15 @@ int main(int argc, char **argv) {
     spinor rhs(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //random right hand side 
     spinor x(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //solution vector 
     spinor xTest(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //solution vector 
-    for(int i = 0; i < AMGV::Ntest; i++) {
+    
+    rhs[0][0]=1;
+    /*for(int i = 0; i < AMGV::Ntest; i++) {
         for(int j = 0; j<AMGV::Nagg; j++){
             rhs[i][j] = RandomU1();
             rhs[i][j] = RandomU1();
         }  
     }
-
+    */
     clock_t start, end;
     double elapsed_time;
     double startT, endT;
@@ -148,14 +151,75 @@ int main(int argc, char **argv) {
     amg.initializeCoarseLinks();
     amg.Pt_D_P_Test(rhs,xTest);
 
-    for(int i = 0; i < AMGV::Ntest; i++) {
+    if (rank == 0){
+        //Interpolator
+        for(int col = 0; col < AMGV::Ntest*AMGV::Nagg;col++){
+        spinor e_i(AMGV::Ntest, c_vector(AMGV::Nagg,0));
+        spinor column(LV::Ntot, c_vector(2,0));
+	    int index1, index2;
+	    index1 = col / AMGV::Nagg; //test vec
+	    index2 = col % AMGV::Nagg; //aggregate
+        std::cout << "ntest " << index1 << "   nagg " << index2 << std::endl;
+        int n, alf;
+	    e_i[index1][index2] = 1.0;
+	    amg.P_v(e_i,column); //Columns of the interpolator
+        //Only check for the aggregate.
+        int x_coord, t_coord, s_coord;
+        
+        for(int row = 0; row < LV::variables_per_agg; row++){
+        x_coord = XCoord[Agg[index2][row]], t_coord = TCoord[Agg[index2][row]];
+        n = Coords[x_coord][t_coord];
+        alf = SCoord[Agg[index2][row]];
+	    std::cout << "column[  ]" <<  column[n][alf] << 
+        "  test_vec["<<n<<"]"<<"["<<alf<<"]" << amg.interpolator_columns[index1][n][alf] << std::endl;
+        }
+        std::cout << "----------------------------------\n";
+        }
+
+        /*
+        //Restriction operator
+        for(int col = 0; col < 2*Ntot;col++){
+        spinor e_i(Ntot, c_vector(2,0));
+        spinor column(AMGV::Ntest, c_vector(AMGV::Nagg,0));
+	    int index1, index2;
+	    index1 = col / 2; //Ntot
+	    index2 = col % 2; //Spin
+        std::cout << "ntest " << index1 << "   nagg " << index2 << std::endl;
+        int n, alf;
+	    e_i[index1][index2] = 1.0;
+	    amg.Pt_v(e_i,column); //Columns of the interpolator
+        //Only check for the aggregate.
+        int x_coord, t_coord, s_coord;
+        
+        for(int row = 0; row < AMGV::Ntest*AMGV::Nagg; row++){
+        int nt = row/AMGV::Nagg;
+        int agg = row%AMGV::Nagg;
+
+        x_coord = XCoord[Agg[agg][j]], t_coord = TCoord[Agg[agg][j]], s_coord = SCoord[Agg[agg][j]];
+	    std::cout << "column[  ]" <<  column[nt][agg] << 
+        "  test_vec["<<n<<"]"<<"["<<alf<<"]" << amg.interpolator_columns[nt][Coords[x_coord][t_coord]][s_coord] << std::endl;
+        }
+        std::cout << "----------------------------------\n";
+        }
+*/
+    }   
+	
+
+
+    //std::cout << "xTest = " << xTest[0][0] << "   x = " << x[0][0] << std::endl;
+    /*for(int i = 0; i < AMGV::Ntest; i++) {
         for(int j = 0; j<AMGV::Nagg; j++){
-            std::cout << "xTest " << xTest[i][j] << "    " << x[i][j] << std::endl;
+            if (std::abs(std::real(xTest[i][j]-x[i][j])) < 1e-8){
+                std::cout << "xTest " << xTest[i][j] << "    " << x[i][j] << std::endl;
+            }
+            
         }
     }
+    */
+ 
 
 
-   
+
    /*
     if (rank == 0){
         //Bi-cgstab inversion for comparison

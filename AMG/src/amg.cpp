@@ -46,20 +46,19 @@ void MakeBlocks(){
 	int count; 
 	for (int x = 0; x < block_x; x++) {
 		for (int t = 0; t < block_t; t++) {
-				int block = block_x * Nblocks + block_t;
+				int block = x * block_t + t; //block index
 				int x0 = x * x_elements, t0 = t * t_elements;
 				int x1 = (x + 1) * x_elements, t1 = (t + 1) * t_elements;
             	count = 0;  
-            	//Filling the block with the coordinates of the lattice points
             	for(int x = x0; x < x1; x++) {
                 	for (int t = t0; t < t1; t++) {
                     	LatticeBlocks[block][count++] = x * Nt+ t; 
                     	
 					}
             	}
-			}
 		}
 	}
+}
 
 
 
@@ -311,7 +310,7 @@ void AMG::initializeCoarseLinks(){
 			L = P0[alf][bet] * std::conj(interpolator_columns[p][n][alf]) * std::conj(U[LeftPB[n][0]][0]);
 			R = 0.0;
 			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), LeftPB[n][0]) != LatticeBlocks[q].end()){
-				R =  interpolator_columns[s][LeftPB[n][0]][bet];
+				R =  interpolator_columns[s][LeftPB[n][0]][bet] * SignL[n][0];
 			}
 
 			Aqps[q][p][s][0] +=  L * R; 
@@ -319,7 +318,7 @@ void AMG::initializeCoarseLinks(){
 			R = 0.0;
 			l_b = LeftPB_blocks[q][0]; //q-hat{0}
 			if(std::find(LatticeBlocks[l_b].begin(), LatticeBlocks[l_b].end(), LeftPB[n][0]) != LatticeBlocks[l_b].end()){
-				R = interpolator_columns[s][LeftPB[n][0]][bet];
+				R = interpolator_columns[s][LeftPB[n][0]][bet] * SignL[n][0];
 			}
 
 			Bqps[q][p][s][0] += L * R;
@@ -330,14 +329,14 @@ void AMG::initializeCoarseLinks(){
 			R = 0.0;
 			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), LeftPB[n][1]) != LatticeBlocks[q].end()){
 				//If n+mu is in the lattice block, the R /= 0
-				R =  interpolator_columns[s][LeftPB[n][1]][bet];
+				R =  interpolator_columns[s][LeftPB[n][1]][bet] * SignL[n][1];
 			}
-			Aqps[q][p][s][1] += P1[alf][bet] * L * std::conj(U[LeftPB[n][1]][1]) * R; 
+			Aqps[q][p][s][1] += L * R; 
 
 			R = 0.0;
 			l_b = LeftPB_blocks[q][1]; //q-hat{1}
-			if(std::find(LatticeBlocks[l_b].begin(), LatticeBlocks[l_b].end(), LeftPB[n][0]) != LatticeBlocks[l_b].end()){
-				R = interpolator_columns[s][LeftPB[n][1]][bet];
+			if(std::find(LatticeBlocks[l_b].begin(), LatticeBlocks[l_b].end(), LeftPB[n][1]) != LatticeBlocks[l_b].end()){
+				R = interpolator_columns[s][LeftPB[n][1]][bet] * SignL[n][1];
 			}
 			
 			Bqps[q][p][s][1] += L * R;
@@ -348,7 +347,7 @@ void AMG::initializeCoarseLinks(){
 			L = M0[alf][bet] * std::conj(interpolator_columns[p][n][alf]) * U[n][0];
 			R = 0.0;
 			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), RightPB[n][0]) != LatticeBlocks[q].end()){
-				R =  interpolator_columns[s][RightPB[n][0]][bet];
+				R =  interpolator_columns[s][RightPB[n][0]][bet] * SignR[n][0];
 			}
 
 			Zqps[q][p][s][0] +=  L * R; 
@@ -356,7 +355,7 @@ void AMG::initializeCoarseLinks(){
 			R = 0.0;
 			r_b = RightPB_blocks[q][0]; //q+hat{0}
 			if(std::find(LatticeBlocks[r_b].begin(), LatticeBlocks[r_b].end(), RightPB[n][0]) != LatticeBlocks[r_b].end()){
-				R = interpolator_columns[s][RightPB[n][0]][bet];
+				R = interpolator_columns[s][RightPB[n][0]][bet] * SignR[n][0];
 			}
 
 			Yqps[q][p][s][0] += L * R;
@@ -365,7 +364,7 @@ void AMG::initializeCoarseLinks(){
 			L = M1[alf][bet] * std::conj(interpolator_columns[p][n][alf]) * U[n][1];
 			R = 0.0;
 			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), RightPB[n][1]) != LatticeBlocks[q].end()){
-				R =  interpolator_columns[s][RightPB[n][1]][bet];
+				R =  interpolator_columns[s][RightPB[n][1]][bet] * SignR[n][1];
 			}
 
 			Zqps[q][p][s][1] +=  L * R; 
@@ -373,10 +372,11 @@ void AMG::initializeCoarseLinks(){
 			R = 0.0;
 			r_b = RightPB_blocks[q][1]; //q+hat{1}
 			if(std::find(LatticeBlocks[r_b].begin(), LatticeBlocks[r_b].end(), RightPB[n][1]) != LatticeBlocks[r_b].end()){
-				R = interpolator_columns[s][RightPB[n][1]][bet];
+				R = interpolator_columns[s][RightPB[n][1]][bet] * SignR[n][1];
 			}
 
 			Yqps[q][p][s][1] += L * R;
+			
 			
 					
 		}
@@ -399,19 +399,21 @@ void AMG::initializeCoarseLinks(){
 void AMG::Pt_D_P_Test(const spinor& v,spinor& out){
 	int q, qmu, q_mu;
 	for(int ag = 0; ag < AMGV::Nagg; ag++ ){
+		q = ag/2;
+		//std::cout << "Lattice block " << q << std::endl;
 	for(int nt = 0; nt < AMGV::Ntest; nt++){
 		out[nt][ag] = (m0 + 2) * v[nt][ag];
+			
 			for(int mu = 0; mu<2; mu++){
 			for(int s = 0; s<AMGV::Ntest; s++){
 				//q is the lattice block associated with the aggregate Aq 
-				q = ag/2;
-				out[nt][ag] += -0.5 * (Aqps[q][nt][s][mu] + Zqps[q][nt][s][mu]) * v[s][q];
+				//out[nt][ag] += -0.5 * (Aqps[q][nt][s][mu] + Zqps[q][nt][s][mu]) * v[s][q];
 
-				qmu = RightPB_blocks[q][mu]; //q+mu
-				out[nt][ag] += -0.5 * Yqps[q][nt][s][mu] * v[s][qmu];
+				//qmu = RightPB_blocks[q][mu]; //q+mu
+				//out[nt][ag] += -0.5 * Yqps[q][nt][s][mu] * v[s][qmu]; //SignR_blocks[q][mu];
 
-				q_mu = LeftPB_blocks[q][mu]; //q-mu
-				out[nt][ag] += -0.5 * Bqps[q][nt][s][mu] * v[s][q_mu];
+				//q_mu = LeftPB_blocks[q][mu]; //q-mu
+				//out[nt][ag] += -0.5 * Bqps[q][nt][s][mu] * v[s][q_mu]; // SignL_blocks[q][mu];
 			}
 			}
 	}
@@ -435,6 +437,7 @@ void AMG::assembleDc() {
 		D_phi(GConf.Conf, P_TEMP,D_TEMP,m0); //D P v
 		Pt_v(D_TEMP, column); //P^T D P v
 		//column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
+		//std::cout << "Dc_ii = " << column[j/AMGV::Nagg][j%AMGV::Nagg] << std::endl;
 		for(int i = 0; i < AMGV::Ntest*AMGV::Nagg; i++){
 			m = i / AMGV::Nagg; //Test vector index
 			a = i % AMGV::Nagg; //Aggregate index
@@ -442,11 +445,12 @@ void AMG::assembleDc() {
 				rowsDc[nonzero] = i; //Row index of the coarse grid operator
 				colsDc[nonzero] = j;  //Column index of the coarse grid operator
 				valuesDc[nonzero] = column[m][a];  //Value of the coarse grid operator
+			
 				nonzero++;
 			}
 		}
+
 	}
-	
 
 }
 
