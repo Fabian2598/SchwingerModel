@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     MakeBlocks();
     //double m0 = -0.57;
-    double m0 = -0.18840579710144945;
+    double m0 = 2;//-0.18840579710144945;
 
     //Parameters in variables.cpp
     if (rank == 0){
@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    
+    /*
     {
         double beta = 2;
         int nconf = 3;
@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
             std::cout << "Conf read from " << NameData.str() << std::endl;
         }
     }
-    
+    */
 
     gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
 
@@ -143,65 +143,40 @@ int main(int argc, char **argv) {
     double startT, endT;
 
     AMG amg = AMG(GConf, m0,AMGV::nu1,AMGV::nu2);   //nu1 pre-smoothing it, nu2 post-smoothing it
+
+    c_matrix Dc = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
+    c_matrix Dc_Ver2 = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
     amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
-
-    amg.Pt_D_P(rhs,x);
-
-    //Testing coarse links
     amg.initializeCoarseLinks();
     amg.Pt_D_P_Test(rhs,xTest);
 
-    if (rank == 0){
-        //Interpolator
-        for(int col = 0; col < AMGV::Ntest*AMGV::Nagg;col++){
+    for(int col = 0; col < AMGV::Ntest*AMGV::Nagg;col++){
         spinor e_i(AMGV::Ntest, c_vector(AMGV::Nagg,0));
-        spinor column(LV::Ntot, c_vector(2,0));
-	    int index1, index2;
-	    index1 = col / AMGV::Nagg; //test vec
-	    index2 = col % AMGV::Nagg; //aggregate
-        std::cout << "ntest " << index1 << "   nagg " << index2 << std::endl;
-        int n, alf;
-	    e_i[index1][index2] = 1.0;
-	    amg.P_v(e_i,column); //Columns of the interpolator
-        //Only check for the aggregate.
-        int x_coord, t_coord, s_coord;
-        
-        for(int row = 0; row < LV::variables_per_agg; row++){
-        x_coord = XCoord[Agg[index2][row]], t_coord = TCoord[Agg[index2][row]];
-        n = Coords[x_coord][t_coord];
-        alf = SCoord[Agg[index2][row]];
-	    std::cout << "column[  ]" <<  column[n][alf] << 
-        "  test_vec["<<n<<"]"<<"["<<alf<<"]" << amg.interpolator_columns[index1][n][alf] << std::endl;
-        }
-        std::cout << "----------------------------------\n";
-        }
-
-        /*
-        //Restriction operator
-        for(int col = 0; col < 2*Ntot;col++){
-        spinor e_i(Ntot, c_vector(2,0));
         spinor column(AMGV::Ntest, c_vector(AMGV::Nagg,0));
-	    int index1, index2;
-	    index1 = col / 2; //Ntot
-	    index2 = col % 2; //Spin
-        std::cout << "ntest " << index1 << "   nagg " << index2 << std::endl;
-        int n, alf;
-	    e_i[index1][index2] = 1.0;
-	    amg.Pt_v(e_i,column); //Columns of the interpolator
-        //Only check for the aggregate.
-        int x_coord, t_coord, s_coord;
-        
+        spinor column2(AMGV::Ntest, c_vector(AMGV::Nagg,0));
+        e_i[col / AMGV::Nagg][col % AMGV::Nagg] = 1.0; //Set the column to 1
+        amg.Pt_D_P(e_i,column); //Apply the coarse grid operator to the column
+        amg.Pt_D_P_Test(e_i,column2); //Apply the coarse grid operator to the column
         for(int row = 0; row < AMGV::Ntest*AMGV::Nagg; row++){
-        int nt = row/AMGV::Nagg;
-        int agg = row%AMGV::Nagg;
+            Dc[row][col] = column[row/AMGV::Nagg][row % AMGV::Nagg]; //Initialize the coarse grid operator
+             Dc_Ver2[row][col] = column2[row/AMGV::Nagg][row % AMGV::Nagg]; //Initialize the coarse grid operat
+        }
+    }
 
-        x_coord = XCoord[Agg[agg][j]], t_coord = TCoord[Agg[agg][j]], s_coord = SCoord[Agg[agg][j]];
-	    std::cout << "column[  ]" <<  column[nt][agg] << 
-        "  test_vec["<<n<<"]"<<"["<<alf<<"]" << amg.interpolator_columns[nt][Coords[x_coord][t_coord]][s_coord] << std::endl;
-        }
-        std::cout << "----------------------------------\n";
-        }
-*/
+
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (rank == 0){
+   
+         for(int i =0; i<AMGV::Ntest*AMGV::Nagg; i++){
+        std::cout << "Dc[" << i << "][" << i << "] = " << Dc[i][i] <<  "    DcV2[" << i << "][" << i << "] = " << Dc_Ver2[i][i] << std::endl;
+            if (std::abs(Dc[i][i] - Dc_Ver2[i][i]) > 1e-8){
+                std::cout << "Dc[" << i << "][" << i << "] != DcV2[" << i << "][" << i << "]" << std::endl;
+                return 0;
+            }
+    }
+        
+
     }   
 	
 
