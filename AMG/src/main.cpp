@@ -168,17 +168,23 @@ int main(int argc, char **argv) {
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0){
    
-         for(int i =0; i<AMGV::Ntest*AMGV::Nagg; i++){
-        std::cout << "Dc[" << i << "][" << i << "] = " << Dc[i][i] <<  "    DcV2[" << i << "][" << i << "] = " << Dc_Ver2[i][i] << std::endl;
-            if (std::abs(Dc[i][i] - Dc_Ver2[i][i]) > 1e-8){
-                std::cout << "Dc[" << i << "][" << i << "] != DcV2[" << i << "][" << i << "]" << std::endl;
-                return 0;
+        for(int i =0; i<AMGV::Ntest*AMGV::Nagg; i++){
+            std::cout << "Dc[" << i << "][" << i << "] = " << Dc[i][i] <<  "    DcV2[" << i << "][" << i << "] = " << Dc_Ver2[i][i] << std::endl;
+        }
+        for(int i =0; i<AMGV::Ntest*AMGV::Nagg; i++){
+            for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
+                if (std::abs(Dc[i][j] - Dc_Ver2[i][j]) > 1e-8){
+                    std::cout << "Dc[" << i << "][" << j << "] = " << Dc[i][j] <<  "    DcV2[" << i << "][" << j << "] = " << Dc_Ver2[i][j] << std::endl;
+                    std::cout << "Dc[" << i << "][" << j << "] != DcV2[" << i << "][" << j << "]" << std::endl;
+                    
+                    return 0;
+                }   
             }
-    }
-        
 
-    }   
-	
+        }   
+
+        std::cout << "Dc and Dc_Ver2 are equal" << std::endl;
+    }
 
 
     //std::cout << "xTest = " << xTest[0][0] << "   x = " << x[0][0] << std::endl;
