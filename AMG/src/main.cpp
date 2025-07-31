@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
         spinor column2(AMGV::Ntest, c_vector(AMGV::Nagg,0));
         e_i[col / AMGV::Nagg][col % AMGV::Nagg] = 1.0; //Set the column to 1
         amg.Pt_D_P(e_i,column); //Apply the coarse grid operator to the column
-        amg.Pt_D_P_Test(e_i,column2); //Apply the coarse grid operator to the column
+        amg.Pt_D_P_CoarseLinks(e_i,column2); //Apply the coarse grid operator to the column
         for(int row = 0; row < AMGV::Ntest*AMGV::Nagg; row++){
             Dc[row][col] = column[row/AMGV::Nagg][row % AMGV::Nagg]; //Initialize the coarse grid operator
              Dc_Ver2[row][col] = column2[row/AMGV::Nagg][row % AMGV::Nagg]; //Initialize the coarse grid operat

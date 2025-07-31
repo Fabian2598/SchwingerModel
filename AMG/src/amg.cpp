@@ -302,8 +302,8 @@ void AMG::initializeCoarseLinks(){
 		C_coeff[x][alf][bet][p][s][0] = 0; C_coeff[x][alf][bet][p][s][1] = 0;
 		for(int n : LatticeBlocks[x]){
 		for(int mu : {0,1}){
-			Lm = 0.5 * M[mu][alf][bet] * std::conj(w[p][x][alf]) * U[n][mu];
-			Lp = 0.5 * P[mu][alf][bet] * std::conj(w[p][x][alf]) * std::conj(U[LeftPB[n][mu]][mu]);
+			Lm = 0.5 * M[mu][alf][bet] * std::conj(w[p][n][alf]) * U[n][mu];
+			Lp = 0.5 * P[mu][alf][bet] * std::conj(w[p][n][alf]) * std::conj(U[LeftPB[n][mu]][mu]);
 			//           [A(x)]^{alf,bet}_{p,s} --> A_coeff[x][alf][bet][p][s] 
 			//--------------- 1 - sigma_mu---------------//
 			R = 0.0;
