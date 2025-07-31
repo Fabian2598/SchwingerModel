@@ -89,11 +89,6 @@ public:
 		P_TEMP = spinor(LV::Ntot, c_vector(2,0)); //Temporary spinor for the coarse grid operator
 		Pt_TEMP = spinor(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Temporary spinor for the coarse grid operator
 
-
-		Aqps = std::vector<std::vector<spinor>>(LV::Nblocks,std::vector<spinor>(AMGV::Ntest, spinor(AMGV::Ntest, c_vector(2,0)))); 
-		Bqps = std::vector<std::vector<spinor>>(LV::Nblocks,std::vector<spinor>(AMGV::Ntest, spinor(AMGV::Ntest, c_vector(2,0)))); 
-		Zqps = std::vector<std::vector<spinor>>(LV::Nblocks,std::vector<spinor>(AMGV::Ntest, spinor(AMGV::Ntest, c_vector(2,0)))); 
-		Yqps = std::vector<std::vector<spinor>>(LV::Nblocks,std::vector<spinor>(AMGV::Ntest, spinor(AMGV::Ntest, c_vector(2,0)))); 
 	}
 	~AMG() { };
 
@@ -131,6 +126,8 @@ public:
 	void Pt_D_P_Test(const spinor& v,spinor& out);
 
 	void initializeCoarseLinks();
+
+	void Pt_D_P_CoarseLinks(const spinor& v,spinor& out);
 
 //private:
 	GaugeConf GConf;
@@ -173,10 +170,9 @@ public:
 	spinor Pt_TEMP;
 	spinor P_TEMP;
 
-	std::vector<std::vector<spinor>> Aqps; 
-	std::vector<std::vector<spinor>> Bqps;
-	std::vector<std::vector<spinor>> Zqps;
-	std::vector<std::vector<spinor>> Yqps;
+	c_double A_coeff[LV::Nblocks][2][2][AMGV::Ntest][AMGV::Ntest]; //[A(x)]^{alf,bet}_{p,s} --> A_coeff[x][alf][bet][p][s] 
+	c_double B_coeff[LV::Nblocks][2][2][AMGV::Ntest][AMGV::Ntest][2]; //[B_mu(x)]^{alf,bet}_{p,s} --> B_coeff[x][alf][bet][p][s][mu]
+	c_double C_coeff[LV::Nblocks][2][2][AMGV::Ntest][AMGV::Ntest][2];//[C_mu(x)]^{alf,bet}_{p,s}  --> C_coeff[x][alf][bet][p][s][mu]
 	
 };
 

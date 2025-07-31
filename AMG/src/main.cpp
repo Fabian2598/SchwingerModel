@@ -148,7 +148,6 @@ int main(int argc, char **argv) {
     c_matrix Dc_Ver2 = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
     amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
     amg.initializeCoarseLinks();
-    amg.Pt_D_P_Test(rhs,xTest);
 
     for(int col = 0; col < AMGV::Ntest*AMGV::Nagg;col++){
         spinor e_i(AMGV::Ntest, c_vector(AMGV::Nagg,0));
@@ -185,19 +184,6 @@ int main(int argc, char **argv) {
 
         std::cout << "Dc and Dc_Ver2 are equal" << std::endl;
     }
-
-
-    //std::cout << "xTest = " << xTest[0][0] << "   x = " << x[0][0] << std::endl;
-    /*for(int i = 0; i < AMGV::Ntest; i++) {
-        for(int j = 0; j<AMGV::Nagg; j++){
-            if (std::abs(std::real(xTest[i][j]-x[i][j])) < 1e-8){
-                std::cout << "xTest " << xTest[i][j] << "    " << x[i][j] << std::endl;
-            }
-            
-        }
-    }
-    */
- 
 
 
 

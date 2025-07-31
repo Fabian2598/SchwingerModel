@@ -273,121 +273,79 @@ void AMG::Pt_v(const spinor& v,spinor& out) {
 }
 
 void AMG::initializeCoarseLinks(){
-	//Aqps = A[q][p][s][mu]
-
-	c_double P0[2][2], P1[2][2], M0[2][2], M1[2][2]; 
+	c_double P[2][2][2], M[2][2][2]; 
 	
-	P0[0][0] = 1.0; P0[0][1] = 1.0;
-	P0[1][0] = 1.0; P0[1][1] = 1.0; 
+	P[0][0][0] = 1.0; P[0][0][1] = 1.0;
+	P[0][1][0] = 1.0; P[0][1][1] = 1.0; 
 
-	P1[0][0] = 1.0; P1[0][1] = -I_number;
-	P1[1][0] = I_number; P1[1][1] = 1.0; 
+	P[1][0][0] = 1.0; P[1][0][1] = -I_number;
+	P[1][1][0] = I_number; P[1][1][1] = 1.0; 
 
-	M0[0][0] = 1.0; M0[0][1] = -1.0;
-	M0[1][0] = -1.0; M0[1][1] = 1.0; 
+	M[0][0][0] = 1.0; M[0][0][1] = -1.0;
+	M[0][1][0] = -1.0; M[0][1][1] = 1.0; 
 
-	M1[0][0] = 1.0; M1[0][1] = I_number;
-	M1[1][0] = -I_number; M1[1][1] = 1.0; 
+	M[1][0][0] = 1.0; M[1][0][1] = I_number;
+	M[1][1][0] = -I_number; M[1][1][1] = 1.0; 
 
 	c_matrix &U = GConf.Conf;
+	std::vector<spinor> &w = interpolator_columns;
+	c_double Lm, Lp, R;
 
-	c_double R, L; 
-	int l_b, r_b;
-	int n;
+	for(int x=0; x<LV::Nblocks; x++){
+	for(int alf=0; alf<2;alf++){
+	for(int bet=0; bet<2;bet++){
+	for(int p = 0; p<AMGV::Ntest; p++){
+	for(int s = 0; s<AMGV::Ntest; s++){
 
-	for(int q = 0; q < LV::Nblocks; q++){
-	for(int p = 0; p < AMGV::Ntest; p++){
-	for(int s = 0; s < AMGV::Ntest; s++){
-	
-
-		//Run n in the block defined by q 
-		for(int i = 0; i<LV::lattice_sites_per_block; i++){
-		for(int alf = 0; alf< 2; alf ++){
-		for(int bet=0; bet<2; bet++){
-			n = LatticeBlocks[q][i];
-
-			//mu = 0
-			L = P0[alf][bet] * std::conj(interpolator_columns[p][n][alf]) * std::conj(U[LeftPB[n][0]][0]);
+		A_coeff[x][alf][bet][p][s] = 0;
+		B_coeff[x][alf][bet][p][s][0] = 0; B_coeff[x][alf][bet][p][s][1] = 0;
+		C_coeff[x][alf][bet][p][s][0] = 0; C_coeff[x][alf][bet][p][s][1] = 0;
+		for(int n : LatticeBlocks[x]){
+		for(int mu : {0,1}){
+			Lm = 0.5 * M[mu][alf][bet] * std::conj(w[p][x][alf]) * U[n][mu];
+			Lp = 0.5 * P[mu][alf][bet] * std::conj(w[p][x][alf]) * std::conj(U[LeftPB[n][mu]][mu]);
+			//           [A(x)]^{alf,bet}_{p,s} --> A_coeff[x][alf][bet][p][s] 
+			//--------------- 1 - sigma_mu---------------//
 			R = 0.0;
-			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), LeftPB[n][0]) != LatticeBlocks[q].end()){
-				R =  interpolator_columns[s][LeftPB[n][0]][bet] * SignL[n][0];
+			//if n+\hat{mu} in Block(x)
+			if (std::find(LatticeBlocks[x].begin(), LatticeBlocks[x].end(), RightPB[n][mu]) != LatticeBlocks[x].end()){
+				R = w[s][RightPB[n][mu]][bet] * SignR[n][mu];
 			}
-
-			Aqps[q][p][s][0] +=  L * R; 
-
+			A_coeff[x][alf][bet][p][s] += Lm * R;
+			//-------------- 1 + sigma_mu --------------//
 			R = 0.0;
-			l_b = LeftPB_blocks[q][0]; //q-hat{0}
-			if(std::find(LatticeBlocks[l_b].begin(), LatticeBlocks[l_b].end(), LeftPB[n][0]) != LatticeBlocks[l_b].end()){
-				R = interpolator_columns[s][LeftPB[n][0]][bet] * SignL[n][0];
+			//if n-\hat{mu} in Block(x)
+			if (std::find(LatticeBlocks[x].begin(), LatticeBlocks[x].end(), LeftPB[n][mu]) != LatticeBlocks[x].end()){
+				R = w[s][LeftPB[n][mu]][bet] * SignL[n][mu];
 			}
+			A_coeff[x][alf][bet][p][s] += Lp * R;
 
-			Bqps[q][p][s][0] += L * R;
-
-
-			//mu = 1
-			L =  P1[alf][bet] * std::conj(interpolator_columns[p][n][alf]) * std::conj(U[LeftPB[n][1]][1]);
+			//			[B_mu(x)]^{alf,bet}_{p,s} --> B_coeff[x][alf][bet][p][s][mu]
 			R = 0.0;
-			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), LeftPB[n][1]) != LatticeBlocks[q].end()){
-				//If n+mu is in the lattice block, the R /= 0
-				R =  interpolator_columns[s][LeftPB[n][1]][bet] * SignL[n][1];
+			//if n+\hat{mu} in Block(x+hat{mu})
+			if (std::find(LatticeBlocks[RightPB_blocks[x][mu]].begin(), LatticeBlocks[RightPB_blocks[x][mu]].end(), RightPB[n][mu]) != LatticeBlocks[RightPB_blocks[x][mu]].end()){
+				R = w[s][RightPB[n][mu]][bet] * SignR[n][mu];
 			}
-			Aqps[q][p][s][1] += L * R; 
-
-			R = 0.0;
-			l_b = LeftPB_blocks[q][1]; //q-hat{1}
-			if(std::find(LatticeBlocks[l_b].begin(), LatticeBlocks[l_b].end(), LeftPB[n][1]) != LatticeBlocks[l_b].end()){
-				R = interpolator_columns[s][LeftPB[n][1]][bet] * SignL[n][1];
-			}
+			B_coeff[x][alf][bet][p][s][mu] += Lm * R;
 			
-			Bqps[q][p][s][1] += L * R;
-
-			//Now the same with Y and Z
-
-			//mu = 0 
-			L = M0[alf][bet] * std::conj(interpolator_columns[p][n][alf]) * U[n][0];
+			//			[C_mu(x)]^{alf,bet}_{p,s} --> B_coeff[x][alf][bet][p][s][mu]
 			R = 0.0;
-			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), RightPB[n][0]) != LatticeBlocks[q].end()){
-				R =  interpolator_columns[s][RightPB[n][0]][bet] * SignR[n][0];
+			//if n-\hat{mu} in Block(x-hat{mu})
+			if (std::find(LatticeBlocks[LeftPB_blocks[x][mu]].begin(), LatticeBlocks[LeftPB_blocks[x][mu]].end(), LeftPB[n][mu]) != LatticeBlocks[LeftPB_blocks[x][mu]].end()){
+				R = w[s][LeftPB[n][mu]][bet] * SignL[n][mu];
 			}
+			C_coeff[x][alf][bet][p][s][mu] += Lp * R;
 
-			Zqps[q][p][s][0] +=  L * R; 
+		}//mu 
+		}//n 
 
-			R = 0.0;
-			r_b = RightPB_blocks[q][0]; //q+hat{0}
-			if(std::find(LatticeBlocks[r_b].begin(), LatticeBlocks[r_b].end(), RightPB[n][0]) != LatticeBlocks[r_b].end()){
-				R = interpolator_columns[s][RightPB[n][0]][bet] * SignR[n][0];
-			}
 
-			Yqps[q][p][s][0] += L * R;
-
-			//mu = 1
-			L = M1[alf][bet] * std::conj(interpolator_columns[p][n][alf]) * U[n][1];
-			R = 0.0;
-			if(std::find(LatticeBlocks[q].begin(), LatticeBlocks[q].end(), RightPB[n][1]) != LatticeBlocks[q].end()){
-				R =  interpolator_columns[s][RightPB[n][1]][bet] * SignR[n][1];
-			}
-
-			Zqps[q][p][s][1] +=  L * R; 
-
-			R = 0.0;
-			r_b = RightPB_blocks[q][1]; //q+hat{1}
-			if(std::find(LatticeBlocks[r_b].begin(), LatticeBlocks[r_b].end(), RightPB[n][1]) != LatticeBlocks[r_b].end()){
-				R = interpolator_columns[s][RightPB[n][1]][bet] * SignR[n][1];
-			}
-
-			Yqps[q][p][s][1] += L * R;
-			
-			
-					
-		}
-		}
-		}
-				
-				
-	}
-	}
-	}
-
+	//---------Close loops---------//
+	} //s
+	} //p
+	} //bet
+	} //alf
+	} //x 
 
 }
 
@@ -419,229 +377,60 @@ void AMG::Pt_D_P_Test(const spinor& v,spinor& out){
 	int LatBlockNeigh;
 	int neigh_block;
 	int neigh_agg; //Aggregate of the neighbor block
+	int mu;
 	for(int nt = 0; nt < AMGV::Ntest; nt++){
 	for(int agg = 0; agg < AMGV::Nagg; agg++){
 		out[nt][agg] = (m0+2) * v[nt][agg];
 		LatBlock = agg / 2; 
 		spin = agg % 2;
-		for(int s = 0; s <AMGV::Ntest; s++){
-		/*
-			//1-sigma_mu
-			for(int n : Agg[agg]){
-				int s_coord = SCoord[n];
-				int coord = Coords[XCoord[n]][TCoord[n]]; //Coordinates of the lattice point
-			//same lattice block ...
-			for(int bet= 0; bet < 2; bet++){
-				int mu = 0;
-				R = 0.0;
-				if (std::find(Agg[agg].begin(), Agg[agg].end(), 2*RightPB[coord][mu] + bet) != Agg[agg].end()){
-					R = interpolator_columns[s][RightPB[coord][mu]][bet] * SignR[coord][mu];
-					//std::cout << "r = " << r << " agg " << agg << std::endl;
-				}
-				out[nt][agg] += -0.5 * M0[s_coord][bet] * U[coord][mu] * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][agg];
+		for(int s = 0; s <AMGV::Ntest; s++){	
 
-				mu = 1;
-				R = 0.0;
-				if (std::find(Agg[agg].begin(), Agg[agg].end(), 2*RightPB[coord][mu] + bet) != Agg[agg].end()){
-					R = interpolator_columns[s][RightPB[coord][mu]][bet] * SignR[coord][mu];
-				}
-				out[nt][agg] += -0.5 * M1[s_coord][bet] * U[coord][mu] * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][agg];
-			// aggregates are neighbors ---------------------------
-				mu = 0;
-				R = 0.0;
-				//q + hat{mu}
-				neigh_agg = 2 * RightPB_blocks[LatBlock][mu] + spin;
-				if (std::find(Agg[neigh_agg].begin(), Agg[neigh_agg].end(), 2*RightPB[coord][mu] + bet) != Agg[neigh_agg].end()){
-					R = interpolator_columns[s][RightPB[coord][mu]][bet] * SignR[coord][mu];
-					//std::cout << "r = " << r << " agg " << agg << std::endl;
-				}
-				out[nt][agg] += -0.5 * M0[s_coord][bet] * U[coord][mu] * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][neigh_agg];
 
-				mu = 1;
-				R = 0.0;
-				neigh_agg = 2 * RightPB_blocks[LatBlock][mu] + spin;
-				if (std::find(Agg[neigh_agg].begin(), Agg[neigh_agg].end(), 2*RightPB[coord][mu] + bet) != Agg[neigh_agg].end()){
-					R = interpolator_columns[s][RightPB[coord][mu]][bet] * SignR[coord][mu];
-				}
-				out[nt][agg] += -0.5 * M1[s_coord][bet] * U[coord][mu] * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][neigh_agg];
+		for(int n : LatticeBlocks[LatBlock]){
+		for(int bet= 0; bet < 2; bet++){	
+			mu = 0;
+			neigh_block = RightPB_blocks[LatBlock][mu];
+			for(int y : {LatBlock,neigh_block}){
+			R = 0.0;
+			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), RightPB[n][mu]) != LatticeBlocks[y].end()){
+				R = interpolator_columns[s][RightPB[n][mu]][bet] * SignR[n][mu];
+			}
+			out[nt][agg] += -0.5 * M0[spin][bet] * U[n][mu] * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];
+			}
 
+			mu = 1;
+			neigh_block = RightPB_blocks[LatBlock][mu];
+			for(int y : {LatBlock,neigh_block}){
+			R = 0.0;
+			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), RightPB[n][mu]) != LatticeBlocks[y].end()){
+				R = interpolator_columns[s][RightPB[n][mu]][bet] * SignR[n][mu];
+			}
+			out[nt][agg] += -0.5 * M1[spin][bet] * U[n][mu] * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];
+			}
 			//1+sigma_mu**********************************************************
-			//same aggregate
-				mu = 0;
-				R = 0.0;
-				if (std::find(Agg[agg].begin(), Agg[agg].end(), 2*LeftPB[coord][mu] + bet) != Agg[agg].end()){
-					R = interpolator_columns[s][LeftPB[coord][mu]][bet] * SignL[coord][mu];
-				}
-				out[nt][agg] += -0.5 * P0[s_coord][bet] * std::conj(U[LeftPB[coord][mu]][mu]) * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][agg];
-
-				mu = 1;
-				R = 0.0;
-				if (std::find(Agg[agg].begin(), Agg[agg].end(), 2*LeftPB[coord][mu] + bet) != Agg[agg].end()){
-					R = interpolator_columns[s][LeftPB[coord][mu]][bet] * SignL[coord][mu];
-				}
-				out[nt][agg] += -0.5 * P1[s_coord][bet] * std::conj(U[LeftPB[coord][mu]][mu]) * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][agg];
-			//aggregates are neighbors
 			
-				mu = 0;
-				R = 0.0;
-				neigh_agg = 2 * LeftPB_blocks[LatBlock][mu] + spin;
-				if (std::find(Agg[neigh_agg].begin(), Agg[neigh_agg].end(), 2*LeftPB[coord][mu] + bet) != Agg[neigh_agg].end()){
-					R = interpolator_columns[s][LeftPB[coord][mu]][bet] * SignL[coord][mu];
-				}
-				out[nt][agg] += -0.5 * P0[s_coord][bet] * std::conj(U[LeftPB[coord][mu]][mu]) * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][neigh_agg];
-
-				mu = 1;
-				R = 0.0;
-				neigh_agg = 2 * LeftPB_blocks[LatBlock][mu] + spin;
-				if (std::find(Agg[neigh_agg].begin(), Agg[neigh_agg].end(), 2*LeftPB[coord][mu] + bet) != Agg[neigh_agg].end()){
-					R = interpolator_columns[s][LeftPB[coord][mu]][bet] * SignL[coord][mu];
-				}
-				out[nt][agg] += -0.5 * P1[s_coord][bet] * std::conj(U[LeftPB[coord][mu]][mu]) * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][neigh_agg];
-			
-			
+			mu = 0;
+			neigh_block = LeftPB_blocks[LatBlock][mu];
+			for(int y : {LatBlock,neigh_block}){
+			R = 0.0;
+			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), LeftPB[n][mu] ) != LatticeBlocks[y].end()){
+				R = interpolator_columns[s][LeftPB[n][mu]][bet] * SignL[n][mu];
 			}
+			out[nt][agg] += -0.5 * P0[spin][bet] * std::conj(U[LeftPB[n][mu]][mu]) * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];
 			}
-		*/		
-	
-		
-		for (int r = 0; r < AMGV::Nagg; r++) {
-				
 
-			//(1-sigma_mu)
-			
-			for(int n : Agg[agg]){
-				int s_coord = SCoord[n];
-				int coord = Coords[XCoord[n]][TCoord[n]]; //Coordinates of the lattice point
-			for(int bet= 0; bet < 2; bet++){
-				int mu = 0;
-				R = 0.0;
-				if (std::find(Agg[r].begin(), Agg[r].end(), 2*RightPB[coord][mu] + bet) != Agg[r].end()){
-					R = interpolator_columns[s][RightPB[coord][mu]][bet] * SignR[coord][mu];
-					
-				}
-				out[nt][agg] += -0.5 * M0[s_coord][bet] * U[coord][mu] * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][r];
-
-				mu = 1;
-				R = 0.0;
-				if (std::find(Agg[r].begin(), Agg[r].end(), 2*RightPB[coord][mu] + bet) != Agg[r].end()){
-					R = interpolator_columns[s][RightPB[coord][mu]][bet] * SignR[coord][mu];
-				}
-				out[nt][agg] += -0.5 * M1[s_coord][bet] * U[coord][mu] * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][r];
-
-
-
+			mu = 1;
+			neigh_block = LeftPB_blocks[LatBlock][mu];
+			for(int y : {LatBlock,neigh_block}){
+			R = 0.0;
+			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), LeftPB[n][mu] ) != LatticeBlocks[y].end()){
+				R = interpolator_columns[s][LeftPB[n][mu]][bet] * SignL[n][mu];
 			}
+			out[nt][agg] += -0.5 * P1[spin][bet] * std::conj(U[LeftPB[n][mu]][mu]) * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];	
 			}
 			
-			
-			//(1+sigma_mu)
-			
-			for(int n : Agg[agg]){
-				int s_coord = SCoord[n];
-				int coord = Coords[XCoord[n]][TCoord[n]]; //Coordinates of the lattice point
-			for(int bet= 0; bet < 2; bet++){
-				int mu = 0;
-				R = 0.0;
-				if (std::find(Agg[r].begin(), Agg[r].end(), 2*LeftPB[coord][mu] + bet) != Agg[r].end()){
-					R = interpolator_columns[s][LeftPB[coord][mu]][bet] * SignL[coord][mu];
-				}
-				out[nt][agg] += -0.5 * P0[s_coord][bet] * std::conj(U[LeftPB[coord][mu]][mu]) * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][r];
-
-				mu = 1;
-				R = 0.0;
-				if (std::find(Agg[r].begin(), Agg[r].end(), 2*LeftPB[coord][mu] + bet) != Agg[r].end()){
-					R = interpolator_columns[s][LeftPB[coord][mu]][bet] * SignL[coord][mu];
-				}
-				out[nt][agg] += -0.5 * P1[s_coord][bet] * std::conj(U[LeftPB[coord][mu]][mu]) * std::conj(interpolator_columns[nt][coord][s_coord]) * R * v[s][r];
-
-
-
-			}
-			}
-			
-		
-		}
-		
-
-
-		//Suming over blocks
-		//1-sigma_mu
-		/*
-			for(int n : Agg[agg]){
-				int s_coord = SCoord[n];
-				int coord = Coords[XCoord[n]][TCoord[n]]; //Coordinates of the lattice point
-			//same lattice block ...
-			for(int bet= 0; bet < 2; bet++){
-				int mu = 0;
-				R = 0.0;
-				if (std::find(LatticeBlocks[LatBlock].begin(), LatticeBlocks[LatBlock].end(), RightPB[coord][mu]) != LatticeBlocks[LatBlock].end()){
-					R = interpolator_columns[s][RightPB[coord][mu]][bet] * SignR[coord][mu];
-					//std::cout << "r = " << r << " agg " << agg << std::endl;
-				}
-				out[nt][agg] += -0.5 * M0[s_coord][bet] * U[coord][mu] * std::conj(interpolator_columns[nt][coord][s_coord]) * R * (v[s][2*LatBlock+0] + v[s][2*LatBlock+1]);
-				
-				mu = 1;
-				R = 0.0;
-				if (std::find(LatticeBlocks[LatBlock].begin(), LatticeBlocks[LatBlock].end(), RightPB[coord][mu]) != LatticeBlocks[LatBlock].end()){
-					R = interpolator_columns[s][RightPB[coord][mu]][bet] * SignR[coord][mu];
-				}
-				out[nt][agg] += -0.5 * M1[s_coord][bet] * U[coord][mu] * std::conj(interpolator_columns[nt][coord][s_coord]) * R * (v[s][2*LatBlock+0]+v[s][2*LatBlock+1]);;
-			// aggregates are neighbors ---------------------------
-				mu = 0;
-				R = 0.0;
-				//q + hat{mu}
-				neigh_block =  RightPB_blocks[LatBlock][mu];
-
-				if (std::find(LatticeBlocks[neigh_block].begin(), LatticeBlocks[neigh_block].end(), RightPB[coord][mu] ) != LatticeBlocks[neigh_block].end()){
-					R = interpolator_columns[s][RightPB[coord][mu]][bet] * SignR[coord][mu];
-					//std::cout << "r = " << r << " agg " << agg << std::endl;
-				}
-				out[nt][agg] += -0.5 * M0[s_coord][bet] * U[coord][mu] * std::conj(interpolator_columns[nt][coord][s_coord]) * R * (v[s][2*neigh_block+0]+v[s][2*neigh_block+1]);
-				
-				mu = 1;
-				R = 0.0;
-				neigh_block =  RightPB_blocks[LatBlock][mu];
-				if (std::find(LatticeBlocks[neigh_block].begin(), LatticeBlocks[neigh_block].end(), RightPB[coord][mu]) != LatticeBlocks[neigh_block].end()){
-					R = interpolator_columns[s][RightPB[coord][mu]][bet] * SignR[coord][mu];
-				}
-				out[nt][agg] += -0.5 * M1[s_coord][bet] * U[coord][mu] * std::conj(interpolator_columns[nt][coord][s_coord]) * R * (v[s][2*neigh_block+0] + v[s][2*neigh_block+1]);
-
-			//1+sigma_mu**********************************************************
-			//same aggregate
-				mu = 0;
-				R = 0.0;
-				if (std::find(LatticeBlocks[LatBlock].begin(), LatticeBlocks[LatBlock].end(), LeftPB[coord][mu] ) != LatticeBlocks[LatBlock].end()){
-					R = interpolator_columns[s][LeftPB[coord][mu]][bet] * SignL[coord][mu];
-				}
-				out[nt][agg] += -0.5 * P0[s_coord][bet] * std::conj(U[LeftPB[coord][mu]][mu]) * std::conj(interpolator_columns[nt][coord][s_coord]) * R * (v[s][2*LatBlock+0] +  v[s][2*LatBlock+1]) ;
-
-				mu = 1;
-				R = 0.0;
-				if (std::find(LatticeBlocks[LatBlock].begin(),LatticeBlocks[LatBlock].end(),LeftPB[coord][mu] ) != LatticeBlocks[LatBlock].end()){
-					R = interpolator_columns[s][LeftPB[coord][mu]][bet] * SignL[coord][mu];
-				}
-				out[nt][agg] += -0.5 * P1[s_coord][bet] * std::conj(U[LeftPB[coord][mu]][mu]) * std::conj(interpolator_columns[nt][coord][s_coord]) * R * (v[s][2*LatBlock+0] +  v[s][2*LatBlock+1]);
-				//aggregates are neighbors
-			
-				mu = 0;
-				R = 0.0;
-				neigh_agg = 2 * LeftPB_blocks[LatBlock][mu] + spin;
-				neigh_block = LeftPB_blocks[LatBlock][mu]; //q-hat{mu}
-				if (std::find(LatticeBlocks[neigh_block].begin(), LatticeBlocks[neigh_block].end(), LeftPB[coord][mu] ) != LatticeBlocks[neigh_block].end()){
-					R = interpolator_columns[s][LeftPB[coord][mu]][bet] * SignL[coord][mu];
-				}
-				out[nt][agg] += -0.5 * P0[s_coord][bet] * std::conj(U[LeftPB[coord][mu]][mu]) * std::conj(interpolator_columns[nt][coord][s_coord]) * R * (v[s][2*neigh_block+0]+v[s][2*neigh_block+1]);
-				mu = 1;
-				R = 0.0;
-				neigh_agg = 2 * LeftPB_blocks[LatBlock][mu] + spin;
-				neigh_block = LeftPB_blocks[LatBlock][mu]; //q-hat{mu}
-				if (std::find(LatticeBlocks[neigh_block].begin(), LatticeBlocks[neigh_block].end(), LeftPB[coord][mu] ) != LatticeBlocks[neigh_block].end()){
-					R = interpolator_columns[s][LeftPB[coord][mu]][bet] * SignL[coord][mu];
-				}
-				out[nt][agg] += -0.5 * P1[s_coord][bet] * std::conj(U[LeftPB[coord][mu]][mu]) * std::conj(interpolator_columns[nt][coord][s_coord]) * R * (v[s][2*neigh_block+0]+v[s][2*neigh_block+1]);
-			}
-			}
-			*/
+		} //loop over lattice block
+		} //loop over beta
 
 
 		} //loop over test vectors
@@ -650,29 +439,32 @@ void AMG::Pt_D_P_Test(const spinor& v,spinor& out){
 	}
 	}
 
-	/*
-	int q, qmu, q_mu;
-	for(int ag = 0; ag < AMGV::Nagg; ag++ ){
-		q = ag/2;
-		//std::cout << "Lattice block " << q << std::endl;
-	for(int nt = 0; nt < AMGV::Ntest; nt++){
-		out[nt][ag] = (m0 + 2) * v[nt][ag];
-			
-			for(int mu = 0; mu<2; mu++){
-			for(int s = 0; s<AMGV::Ntest; s++){
-				//q is the lattice block associated with the aggregate Aq 
-				out[nt][ag] += -0.5 * (Aqps[q][nt][s][mu] + Zqps[q][nt][s][mu]) * v[s][q];
+	
+}
 
-				//qmu = RightPB_blocks[q][mu]; //q+mu
-				//out[nt][ag] += -0.5 * Yqps[q][nt][s][mu] * v[s][qmu]; //SignR_blocks[q][mu];
+void AMG::Pt_D_P_CoarseLinks(const spinor& v,spinor& out){ 
+	
+	for(int x = 0; x<LV::Nblocks; x++){
+	for(int alf = 0; alf<2; alf++){
+	for(int p = 0; p<AMGV::Ntest; p++){
+		out[p][2*x+alf] = (m0+2)*v[p][2*x+alf]; //Initialize to zero
+	for(int bet = 0; bet<2; bet++){
+	for(int s = 0; s<AMGV::Ntest; s++){
 
-				//q_mu = LeftPB_blocks[q][mu]; //q-mu
-				//out[nt][ag] += -0.5 * Bqps[q][nt][s][mu] * v[s][q_mu]; // SignL_blocks[q][mu];
-			}
-			}
+		//out[test_vec][aggregate]
+		out[p][2*x+alf] -= A_coeff[x][alf][bet][p][s] * v[s][2*x+bet];
+
+		for(int mu:{0,1}){
+			out[p][2*x+alf] -=  (B_coeff[x][alf][bet][p][s][mu] * v[s][2*RightPB_blocks[x][mu]+bet]
+							    +C_coeff[x][alf][bet][p][s][mu] * v[s][2*LeftPB_blocks[x][mu]+bet]);
+		}
+		
+
 	}
 	}
-	*/
+	}
+	}
+	}
 	
 }
 
