@@ -33,8 +33,8 @@ int main(int argc, char **argv) {
     
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    //double m0 = -0.57;
-    double m0 = -0.18840579710144945;
+    double m0 = -0.6;
+    //double m0 = -0.18840579710144945;
 
     //Parameters in variables.cpp
     if (rank == 0){
@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    
+    /*
     {
         double beta = 2;
         int nconf = 3;
@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
             std::cout << "Conf read from " << NameData.str() << std::endl;
         }
     }
-    
+    */
 
     gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
 
@@ -128,11 +128,11 @@ int main(int argc, char **argv) {
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
     //Random right hand side
-    //rhs[0][0] = 1.0;
-    for(int i = 0; i < Ntot; i++) {
-        rhs[i][0] = RandomU1();
-        rhs[i][1] = RandomU1();
-    }
+    rhs[0][0] = 1.0;
+    //for(int i = 0; i < Ntot; i++) {
+    //    rhs[i][0] = RandomU1();
+    //    rhs[i][1] = RandomU1();
+    //}
 
     clock_t start, end;
     double elapsed_time;
