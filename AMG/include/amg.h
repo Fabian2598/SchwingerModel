@@ -86,7 +86,12 @@ public:
 		//c_matrix DcMatrix = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
 		P_TEMP = spinor(LV::Ntot, c_vector(2,0)); //Temporary spinor for the coarse grid operator
 		Pt_TEMP = spinor(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Temporary spinor for the coarse grid operator
+			
+		coarse_time = 0.0; //Time spent in the coarse grid solver
+	    smooth_time = 0.0; //Time spent in the smoother
+	    SAP_time = 0.0;
 	}
+
 	~AMG() { };
 
 	/*
@@ -112,8 +117,8 @@ public:
 
 	The convergence criterion is ||D x - phi|| < ||phi|| * tol
 	*/
-	spinor TwoGrid(const int& max_iter, const double& tol,
-		const spinor& x0, const spinor& phi,const bool& print_message);
+	int TwoGrid(const int& max_iter, const double& tol,
+		const spinor& x0, const spinor& phi, spinor& x,const bool& print_message);
 
 private:
 	GaugeConf GConf;
