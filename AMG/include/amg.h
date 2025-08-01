@@ -81,11 +81,8 @@ public:
 		interpolator_columns = std::vector<spinor>(AMGV::Ntest,
 			spinor( LV::Ntot, c_vector (2,0))); 
 
-		valuesDc = c_vector(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg, 0.0); //CSR matrix for the coarse grid operator
-		rowsDc = std::vector<int>(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg, 0); //Row indices of the coarse grid operator
-		colsDc = std::vector<int>(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg,0);
 		v_chopped = std::vector<spinor>(AMGV::Ntest*AMGV::Nagg, spinor(LV::Ntot, c_vector(2,0)));
-		//c_matrix DcMatrix = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
+	
 		P_TEMP = spinor(LV::Ntot, c_vector(2,0)); //Temporary spinor for the coarse grid operator
 		Pt_TEMP = spinor(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Temporary spinor for the coarse grid operator
 
@@ -123,22 +120,14 @@ public:
     */
 	void Pt_D_P(const spinor& v,spinor& out); //Dc v = P^H D P v 
 
-	void Pt_D_P_Test(const spinor& v,spinor& out);
+	void Pt_D_P_old(const spinor& v,spinor& out);
 
 	void initializeCoarseLinks();
-
-	void Pt_D_P_CoarseLinks(const spinor& v,spinor& out);
 
 //private:
 	GaugeConf GConf;
 	double m0; 
 	int nu1, nu2; 
-	int nonzero = 0; //Count the number of non-zero elements in the coarse grid operator
-	c_vector valuesDc; //CSR matrix for the coarse grid operator
-	std::vector<int> rowsDc;
-	std::vector<int> colsDc;
-	 
-	//c_matrix DcMatrix;
 
 	/*
 	Interpolator times a spinor
@@ -149,14 +138,6 @@ public:
 	Restriction operator times a spinor
 	*/
 	void Pt_v(const spinor& v,spinor& out); // P^T v
-
-	/*
-	Assemble the coarse grid operator Dc = P^H D P 
-	dim(Dc) = Ntest Nagg x Ntest Nagg
-	*/
-	void assembleDc();
-
-	
 
 	/*
 	Local orthonormalization of the test vectors

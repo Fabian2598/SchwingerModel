@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     MakeBlocks();
     //double m0 = -0.57;
-    double m0 = 2;//-0.18840579710144945;
+    double m0 = -0.6;//-0.18840579710144945;
 
     //Parameters in variables.cpp
     if (rank == 0){
@@ -126,36 +126,91 @@ int main(int argc, char **argv) {
     gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
 
     
-    spinor rhs(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //random right hand side 
-    spinor x(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //solution vector 
-    spinor xTest(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //solution vector 
+    spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
+    spinor x(Ntot, c_vector(2, 0)); //solution vector 
     
     rhs[0][0]=1;
-    /*for(int i = 0; i < AMGV::Ntest; i++) {
-        for(int j = 0; j<AMGV::Nagg; j++){
-            rhs[i][j] = RandomU1();
-            rhs[i][j] = RandomU1();
-        }  
-    }
-    */
+    //for(int i = 0; i < Ntot; i++) {
+    //    for(int j = 0; j<2; j++){
+    //        rhs[i][j] = RandomU1();
+    //        rhs[i][j] = RandomU1();
+    //    }  
+    //}
+    
     clock_t start, end;
     double elapsed_time;
     double startT, endT;
 
-    AMG amg = AMG(GConf, m0,AMGV::nu1,AMGV::nu2);   //nu1 pre-smoothing it, nu2 post-smoothing it
+   
+    if (rank == 0){
+        //Bi-cgstab inversion for comparison
+        
+        std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;       
+        start = clock();       
+        spinor x0(Ntot, c_vector(2, 0)); //Initial guess      
+        int max_iter = 10000;//100000; //Maximum number of iterations      
+        spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true); 
+        end = clock();
+        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl; 
+        
+        
+        
+        int len = AMGV::gmres_restart_length_coarse_level;
+        int restarts = 1000; //If the restart length is too large this could be problematic ...
+        spinor xgmres(Ntot,c_vector(2,0));
+        GMRES_fine_level gmres_fine_level(Ntot, 2, len, restarts,1e-10,GConf.Conf, m0);
+        start = clock();
+        gmres_fine_level.gmres(rhs,x0,xgmres,true);
+        end = clock();
+        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+        std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl; 
+        std::cout << "Inverting the normal equations with CG" << std::endl; 
+        spinor xCG(Ntot,c_vector(2,0));
+        start = clock();
+        conjugate_gradient(GConf.Conf, rhs, xCG, m0);
+        end = clock();
+        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
+        std::cout << "Elapsed time for CG = " << elapsed_time << " seconds" << std::endl;  
+        
 
-    c_matrix Dc = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
-    c_matrix Dc_Ver2 = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
-    amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
-    amg.initializeCoarseLinks();
+    }
+  
+    
+    /*
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl;}   
+    startT = MPI_Wtime();
+    spinor xfgmres = fgmresSAP(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
+    endT = MPI_Wtime();
+    printf("[MPI process %d] time elapsed during SAP FGMRES: %.4fs.\n", rank, endT - startT);
+    */
 
-    for(int col = 0; col < AMGV::Ntest*AMGV::Nagg;col++){
+    
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
+    startT = MPI_Wtime();
+    spinor xAMG = fgmresAMG(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
+    endT = MPI_Wtime();
+    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
+    printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
+    printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
+    printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
+    
+    MPI_Finalize();
+
+    return 0;
+}
+
+/*
+for(int col = 0; col < AMGV::Ntest*AMGV::Nagg;col++){
         spinor e_i(AMGV::Ntest, c_vector(AMGV::Nagg,0));
         spinor column(AMGV::Ntest, c_vector(AMGV::Nagg,0));
         spinor column2(AMGV::Ntest, c_vector(AMGV::Nagg,0));
         e_i[col / AMGV::Nagg][col % AMGV::Nagg] = 1.0; //Set the column to 1
-        amg.Pt_D_P(e_i,column); //Apply the coarse grid operator to the column
-        amg.Pt_D_P_CoarseLinks(e_i,column2); //Apply the coarse grid operator to the column
+        amg.Pt_D_P_old(e_i,column); //Apply the coarse grid operator to the column
+        amg.Pt_D_P(e_i,column2); //Apply the coarse grid operator to the column
         for(int row = 0; row < AMGV::Ntest*AMGV::Nagg; row++){
             Dc[row][col] = column[row/AMGV::Nagg][row % AMGV::Nagg]; //Initialize the coarse grid operator
              Dc_Ver2[row][col] = column2[row/AMGV::Nagg][row % AMGV::Nagg]; //Initialize the coarse grid operat
@@ -186,63 +241,4 @@ int main(int argc, char **argv) {
     }
 
 
-
-   /*
-    if (rank == 0){
-        //Bi-cgstab inversion for comparison
-        std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
-        start = clock();
-        spinor x0(Ntot, c_vector(2, 0)); //Initial guess
-        int max_iter = 10000;//100000; //Maximum number of iterations
-        spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;  
-        
-        int len = AMGV::gmres_restart_length_coarse_level;
-        int restarts = 1000; //If the restart length is too large this could be problematic ...
-        spinor xgmres(Ntot,c_vector(2));
-        GMRES_fine_level gmres_fine_level(Ntot, 2, len, restarts,1e-10,GConf.Conf, m0);
-        start = clock();
-        gmres_fine_level.gmres(rhs,x0,xgmres,true);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl; 
-        std::cout << "Inverting the normal equations with CG" << std::endl; 
-        spinor xCG(Ntot,c_vector(2,0));
-        start = clock();
-        conjugate_gradient(GConf.Conf, rhs, xCG, m0);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for CG = " << elapsed_time << " seconds" << std::endl;  
-
-    }
-  */
-    
-/*
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl;}   
-    startT = MPI_Wtime();
-    spinor xfgmres = fgmresSAP(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
-    endT = MPI_Wtime();
-    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
-
 */
-    /*
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
-    startT = MPI_Wtime();
-    spinor xAMG = fgmresAMG(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
-    endT = MPI_Wtime();
-    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
-    printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
-    printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
-    printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
-    */
-
-    MPI_Finalize();
-
-    return 0;
-}

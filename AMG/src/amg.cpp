@@ -154,7 +154,7 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	using namespace AMGV; //AMG parameters namespace
-
+	AMGV::SetUpDone = true; //Set the setup as done
 	//Test vectors random initialization
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < LV::Ntot; j++) {
@@ -166,9 +166,6 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 
 	//Improving the test vectors by approximately solving the linear system D test_vectors[i] = rhs 
 	for (int i = 0; i < Ntest; i++) {
-		//gmres initialization is also possible
-		//test_vectors[i] = gmres(LV::Ntot,2,GConf.Conf, test_vectors[i], test_vectors[i], m0, 20, 20, 1e-10, false);
-		
 		//Right hand side of the linear system 
 		//spinor rhs = test_vectors[i]; //spinor rhs(Ntot, c_vector(2, 0)); //We can also try with rhs = 0 
 		spinor rhs(LV::Ntot, c_vector(2, 0));
@@ -186,9 +183,7 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	//This modifies interpolator_columns which is used in the interpolator NOT test_vectors
 	interpolator_columns = test_vectors; 
 	orthonormalize(); 
-	//For large problems this actually helps ...
-	//AMGV::SetUpDone = true; //Set the setup as done
-	//assembleDc(); //Assemble the coarse grid operator
+	initializeCoarseLinks(); //Generate coarse Links
 	
 	//Improving the interpolator quality by iterating over the two-grid method defined by the current test vectors
 	if (rank == 0){std::cout << "Improving interpolator" << std::endl;}
@@ -206,12 +201,11 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
 		orthonormalize();
-		//assembleDc(); //Assemble the coarse grid operator
-
+		initializeCoarseLinks(); //Generate coarse Links
 	}
 	//In case I want to assemble the coarse grid matrix
-	AMGV::SetUpDone = true; //Set the setup as done
-	assembleDc(); //Assemble the coarse grid operator
+	//AMGV::SetUpDone = true; //Set the setup as done
+	
 	if (rank == 0){std::cout << "Set-up phase finished" << std::endl;}
 	
 	
@@ -249,7 +243,6 @@ void AMG::P_v(const spinor& v,spinor& out) {
 	x_i = P^H_ij v_j. dim(P^H) =  Ntest Nagg x 2 Ntot, Nagg = block_x * block_t
 	dim(v) = 2 Ntot, dim(x) = Ntest Nagg
 */
-
 void AMG::Pt_v(const spinor& v,spinor& out) {
 	//Restriction operator times a spinor
 	using namespace AMGV;
@@ -328,7 +321,7 @@ void AMG::initializeCoarseLinks(){
 			}
 			B_coeff[x][alf][bet][p][s][mu] += Lm * R;
 			
-			//			[C_mu(x)]^{alf,bet}_{p,s} --> B_coeff[x][alf][bet][p][s][mu]
+			//			[C_mu(x)]^{alf,bet}_{p,s} --> C_coeff[x][alf][bet][p][s][mu]
 			R = 0.0;
 			//if n-\hat{mu} in Block(x-hat{mu})
 			if (std::find(LatticeBlocks[LeftPB_blocks[x][mu]].begin(), LatticeBlocks[LeftPB_blocks[x][mu]].end(), LeftPB[n][mu]) != LatticeBlocks[LeftPB_blocks[x][mu]].end()){
@@ -349,185 +342,50 @@ void AMG::initializeCoarseLinks(){
 
 }
 
-/*
-	Coarse grid matrix operator Dc = P^H D P times a spinor v
-	dim(Dc) = Ntest Nagg x Ntest Nagg, dim(v) = Ntest Nagg,
-	Testing ...
-*/
-void AMG::Pt_D_P_Test(const spinor& v,spinor& out){
-
-	//This awful weird implementation is correct.
-	c_double P0[2][2], P1[2][2], M0[2][2], M1[2][2]; 
+void AMG::Pt_D_P(const spinor& v,spinor& out){ 
 	
-	P0[0][0] = 1.0; P0[0][1] = 1.0;
-	P0[1][0] = 1.0; P0[1][1] = 1.0; 
+	if (AMGV::SetUpDone == true){
 
-	P1[0][0] = 1.0; P1[0][1] = -I_number;
-	P1[1][0] = I_number; P1[1][1] = 1.0; 
+		for(int x = 0; x<LV::Nblocks; x++){
+		for(int alf = 0; alf<2; alf++){
+		for(int p = 0; p<AMGV::Ntest; p++){
+			out[p][2*x+alf] = (m0+2)*v[p][2*x+alf]; //Initialize to zero
+		for(int bet = 0; bet<2; bet++){
+		for(int s = 0; s<AMGV::Ntest; s++){
 
-	M0[0][0] = 1.0; M0[0][1] = -1.0;
-	M0[1][0] = -1.0; M0[1][1] = 1.0; 
+			//out[test_vec][aggregate]
+			out[p][2*x+alf] -= A_coeff[x][alf][bet][p][s] * v[s][2*x+bet];
 
-	M1[0][0] = 1.0; M1[0][1] = I_number;
-	M1[1][0] = -I_number; M1[1][1] = 1.0; 
- 
-	c_double R;
-	c_matrix &U = GConf.Conf; //Lattice configuration
-	int LatBlock, spin;
-	int LatBlockNeigh;
-	int neigh_block;
-	int neigh_agg; //Aggregate of the neighbor block
-	int mu;
-	for(int nt = 0; nt < AMGV::Ntest; nt++){
-	for(int agg = 0; agg < AMGV::Nagg; agg++){
-		out[nt][agg] = (m0+2) * v[nt][agg];
-		LatBlock = agg / 2; 
-		spin = agg % 2;
-		for(int s = 0; s <AMGV::Ntest; s++){	
-
-
-		for(int n : LatticeBlocks[LatBlock]){
-		for(int bet= 0; bet < 2; bet++){	
-			mu = 0;
-			neigh_block = RightPB_blocks[LatBlock][mu];
-			for(int y : {LatBlock,neigh_block}){
-			R = 0.0;
-			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), RightPB[n][mu]) != LatticeBlocks[y].end()){
-				R = interpolator_columns[s][RightPB[n][mu]][bet] * SignR[n][mu];
-			}
-			out[nt][agg] += -0.5 * M0[spin][bet] * U[n][mu] * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];
-			}
-
-			mu = 1;
-			neigh_block = RightPB_blocks[LatBlock][mu];
-			for(int y : {LatBlock,neigh_block}){
-			R = 0.0;
-			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), RightPB[n][mu]) != LatticeBlocks[y].end()){
-				R = interpolator_columns[s][RightPB[n][mu]][bet] * SignR[n][mu];
-			}
-			out[nt][agg] += -0.5 * M1[spin][bet] * U[n][mu] * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];
-			}
-			//1+sigma_mu**********************************************************
-			
-			mu = 0;
-			neigh_block = LeftPB_blocks[LatBlock][mu];
-			for(int y : {LatBlock,neigh_block}){
-			R = 0.0;
-			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), LeftPB[n][mu] ) != LatticeBlocks[y].end()){
-				R = interpolator_columns[s][LeftPB[n][mu]][bet] * SignL[n][mu];
-			}
-			out[nt][agg] += -0.5 * P0[spin][bet] * std::conj(U[LeftPB[n][mu]][mu]) * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];
-			}
-
-			mu = 1;
-			neigh_block = LeftPB_blocks[LatBlock][mu];
-			for(int y : {LatBlock,neigh_block}){
-			R = 0.0;
-			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), LeftPB[n][mu] ) != LatticeBlocks[y].end()){
-				R = interpolator_columns[s][LeftPB[n][mu]][bet] * SignL[n][mu];
-			}
-			out[nt][agg] += -0.5 * P1[spin][bet] * std::conj(U[LeftPB[n][mu]][mu]) * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];	
-			}
-			
-		} //loop over lattice block
-		} //loop over beta
-
-
-		} //loop over test vectors
-		
-			
-	}
-	}
-
-	
-}
-
-void AMG::Pt_D_P_CoarseLinks(const spinor& v,spinor& out){ 
-	
-	for(int x = 0; x<LV::Nblocks; x++){
-	for(int alf = 0; alf<2; alf++){
-	for(int p = 0; p<AMGV::Ntest; p++){
-		out[p][2*x+alf] = (m0+2)*v[p][2*x+alf]; //Initialize to zero
-	for(int bet = 0; bet<2; bet++){
-	for(int s = 0; s<AMGV::Ntest; s++){
-
-		//out[test_vec][aggregate]
-		out[p][2*x+alf] -= A_coeff[x][alf][bet][p][s] * v[s][2*x+bet];
-
-		for(int mu:{0,1}){
-			out[p][2*x+alf] -=  (B_coeff[x][alf][bet][p][s][mu] * v[s][2*RightPB_blocks[x][mu]+bet]
+			for(int mu:{0,1}){
+				out[p][2*x+alf] -=  (B_coeff[x][alf][bet][p][s][mu] * v[s][2*RightPB_blocks[x][mu]+bet]
 							    +C_coeff[x][alf][bet][p][s][mu] * v[s][2*LeftPB_blocks[x][mu]+bet]);
-		}
+			}
 		
 
-	}
-	}
-	}
-	}
-	}
-	
-}
-
-
-/*
-	Assemble the coarse grid operator Dc = P^H D P 
-	dim(Dc) = Ntest Nagg x Ntest Nagg
-*/
-void AMG::assembleDc() {
-	nonzero = 0;
-	spinor e_j(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Column of the coarse grid operator
-	spinor column(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Column of the coarse grid operator
-	int m, a;
-	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
-		e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
-		P_v(e_j,P_TEMP);
-		D_phi(GConf.Conf, P_TEMP,D_TEMP,m0); //D P v
-		Pt_v(D_TEMP, column); //P^T D P v
-		//column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
-		//std::cout << "Dc_ii = " << column[j/AMGV::Nagg][j%AMGV::Nagg] << std::endl;
-		for(int i = 0; i < AMGV::Ntest*AMGV::Nagg; i++){
-			m = i / AMGV::Nagg; //Test vector index
-			a = i % AMGV::Nagg; //Aggregate index
-			if (column[m][a] != 0.0) {
-				rowsDc[nonzero] = i; //Row index of the coarse grid operator
-				colsDc[nonzero] = j;  //Column index of the coarse grid operator
-				valuesDc[nonzero] = column[m][a];  //Value of the coarse grid operator
-			
-				nonzero++;
-			}
+		}
+		}
+		}
+		}
 		}
 
+
 	}
-
-}
-
-/*
-	Coarse grid matrix operator Dc = P^H D P times a spinor v
-	dim(Dc) = Ntest Nagg x Ntest Nagg, dim(v) = Ntest Nagg,
-*/
-void AMG::Pt_D_P(const spinor& v,spinor& out){
-	//if (AMGV::SetUpDone == false){
+	else{
 		P_v(v,P_TEMP);
 		D_phi(GConf.Conf, P_TEMP,D_TEMP,m0); //D P v
 		Pt_v(D_TEMP, out); //P^T D P v
-		//return Pt_v(D_phi(GConf.Conf,P_v(v),m0));
-	//}
-	/*else{
-		for(int n = 0; n < AMGV::Ntest; n++){
-			for(int alf = 0; alf < AMGV::Nagg; alf++){
-				out[n][alf] = 0.0; //Initialize the output spinor
-			}
-		}
-		int n, alf, m, a;		
-		for(int i = 0; i < nonzero; i++){
-			n = rowsDc[i] / AMGV::Nagg; //Test vector index
-			alf = rowsDc[i] % AMGV::Nagg; //Aggregate index
-			m = colsDc[i] / AMGV::Nagg; //Test vector index
-			a = colsDc[i] % AMGV::Nagg; //Aggregate index
-			out[n][alf] += valuesDc[i] * v[m][a]; //Dc v			
-		}
 	}
-	*/
+	
+}
+
+/*
+	Coarse grid matrix operator Dc = P^H D P times a spinor v
+	dim(Dc) = Ntest Nagg x Ntest Nagg, dim(v) = Ntest Nagg,
+*/
+void AMG::Pt_D_P_old(const spinor& v,spinor& out){
+	P_v(v,P_TEMP);
+	D_phi(GConf.Conf, P_TEMP,D_TEMP,m0); //D P v
+	Pt_v(D_TEMP, out); //P^T D P v
 }
 
 
@@ -618,3 +476,159 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 	}
 	return x;
 }
+
+
+/*
+
+
+	//Coarse grid matrix operator Dc = P^H D P times a spinor v
+	//dim(Dc) = Ntest Nagg x Ntest Nagg, dim(v) = Ntest Nagg,
+	//Testing ...
+
+void AMG::Pt_D_P_Test(const spinor& v,spinor& out){
+
+	//This awful weird implementation is correct.
+	c_double P0[2][2], P1[2][2], M0[2][2], M1[2][2]; 
+	
+	P0[0][0] = 1.0; P0[0][1] = 1.0;
+	P0[1][0] = 1.0; P0[1][1] = 1.0; 
+
+	P1[0][0] = 1.0; P1[0][1] = -I_number;
+	P1[1][0] = I_number; P1[1][1] = 1.0; 
+
+	M0[0][0] = 1.0; M0[0][1] = -1.0;
+	M0[1][0] = -1.0; M0[1][1] = 1.0; 
+
+	M1[0][0] = 1.0; M1[0][1] = I_number;
+	M1[1][0] = -I_number; M1[1][1] = 1.0; 
+ 
+	c_double R;
+	c_matrix &U = GConf.Conf; //Lattice configuration
+	int LatBlock, spin;
+	int LatBlockNeigh;
+	int neigh_block;
+	int neigh_agg; //Aggregate of the neighbor block
+	int mu;
+	for(int nt = 0; nt < AMGV::Ntest; nt++){
+	for(int agg = 0; agg < AMGV::Nagg; agg++){
+		out[nt][agg] = (m0+2) * v[nt][agg];
+		LatBlock = agg / 2; 
+		spin = agg % 2;
+		for(int s = 0; s <AMGV::Ntest; s++){	
+
+
+		for(int n : LatticeBlocks[LatBlock]){
+		for(int bet= 0; bet < 2; bet++){	
+			mu = 0;
+			neigh_block = RightPB_blocks[LatBlock][mu];
+			for(int y : {LatBlock,neigh_block}){
+			R = 0.0;
+			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), RightPB[n][mu]) != LatticeBlocks[y].end()){
+				R = interpolator_columns[s][RightPB[n][mu]][bet] * SignR[n][mu];
+			}
+			out[nt][agg] += -0.5 * M0[spin][bet] * U[n][mu] * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];
+			}
+
+			mu = 1;
+			neigh_block = RightPB_blocks[LatBlock][mu];
+			for(int y : {LatBlock,neigh_block}){
+			R = 0.0;
+			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), RightPB[n][mu]) != LatticeBlocks[y].end()){
+				R = interpolator_columns[s][RightPB[n][mu]][bet] * SignR[n][mu];
+			}
+			out[nt][agg] += -0.5 * M1[spin][bet] * U[n][mu] * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];
+			}
+			//1+sigma_mu**********************************************************
+			
+			mu = 0;
+			neigh_block = LeftPB_blocks[LatBlock][mu];
+			for(int y : {LatBlock,neigh_block}){
+			R = 0.0;
+			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), LeftPB[n][mu] ) != LatticeBlocks[y].end()){
+				R = interpolator_columns[s][LeftPB[n][mu]][bet] * SignL[n][mu];
+			}
+			out[nt][agg] += -0.5 * P0[spin][bet] * std::conj(U[LeftPB[n][mu]][mu]) * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];
+			}
+
+			mu = 1;
+			neigh_block = LeftPB_blocks[LatBlock][mu];
+			for(int y : {LatBlock,neigh_block}){
+			R = 0.0;
+			if (std::find(LatticeBlocks[y].begin(), LatticeBlocks[y].end(), LeftPB[n][mu] ) != LatticeBlocks[y].end()){
+				R = interpolator_columns[s][LeftPB[n][mu]][bet] * SignL[n][mu];
+			}
+			out[nt][agg] += -0.5 * P1[spin][bet] * std::conj(U[LeftPB[n][mu]][mu]) * std::conj(interpolator_columns[nt][n][spin]) * R * v[s][2*y+bet];	
+			}
+			
+		} //loop over lattice block
+		} //loop over beta
+
+
+		} //loop over test vectors
+		
+			
+	}
+	}
+
+	
+}
+*/
+
+
+/*
+
+void AMG::assembleDc() {
+	nonzero = 0;
+	spinor e_j(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Column of the coarse grid operator
+	spinor column(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Column of the coarse grid operator
+	int m, a;
+	for(int j = 0; j < AMGV::Ntest*AMGV::Nagg; j++){
+		e_j = canonical_vector(j, AMGV::Ntest, AMGV::Nagg);
+		P_v(e_j,P_TEMP);
+		D_phi(GConf.Conf, P_TEMP,D_TEMP,m0); //D P v
+		Pt_v(D_TEMP, column); //P^T D P v
+		//column = Pt_v(D_phi(GConf.Conf, P_v(e_j), m0)); //Column of the coarse grid operator
+		//std::cout << "Dc_ii = " << column[j/AMGV::Nagg][j%AMGV::Nagg] << std::endl;
+		for(int i = 0; i < AMGV::Ntest*AMGV::Nagg; i++){
+			m = i / AMGV::Nagg; //Test vector index
+			a = i % AMGV::Nagg; //Aggregate index
+			if (column[m][a] != 0.0) {
+				rowsDc[nonzero] = i; //Row index of the coarse grid operator
+				colsDc[nonzero] = j;  //Column index of the coarse grid operator
+				valuesDc[nonzero] = column[m][a];  //Value of the coarse grid operator
+			
+				nonzero++;
+			}
+		}
+
+	}
+
+}
+
+void AMG::Pt_D_P(const spinor& v,spinor& out){
+	//if (AMGV::SetUpDone == false){
+		P_v(v,P_TEMP);
+		D_phi(GConf.Conf, P_TEMP,D_TEMP,m0); //D P v
+		Pt_v(D_TEMP, out); //P^T D P v
+		//return Pt_v(D_phi(GConf.Conf,P_v(v),m0));
+	//}
+	/*else{
+		for(int n = 0; n < AMGV::Ntest; n++){
+			for(int alf = 0; alf < AMGV::Nagg; alf++){
+				out[n][alf] = 0.0; //Initialize the output spinor
+			}
+		}
+		int n, alf, m, a;		
+		for(int i = 0; i < nonzero; i++){
+			n = rowsDc[i] / AMGV::Nagg; //Test vector index
+			alf = rowsDc[i] % AMGV::Nagg; //Aggregate index
+			m = colsDc[i] / AMGV::Nagg; //Test vector index
+			a = colsDc[i] % AMGV::Nagg; //Aggregate index
+			out[n][alf] += valuesDc[i] * v[m][a]; //Dc v			
+		}
+	}
+	
+}
+
+
+*/
