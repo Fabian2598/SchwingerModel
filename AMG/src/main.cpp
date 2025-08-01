@@ -31,9 +31,11 @@ int main(int argc, char **argv) {
 
     //srand(time(0));
     
-    Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t 
+    Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t
+    MakeBlocks(); //Makes lattice blocks 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
-    double m0 = -0.6;
+    
+    double m0 = -0.5;
     //double m0 = -0.18840579710144945;
 
     //Parameters in variables.cpp

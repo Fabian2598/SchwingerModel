@@ -126,3 +126,27 @@ void CheckAggregates(){
         exit(1);
     }
 }
+
+std::vector<std::vector<int>> LatticeBlocks = std::vector<std::vector<int>> (LV::Nblocks, std::vector<int>(LV::lattice_sites_per_block));
+int RightPB_blocks[LV::Nblocks][2];
+int LeftPB_blocks[LV::Nblocks][2];
+
+void MakeBlocks(){
+	using namespace LV; //Lattice parameters namespace
+	int count; 
+	for (int x = 0; x < block_x; x++) {
+		for (int t = 0; t < block_t; t++) {
+				int block = x * block_t + t; //block index
+				int x0 = x * x_elements, t0 = t * t_elements;
+				int x1 = (x + 1) * x_elements, t1 = (t + 1) * t_elements;
+            	count = 0;  
+            	for(int x = x0; x < x1; x++) {
+                	for (int t = t0; t < t1; t++) {
+                    	LatticeBlocks[block][count++] = x * Nt+ t; 
+                    	
+					}
+            	}
+		}
+	}
+}
+

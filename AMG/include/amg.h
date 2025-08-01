@@ -137,10 +137,9 @@ private:
 	void Pt_v(const spinor& v,spinor& out); // P^T v
 
 	/*
-	Assemble the coarse grid operator Dc = P^H D P 
-	dim(Dc) = Ntest Nagg x Ntest Nagg
+	Initialize the coarse gauge links for Dc
 	*/
-	void assembleDc();
+	void initializeCoarseLinks();
 
 	/*
 	Coarse grid operator Dc = P^H D P times a spinor
@@ -151,14 +150,17 @@ private:
 	Local orthonormalization of the test vectors
 	*/
 	void orthonormalize(); 
-
-	//-----Coarse grid solvers-----// 
 	
 	std::vector<spinor> test_vectors; //test vectors[Ntest][Nx Nt][spin components], no color
 	std::vector<spinor> interpolator_columns; 
 	std::vector<spinor> v_chopped;
 	spinor Pt_TEMP;
 	spinor P_TEMP;
+	
+	//Coarse gauge links
+	c_double A_coeff[LV::Nblocks][2][2][AMGV::Ntest][AMGV::Ntest]; //[A(x)]^{alf,bet}_{p,s} --> A_coeff[x][alf][bet][p][s] 
+	c_double B_coeff[LV::Nblocks][2][2][AMGV::Ntest][AMGV::Ntest][2]; //[B_mu(x)]^{alf,bet}_{p,s} --> B_coeff[x][alf][bet][p][s][mu]
+	c_double C_coeff[LV::Nblocks][2][2][AMGV::Ntest][AMGV::Ntest][2];//[C_mu(x)]^{alf,bet}_{p,s}  --> C_coeff[x][alf][bet][p][s][mu]
 	
 };
 

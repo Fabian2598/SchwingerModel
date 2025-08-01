@@ -43,6 +43,18 @@ inline void periodic_boundary() {
 			}
 		}
 	}
+
+	//Lattice neighbouring for the blocks
+	int block;
+	for (int x = 0; x < block_x; x++) {
+		for (int t = 0; t < block_t; t++) {
+			for (int mu = 0; mu < 2; mu++) {
+				block = x * block_t + t;
+				RightPB_blocks[block][mu] = mod(x + hat_mu[mu][1], block_x) * block_t + mod(t + hat_mu[mu][0], block_t);
+				LeftPB_blocks[block][mu] = mod(x - hat_mu[mu][1], block_x) * block_t + mod(t - hat_mu[mu][0], block_t);
+			}
+		}
+	}
 }
 
 /*

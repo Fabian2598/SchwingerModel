@@ -21,20 +21,6 @@ inline void set_zeros(spinor& v, const int& N1, const int& N2) {
     }
 }
 
-//Schwarz blocks have to be initialized first before calling the I_B operators
-
-/*
-    I_B^T v --> Restriction of the spinor v to the block B
-    v: input, x: output
-*/
-void It_B_v(const spinor& v,  spinor& x,const int& block);
-
-/*
-    I_B v --> Interpolation of the spinor v to the original lattice
-    v: input, x: output
-*/
-void I_B_v(const spinor& v, spinor& x ,const int& block);
-
 /*
     Restriction of the Dirac operator to the block B. 
     D_B = I_B^T D I_B

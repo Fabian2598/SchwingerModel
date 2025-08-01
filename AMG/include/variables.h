@@ -21,8 +21,11 @@ namespace LV {
     constexpr int Nt = NT; 
     constexpr int block_x = BLOCK_X; 
     constexpr int block_t = BLOCK_T; 
+    constexpr int Nblocks = block_x * block_t;
     constexpr int x_elements = Nx/block_x; //Number of elements in the x direction
     constexpr int t_elements = Nt/block_t; //Number of elements in the t direction
+    constexpr int lattice_sites_per_block = x_elements * t_elements;
+    constexpr int variables_per_agg = lattice_sites_per_block;
     constexpr int Ntot = Nx*Nt; //Total number of lattice points
 }
 
@@ -108,6 +111,12 @@ extern std::vector<int> SAP_BlackBlocks; //Block index for the black blocks
 
 extern std::vector<std::vector<c_double>>D_TEMP;
 
+extern std::vector<std::vector<int>> LatticeBlocks;
+extern int LeftPB_blocks[LV::Nblocks][2];
+extern int RightPB_blocks[LV::Nblocks][2];
+
+//Build lattice blocks 
+void MakeBlocks();
 
 void CheckBlocks(); //Check that Nx/block_x and Nt/block_t are integers, the same for Schwarz blocks
 void CheckAggregates(); //Check that the aggregates are initialized and have the correct size
