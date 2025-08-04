@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    
+    /*
     {
         double beta = 2;
         int nconf = 3;
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
             std::cout << "Conf read from " << NameData.str() << std::endl;
         }
     }
-    
+    */
 
     gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
 
@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
         rhs[i][0] = RandomU1();
         rhs[i][1] = RandomU1();
     }
-    */
+    
     clock_t start, end;
     double elapsed_time;
     double startT, endT;
