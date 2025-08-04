@@ -6,7 +6,7 @@
 #include <iomanip>
 #include "bi_cgstab.h"
 #include "conjugate_gradient.h"
-#include "fgmres.h"
+#include "amg.h"
 #include "mpi.h"
 
 //Formats decimal numbers
@@ -18,6 +18,8 @@ static std::string format(const double& number) {
     str.erase(str.find('.'), 1); //Removes decimal dot 
     return str;
 }
+
+
 
 int main(int argc, char **argv) {
 
@@ -200,34 +202,19 @@ int main(int argc, char **argv) {
     printf("[rank %d] time elapsed during the job NEW implementation: %.4fs.\n", rank, endT - startT);
     */
 
-
-    
-   
-     
-    
-   
-
     
     MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
+    if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning NEW VERSION--------------" << std::endl;}
+    spinor xAMGV2(Ntot, c_vector(2, 0)); //Solution vector for SAP
     startT = MPI_Wtime();
-    spinor xAMG = fgmresAMG(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
+    FGMRES_two_grid fgmres_two_grid(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf, m0);
+    fgmres_two_grid.fgmres(rhs,x,xAMGV2,true);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
     
-
-    
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning NEW VERSION--------------" << std::endl;}
-    spinor xAMGV2(Ntot, c_vector(2, 0)); //Solution vector for SAP
-    FGMRES_two_grid fgmres_two_grid(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf, m0);
-    startT = MPI_Wtime();
-    fgmres_two_grid.fgmres(rhs,x,xAMGV2,true);
-    endT = MPI_Wtime();
-    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
     
 
 

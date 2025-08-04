@@ -13,7 +13,7 @@ set(SRC_FILES
     src/sap.cpp                 #Schwarz alternating method
     src/amg.cpp                 #Two-grid implementation 
     src/main.cpp                #Main program
-    src/gmres.cpp               #GMRES solver for comparison
+    #src/gmres.cpp               #GMRES solver for comparison
     src/fgmres.cpp              #Flexible GMRES solver that uses the two-grid preconditioner
 )
 
