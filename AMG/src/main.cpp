@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
     
     {
         double beta = 2;
-        int nconf = 90;
+        int nconf = 20;
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
@@ -164,6 +164,7 @@ int main(int argc, char **argv) {
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl; 
+        */
 
         std::cout << "Inverting the normal equations with CG" << std::endl; 
         spinor xCG(Ntot,c_vector(2,0));
@@ -172,7 +173,7 @@ int main(int argc, char **argv) {
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for CG = " << elapsed_time << " seconds" << std::endl;  
-        */
+        
 
     }
   
