@@ -6,7 +6,7 @@
 #include <iomanip>
 #include "bi_cgstab.h"
 #include "conjugate_gradient.h"
-#include "fgmres.h"
+#include "amg.h"
 #include "mpi.h"
 
 //Formats decimal numbers
@@ -96,10 +96,10 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    /*
+    
     {
         double beta = 2;
-        int nconf = 3;
+        int nconf = 90;
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
             std::cout << "Conf read from " << NameData.str() << std::endl;
         }
     }
-    */
+    
 
     gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
 
@@ -153,15 +153,18 @@ int main(int argc, char **argv) {
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;  
         
+        /*
         int len = AMGV::gmres_restart_length_coarse_level;
         int restarts = 1000; //If the restart length is too large this could be problematic ...
+
         spinor xgmres(Ntot,c_vector(2));
-        GMRES_fine_level gmres_fine_level(Ntot, 2, len, restarts,1e-10,GConf.Conf, m0);
+        FGMRES_fine_level fgmres_fine_level(Ntot, 2, len, restarts,1e-10,GConf.Conf, m0);
         start = clock();
-        gmres_fine_level.gmres(rhs,x0,xgmres,true);
+        fgmres_fine_level.fgmres(rhs,x0,xgmres,true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl; 
+
         std::cout << "Inverting the normal equations with CG" << std::endl; 
         spinor xCG(Ntot,c_vector(2,0));
         start = clock();
@@ -169,26 +172,31 @@ int main(int argc, char **argv) {
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for CG = " << elapsed_time << " seconds" << std::endl;  
+        */
 
     }
   
     
+
 /*
-
     MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning --------------" << std::endl;}   
+    if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning version --------------" << std::endl;}   
+    spinor xSAP(Ntot, c_vector(2, 0)); //Solution vector for SAP
+    FGMRES_SAP fgmres_sap(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf.Conf, m0);
     startT = MPI_Wtime();
-    spinor xfgmres = fgmresSAP(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
+    fgmres_sap.fgmres(rhs,x,xSAP,true);
     endT = MPI_Wtime();
-    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
-
+    printf("[rank %d] time elapsed during the job NEW implementation: %.4fs.\n", rank, endT - startT);
 */
+
     
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
+    spinor xAMG(Ntot, c_vector(2, 0)); //Solution vector for SAP
     startT = MPI_Wtime();
-    spinor xAMG = fgmresAMG(GConf.Conf, rhs, x, m0, FGMRESV::fgmres_restart_length,FGMRESV::fgmres_restarts, FGMRESV::fgmres_tolerance , true);
+    FGMRES_two_grid fgmres_two_grid(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf, m0);
+    fgmres_two_grid.fgmres(rhs,x,xAMG,true);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);

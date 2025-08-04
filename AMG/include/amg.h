@@ -2,7 +2,7 @@
 #define AMG_H_INCLUDED
 #include "gauge_conf.h"
 #include "operator_overloads.h"
-#include "gmres.h"
+#include "fgmres.h"
 #include "sap.h"
 #include <algorithm>
 #include <random>
@@ -45,10 +45,10 @@ public:
 	//----------------------------//
 	//GMRES for the coarsest level//
 	//    We use a nested class   //
-	class GMRES_COARSE_LEVEL : public GMRES {
+	class GMRES_COARSE_LEVEL : public FGMRES {
 	public:
     	GMRES_COARSE_LEVEL(const int& dim1, const int& dim2, const int& m, const int& restarts, const double& tol, AMG* parent) : 
-		GMRES(dim1, dim2, m, restarts, tol), parent(parent) {}
+		FGMRES(dim1, dim2, m, restarts, tol), parent(parent) {}
     
     	~GMRES_COARSE_LEVEL() { };
     
@@ -60,6 +60,10 @@ public:
     	void func(const spinor& in, spinor& out) override {
         	parent->Pt_D_P(in,out);
     	}
+		//No preconditioning for the coarsest level
+		void preconditioner(const spinor& in, spinor& out) override {
+        out = std::move(in); //Identity operation
+		}
 	};
 
 	GMRES_COARSE_LEVEL gmres_c_level;
@@ -79,9 +83,6 @@ public:
 		interpolator_columns = std::vector<spinor>(AMGV::Ntest,
 			spinor( LV::Ntot, c_vector (2,0))); 
 
-		valuesDc = c_vector(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg, 0.0); //CSR matrix for the coarse grid operator
-		rowsDc = std::vector<int>(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg, 0); //Row indices of the coarse grid operator
-		colsDc = std::vector<int>(AMGV::Ntest * AMGV::Nagg * AMGV::Ntest * AMGV::Nagg,0);
 		v_chopped = std::vector<spinor>(AMGV::Ntest*AMGV::Nagg, spinor(LV::Ntot, c_vector(2,0)));
 		//c_matrix DcMatrix = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
 		P_TEMP = spinor(LV::Ntot, c_vector(2,0)); //Temporary spinor for the coarse grid operator
@@ -112,20 +113,14 @@ public:
 
 	The convergence criterion is ||D x - phi|| < ||phi|| * tol
 	*/
-	spinor TwoGrid(const int& max_iter, const double& tol,
-		const spinor& x0, const spinor& phi,const bool& print_message);
+	int TwoGrid(const int& max_iter, const double& tol,
+		const spinor& x0, const spinor& phi,spinor & x,const bool& print_message);
 
 private:
 	GaugeConf GConf;
 	double m0; 
 	int nu1, nu2; 
-	int nonzero = 0; //Count the number of non-zero elements in the coarse grid operator
-	c_vector valuesDc; //CSR matrix for the coarse grid operator
-	std::vector<int> rowsDc;
-	std::vector<int> colsDc;
-	 
-	//c_matrix DcMatrix;
-
+	
 	/*
 	Interpolator times a spinor
 	*/
@@ -164,6 +159,53 @@ private:
 	
 };
 
+/*
+    FGMRES with a two-grid preconditioner
+	We use our two-grid implementation as a preconditioner to solve the system with FGMRES
+*/
+class FGMRES_two_grid : public FGMRES {
+    public:
+    FGMRES_two_grid(const int& dim1, const int& dim2, const int& m, const int& restarts, const double& tol,
+    const GaugeConf& GConf,const double& m0) : FGMRES(dim1, dim2, m, restarts, tol), GConf(GConf),
+    m0(m0), dim1(dim1), dim2(dim2), amg(GConf, m0, AMGV::nu1, AMGV::nu2) {
 
+    zeros = spinor(dim1, c_vector(dim2, 0)); //Initialize zeros spinor
+    //      Set up phase for AMG     //
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    double elapsed_time;
+    double startT, endT;     
+    startT = MPI_Wtime();
+    amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
+    endT = MPI_Wtime();
+    elapsed_time = endT - startT;
+    std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl;   
+    //---------------------------//
+    
+    };
+    ~FGMRES_two_grid() { };
+    
+private:
+    const GaugeConf& GConf; //Gauge configuration
+    const double& m0; //reference to mass parameter
+    const int &dim1;
+    const int &dim2;
+    int rank;
+    AMG amg; //AMG instance for the two-grid method
+    spinor zeros;
+
+        
+    void func(const spinor& in, spinor& out) override {
+        D_phi(GConf.Conf, in, out, m0); 
+    }
+
+    void preconditioner(const spinor& in, spinor& out) override {
+        for(int i = 0; i<dim1; i++){
+            for(int j = 0; j<dim2; j++){
+                out[i][j] = 0;
+            }
+        }
+        amg.TwoGrid(1, 1e-10, zeros, in, out,false);
+    }
+};
 
 #endif

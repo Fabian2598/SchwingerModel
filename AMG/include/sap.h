@@ -1,6 +1,6 @@
 #ifndef SAP_H
 #define SAP_H
-#include "gmres.h"
+#include "fgmres.h"
 #include "mpi.h"
 
 /*
@@ -31,9 +31,9 @@ void D_B(const c_matrix& U, const spinor& v, spinor& x,const double& m0,const in
 /*
     Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B     
 */
-class GMRES_D_B : public GMRES {
+class GMRES_D_B : public FGMRES {
     public:GMRES_D_B(const int& dim1, const int& dim2, const int& m, const int& restarts, const double& tol) :
-     GMRES(dim1, dim2, m, restarts, tol) {
+     FGMRES(dim1, dim2, m, restarts, tol) {
         if (m > SAPV::sap_variables_per_block) {
             std::cout << "Error: restart length > sap_variables_per_block" << std::endl;
             exit(1);
@@ -63,6 +63,9 @@ private:
     */
     void func(const spinor& in, spinor& out) override { 
         D_B(*U, in, out, *m0, block);
+    }
+    void preconditioner(const spinor& in, spinor& out) override { 
+        out = std::move(in); //No preconditioning
     }
 };
 
@@ -111,5 +114,39 @@ inline void getMandBlock(const int& n, int &m, int &block) {
     m = mx * SAPV::sap_t_elements + mt; //Index in the block
 }
 
+/*  
+    FGMRES with SAP preconditioner
+    This method solves the original Dirac equation
+*/
+class FGMRES_SAP : public FGMRES {
+    public:
+    FGMRES_SAP(const int& dim1, const int& dim2, const int& m, const int& restarts, const double& tol,
+    const c_matrix& U, const double& m0) : FGMRES(dim1, dim2, m, restarts, tol), U(U), m0(m0), dim1(dim1), dim2(dim2) {
+    };
+    ~FGMRES_SAP() { };
+    
+private:
+    const c_matrix& U; //reference to Gauge configuration. This is to avoid copying the matrix
+    const double& m0; //reference to mass parameter
+    const int &dim1;
+    const int &dim2;
+    /*
+    Implementation of the function that computes the matrix-vector product for the fine level
+    */
+    void func(const spinor& in, spinor& out) override {
+        D_phi(U, in, out, m0); 
+    }
+
+
+    void preconditioner(const spinor& in, spinor& out) override {
+        //Initialize ZmT[j] to zero
+        for(int i = 0; i<dim1; i++){
+            for(int j = 0; j<dim2; j++){
+                out[i][j] = 0;
+            }
+        }
+        SAP(U, in, out, m0, 1,SAPV::sap_blocks_per_proc); //One SAP iteration
+    }
+};
 
 #endif

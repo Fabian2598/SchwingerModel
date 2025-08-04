@@ -131,7 +131,7 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	//Call MPI for SAP parallelization
 	int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
+	spinor rhs(LV::Ntot, c_vector(2, 0));
 	using namespace AMGV; //AMG parameters namespace
 
 	//Test vectors random initialization
@@ -147,8 +147,8 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	for (int i = 0; i < Ntest; i++) {
 	
 		//Right hand side of the linear system 
-		//spinor rhs = test_vectors[i];  
-		spinor rhs(LV::Ntot, c_vector(2, 0));
+		//rhs = test_vectors[i];  
+		//rhs(LV::Ntot, c_vector(2, 0));
 		//The result will be stored in test_vectors[i]
 		double startT, endT;
 		startT = MPI_Wtime();
@@ -173,8 +173,8 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 			//Tolerance for the two-grid method, but in this case it is not relevant. Still, it is needed to call
 			//the function
 			double tolerance = 1e-10; 
-
-			test_vectors[i] = TwoGrid(two_grid_iter,tolerance, test_vectors[i], test_vectors[i], false); 
+			rhs = test_vectors[i];
+			TwoGrid(two_grid_iter,tolerance, rhs,rhs, test_vectors[i], false); 
 		}
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
@@ -246,6 +246,7 @@ void AMG::Pt_v(const spinor& v,spinor& out) {
 	Intialize the coarse gauge links for Dc
 */
 void AMG::initializeCoarseLinks(){
+	//This function consumes most of the time
 	c_double P[2][2][2], M[2][2][2]; 
 	
 	P[0][0][0] = 1.0; P[0][0][1] = 1.0;
@@ -356,10 +357,10 @@ void AMG::Pt_D_P(const spinor& v,spinor& out){
 /*
 	Two-grid method for solving the linear system D x = phi
 */
-spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0, 
-	const spinor& phi, const bool& print_message) {
+int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0, 
+	const spinor& phi, spinor& x, const bool& print_message) {
 
-	spinor x = x0; //Solution spinor
+	x = x0; //Solution spinor
 	spinor r(LV::Ntot,c_vector(2,0)); //Residual 
 	double err; //Error = sqrt(dot(r,r))
 	int k = 0; //Iteration number
@@ -392,7 +393,7 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		
 		//Using GMRES for the coarse grid solver 
 		spinor gmresResult(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
-		gmres_c_level.gmres(Pt_r,Pt_r,gmresResult,false);
+		gmres_c_level.fgmres(Pt_r,Pt_r,gmresResult,false);
 		P_v(gmresResult,temp);
 
 		for(int n = 0; n<LV::Ntot; n++){
@@ -431,12 +432,12 @@ spinor AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			if (print_message == true){
 				std::cout << "Two-grid method converged in " << k+1 << " iterations" << " Error " << err << std::endl;
 			}
-		return x;
+		return 1;
 		}
 		k++;
 	}
 	if (print_message == true){
 		std::cout << "Two-grid did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
 	}
-	return x;
+	return 0;
 }

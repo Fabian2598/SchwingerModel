@@ -119,7 +119,7 @@ void I_D_B_1_It(const c_matrix& U, const spinor& v, spinor& x, const double& m0,
     set_zeros(x,sap_lattice_sites_per_block,2); //Initialize x to zero
 
     gmres_DB.set_block(block); //Set the block index for the GMRES_D_B operator
-    gmres_DB.gmres(temp,temp,x, print_message); //Call the GMRES solver 
+    gmres_DB.fgmres(temp,temp,x, print_message); //Call the GMRES solver 
 }
 
 int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int& nu,const int& blocks_per_proc){

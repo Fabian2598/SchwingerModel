@@ -13,13 +13,12 @@ set(SRC_FILES
     src/sap.cpp                 #Schwarz alternating method
     src/amg.cpp                 #Two-grid implementation 
     src/main.cpp                #Main program
-    src/gmres.cpp               #GMRES solver for comparison
-    src/fgmres.cpp              #Flexible GMRES solver that uses the two-grid preconditioner
+    src/fgmres.cpp              #Flexible GMRES solver
 )
 
 #--------------------------Lattice dimensions---------------------------#
-set(NS "128") #Space
-set(NT "128") #Time
+set(NS "256") #Space
+set(NT "256") #Time
 #-----------------------------------------------------------------------#
 
 
