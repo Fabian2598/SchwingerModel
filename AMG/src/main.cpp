@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
     
     {
         double beta = 2;
-        int nconf = 20;
+        int nconf = 0;
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
@@ -130,11 +130,11 @@ int main(int argc, char **argv) {
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
     //Random right hand side
-    //rhs[0][0] = 1.0;
-    for(int i = 0; i < Ntot; i++) {
-        rhs[i][0] = RandomU1();
-        rhs[i][1] = RandomU1();
-    }
+    rhs[0][0] = 1.0;
+    //for(int i = 0; i < Ntot; i++) {
+    //    rhs[i][0] = RandomU1();
+    //    rhs[i][1] = RandomU1();
+    //}
     
     clock_t start, end;
     double elapsed_time;
