@@ -95,7 +95,6 @@ extern std::vector<std::vector<int>> Agg;
 //Aggregates[number_of_aggregate][vectorized_coordinate of the lattice point]
 //This vectorization also takes into account the spin index
 
-
 //--Coordinates of the neighbors to avoid recomputing them each time the operator D is called--//
 //Check dirac_operator.h for the definition of RightPB and LeftPB
 extern std::vector<std::vector<int>>RightPB; //Right periodic boundary

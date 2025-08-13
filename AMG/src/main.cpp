@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     MakeBlocks(); //Makes lattice blocks 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     
-    //double m0 = -0.5;
+    //double m0 = -0.62;
     double m0 = -0.18840579710144945;
 
     //Parameters in variables.cpp
