@@ -222,32 +222,157 @@ int SAP(const c_matrix& U, const spinor& v,spinor &x, const double& m0,const int
     return 0; 
 }
 
-/*
-This is the explicit definition of the interpolation and restriction operators for the SAP method.
-I leave it here for reference, but it is not used in the code.
+void SAP_C::SchwarzBlocks(){
+    int count, block;
+    int x0, t0, x1, t1;
+    for (int x = 0; x < Block_x; x++) {
+        for (int t = 0; t < Block_t; t++) {
+            x0 = x * x_elements; t0 = t * t_elements;
+            x1 = (x + 1) * x_elements; t1 = (t + 1) * t_elements;
+            block = x * Block_t + t;
+            count = 0;  
+            //Filling the block with the coordinates of the lattice points
+            for(int x = x0; x < x1; x++) {
+                for (int t = t0; t < t1; t++) {
+                    SAP_Blocks[block][count++] = x * Nt+ t; 
+                    //Each block also considers both spin components, 
+                    //so we only reference the lattice coordinates here.
+                }
+            }
+            if (count != lattice_sites_per_block) {
+                std::cout << "Block " << block << " has " << count << " lattice points" << std::endl;
+                std::cout << "Expected " << lattice_sites_per_block << std::endl;
+                exit(1);
+            }
+            //Red-black decomposition for the blocks.
+            if (Block_t % 2 == 0) {
+                if  (x%2 ==0){
+                    (block % 2 == 0) ? RedBlocks[block / 2] = block:BlackBlocks[block / 2] = block; 
+                }
+                else{
+                    (block % 2 == 0) ? BlackBlocks[block / 2] = block:RedBlocks[block / 2] = block; 
+                }
+            } 
+            else {
+                (block % 2 == 0) ? RedBlocks[block / 2] = block:BlackBlocks[block / 2] = block;                
+            }
+        }
+    }
+}
 
-//x = I_B^T v --> Restriction of the vector v to the block B
-//dim(v) = 2 Ntot, dim(x) = 2 * sap_lattice_sites_per_block
-void It_B_v(const spinor& v, spinor& x, const int& block){
-    using namespace SAPV;
-    set_zeros(x,sap_lattice_sites_per_block,2); //Initialize the output vector to zero
-    for (int j = 0; j < sap_lattice_sites_per_block; j++){
+//A_B = I_B * D_B^-1 * I_B^T v --> Extrapolation of D_B^-1 to the original lattice.
+//dim(v) = 2 * Ntot, dim(x) = 2 Ntot
+//v: input, x: output
+void SAP_C::I_D_B_1_It(const spinor& v, spinor& x,const int& block){
+    bool print_message = false; //good for testing GMRES   
+
+    spinor temp(lattice_sites_per_block, c_vector(2, 0)); 
+
+    //temp = I_B^T v
+    for (int j = 0; j < lattice_sites_per_block; j++){
         //Writing result to x 
-        x[j][0] = v[SAP_Blocks[block][j]][0];
-        x[j][1] = v[SAP_Blocks[block][j]][1];
+        temp[j][0] = v[SAP_Blocks[block][j]][0];
+        temp[j][1] = v[SAP_Blocks[block][j]][1];
     }
+     
+    set_zeros(x,lattice_sites_per_block,2); //Initialize x to zero
+
+    gmres_DB.fgmres(temp,temp,x, print_message); //Call the GMRES solver 
 }
 
-// x = I_B v --> Interpolation of the vector v to the original lattice
-//dim(v) = 2 * sap_lattice_sites_per_block, dim(x) = 2 Ntot
-void I_B_v(const spinor& v, spinor& x,const int& block){
-    using namespace SAPV;
-    set_zeros(x,Ntot,2); //Initialize x to zero
-    for (int j = 0; j < sap_lattice_sites_per_block; j++){
-        x[SAP_Blocks[block][j]][0] += v[j][0];
-        x[SAP_Blocks[block][j]][1] += v[j][1];
+int SAP_C::SAP(const spinor& v,spinor &x, const int& blocks_per_proc){
+    /*
+    Solves D x = v using the SAP method
+    */
+   int size, rank;
+   MPI_Comm_size(MPI_COMM_WORLD, &size);
+   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+
+    double err;
+    double v_norm = sqrt(std::real(dot(v, v))); //norm of the right hand side
+
+    //Divide SAP_RedBlocks among processes
+    int start = rank * blocks_per_proc;
+    int end = std::min(start + blocks_per_proc, coloring_blocks);
+
+    spinor temp(lattice_sites_per_block, c_vector(2, 0)); 
+    spinor r(Ntot, c_vector(2, 0)); //residual
+    spinor Dphi(Ntot, c_vector(2, 0)); //Temporary spinor for D x
+    funcGlobal(x,Dphi);
+    axpy(v,Dphi,-1.0,r); //r = v - D x
+
+
+    //Prepare buffers for MPI communication
+    c_vector local_buffer(Ntot * 2, 0);
+    c_vector global_buffer(Ntot * 2, 0);
+    
+    for (int i = 0; i< nu; i++){  
+        for(int n = 0; n < Ntot * 2; n++) {
+            local_buffer[n] = 0.0; //Initialize local_buffer to zero
+        }
+        for (int b = start; b < end; b++) {
+            int block = RedBlocks[b];
+            I_D_B_1_It(r, temp, block);
+            //local_x = local_x + temp; // Local computation
+            for(int n = 0; n < lattice_sites_per_block; n++) {
+                local_buffer[2*Blocks[block][n]]     = temp[n][0];
+                local_buffer[2*Blocks[block][n] + 1] = temp[n][1];
+            }
+        }
+
+        //------MPI communication for red blocks------//
+        // Perform single allreduce
+        MPI_Allreduce(local_buffer.data(), global_buffer.data(), Ntot * 2, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+        
+        //---------------------------------------------//
+        //x = x + global_x;
+
+        for(int n = 0; n < Ntot; n++) {
+            x[n][0] += global_buffer[2*n]; //global_x[n][0];
+            x[n][1] += global_buffer[2*n+1]; //global_x[n][1];
+        }
+        funcGlobal(x,Dphi);
+        //r = v - D x
+        axpy(v,Dphi,-1.0,r);
+        //r = v - D_phi(U, x, m0); //r = v - D x
+
+
+        //set_zeros(local_x,Ntot,2); //Initialize local_x to zero
+        for(int n = 0; n < Ntot * 2; n++) {
+            local_buffer[n] = 0.0; //Initialize local_buffer to zero
+        }
+
+        for (int b = start; b < end; b++) {
+            int block = SAP_BlackBlocks[b];
+            I_D_B_1_It(r, temp, block);
+            //local_x = local_x + temp; // Local computation
+            for(int n = 0; n < lattice_sites_per_block; n++) {
+                local_buffer[2*Blocks[block][n]]     = temp[n][0];
+                local_buffer[2*Blocks[block][n] + 1] =  temp[n][1];
+            }
+        }
+
+        //------MPI communication for black blocks------//
+
+        MPI_Allreduce(local_buffer.data(), global_buffer.data(), Ntot * 2, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+
+        for(int n = 0; n < Ntot; n++) {
+            x[n][0] += global_buffer[2*n]; //global_x[n][0];
+            x[n][1] += global_buffer[2*n+1]; //global_x[n][1];
+        }
+
+        funcGlobal(x,Dphi);
+        //r = v - D x
+        axpy(v,Dphi,-1.0,r);
+
+        err = sqrt(std::real(dot(r, r))); 
+        if (err < tol * v_norm) {
+            //std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
+            return 1;
+        }
     }
-
+   //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
+    
+    return 0; 
 }
-
-*/

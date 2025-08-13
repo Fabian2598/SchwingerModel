@@ -3,6 +3,7 @@
 #include "fgmres.h"
 #include "mpi.h"
 
+
 /*
     Build the Schwarz blocks
     Function only has to be called once before using the SAP method.
@@ -147,6 +148,182 @@ private:
         }
         SAP(U, in, out, m0, 1,SAPV::sap_blocks_per_proc); //One SAP iteration
     }
+};
+
+
+
+//-----------------------------------------------------------------------------------------------------------------//
+
+class SAP_C {
+public: 
+    /*
+    Solves D_B x = phi using GMRES, where D_B is the Dirac matrix restricted to the Schwarz block B     
+    */
+    class GMRES_D_B : public FGMRES {
+        public:GMRES_D_B(const int& dim1, const int& dim2, const int& m, const int& restarts, const double& tol,SAP_C* parent) :
+        FGMRES(dim1, dim2, m, restarts, tol), parent(parent) {
+            if (m > SAPV::sap_variables_per_block) {
+                std::cout << "Error: restart length > sap_variables_per_block" << std::endl;
+                exit(1);
+            }
+        };
+        ~GMRES_D_B() { };
+    
+        private:
+        SAP_C* parent; //Pointer to the parent SAP_C object
+        /*
+        Implementation of the function that computes the matrix-vector product for the fine level
+        */
+        void func(const spinor& in, spinor& out) override { 
+            parent->funcLocal(in, out);
+        }
+        void preconditioner(const spinor& in, spinor& out) override { 
+            out = std::move(in); //No preconditioning
+        }
+    };
+
+    GMRES_D_B gmres_DB;
+
+    //------------------------------------//
+    //Constructor
+    SAP_C(const int& dim1, const int& dim2, const int& nu, const double& tol,const int& Nt, const int& Nx,const int& block_x,const int& block_t) :
+    dim1(dim1), dim2(dim2), nu(nu), tol(tol), Nt(Nt), Nx(Nx), Block_x(block_x), Block_t(block_t), 
+    gmres_DB(SAPV::sap_lattice_sites_per_block, 
+        2, 
+        SAPV::sap_gmres_restart_length, 
+        SAPV::sap_gmres_restarts, 
+        SAPV::sap_gmres_tolerance,
+        this)  
+    {
+        if (nu > SAPV::sap_variables_per_block) {
+            std::cout << "Error: nu > sap_variables_per_block" << std::endl;
+            exit(1);
+        }
+        
+        x_elements = Nx/block_x, t_elements = Nt/block_t; //Number of elements in the x and t direction
+        NBlocks = Block_x * Block_t; //Number of Schwarz blocks
+        lattice_sites_per_block = x_elements * t_elements; //Number of lattice points in the block
+        variables_per_block = 2 * lattice_sites_per_block; //Number of variables in the block 
+        coloring_blocks = NBlocks/2; //Number of red or black blocks
+        Ntot = Nt * Nx; //Total number of lattice points
+
+        SAP_Blocks = std::vector<std::vector<int>>(block_x*block_t, std::vector<int>(x_elements*t_elements, 0));
+        SAP_RedBlocks = std::vector<int>(coloring_blocks, 0); //Red blocks
+        SAP_BlackBlocks = std::vector<int>(coloring_blocks, 0); //Black blocks
+
+        SchwarzBlocks(); //Initialize the Schwarz blocks
+     };
+
+     /*
+        Parallel version of the SAP method.
+        Solves D x = v using the SAP method.
+        U: gauge configuration,
+        v: right-hand side,
+        x: output,
+        m0: mass parameter,
+        nu: number of iterations,
+        blocks_per_proc: number of blocks per process
+
+        The convergence criterion is ||r|| < ||phi|| * tol
+    */
+    int SAP(const spinor& v,spinor &x, const int& blocks_per_proc);
+
+
+private: 
+    int dim1, dim2, nu;
+    int Nt, Nx; //Dimensions of the lattice
+    int Ntot;
+    double tol;
+    int Block_x, Block_t; //Block dimensions for the SAP method
+    int x_elements, t_elements; //Number of elements in the x and t direction
+    int NBlocks, lattice_sites_per_block, variables_per_block, coloring_blocks; 
+    //Number of blocks, lattice sites per block, variables per block and coloring blocks
+
+    std::vector<std::vector<int>> Blocks; //SAP_Blocks[number_of_block][vectorized_coordinate of the lattice point]
+    //The vectorization does not take into account the spin index, since both spin indices are in the same block.
+    std::vector<int> RedBlocks; //Block index for the red blocks
+    std::vector<int> BlackBlocks; //Block index for the black blocks
+
+    /*
+        Build the Schwarz blocks
+        Function only has to be called once before using the SAP method.
+    */
+    void SchwarzBlocks();
+
+    /*
+    A_B v = I_B * D_B^-1 * I_B^T v --> Extrapolation of D_B^-1 to the original lattice.
+    dim(v) = 2 * Ntot, dim(x) = 2 Ntot
+    v: input, x: output 
+    */
+    void I_D_B_1_It(const spinor& v, spinor& x, const int& block);
+
+    /*
+    Matrix-vector operation
+    This is defined in the derived classes
+    */
+    virtual void funcGlobal(const spinor& in, spinor& out) = 0; 
+
+    /*
+    D_B operation. Dirac operator restricted to the block B.
+    */
+    virtual void funcLocal(const spinor& in, spinor& out) = 0; 
+    
+    /*
+        Given a lattice point index n, it returns the corresponding 
+        SAP block index and the local index m within that block.
+    */
+    inline void getMandBlock(const int& n, int &m, int &block) {
+        int x = n / LV::Nt; //x coordinate of the lattice point 
+        int t = n % LV::Nt; //t coordinate of the lattice point
+        //Reconstructing the block and m index from x and t
+        int block_x = x / x_elements; //Block index in the x direction
+        int block_t = t / t_elements; //Block index in the t direction
+        block = block_x * Block_t + block_t; //Block index in the SAP method
+
+        int mx = x % x_elements; //x coordinate in the block
+        int mt = t % t_elements; //t coordinate in the block
+        m = mx * t_elements + mt; //Index in the block
+    }
+
+    
+};
+
+
+class SAP_fine_level : public SAP_C {
+public:
+    SAP_fine_level(const int& dim1, const int& dim2, const int& nu, const double& tol,const int& Nt, const int& Nx,const int& block_x,const int& block_t,
+    const c_matrix& U, const double& m0) :
+    SAP_C(dim1, dim2, nu, tol, Nt, Nx, block_x, block_t) {
+        //Fine level SAP does not use GMRES_D_B
+    }
+
+
+      /*
+    Set the block index for the GMRES_D_B operator.
+    */
+    void set_block(const int& block_index) { 
+            block = block_index;
+        }
+
+    void set_params(const c_matrix& conf, const double& bare_mass){
+        U = &conf;
+        m0 = bare_mass;
+    }
+
+private: 
+    const c_matrix* U; 
+    double m0; 
+    int block; //block index for the Schwarz block
+
+     void funcGlobal(const spinor& in, spinor& out) override { 
+        D_phi(*U, in, out,m0);
+    }
+
+    void funcLocal(const spinor& in, spinor& out) override { 
+        set_block(block);
+        D_B(*U, in, out, m0,block);
+    }
+
 };
 
 #endif
