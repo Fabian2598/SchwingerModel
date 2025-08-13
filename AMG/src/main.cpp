@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    
+    /*
     {
         double beta = 2;
         int nconf = 0;
@@ -122,6 +122,7 @@ int main(int argc, char **argv) {
             std::cout << "Conf read from " << NameData.str() << std::endl;
         }
     }
+    */
     
 
     gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
@@ -130,11 +131,11 @@ int main(int argc, char **argv) {
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
     //Random right hand side
-    rhs[0][0] = 1.0;
-    //for(int i = 0; i < Ntot; i++) {
-    //    rhs[i][0] = RandomU1();
-    //    rhs[i][1] = RandomU1();
-    //}
+    //rhs[0][0] = 1.0;
+    for(int i = 0; i < Ntot; i++) {
+        rhs[i][0] = RandomU1();
+        rhs[i][1] = RandomU1();
+    }
     
     clock_t start, end;
     double elapsed_time;
@@ -151,33 +152,31 @@ int main(int argc, char **argv) {
         spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;  
-        
-        /*
-        int len = AMGV::gmres_restart_length_coarse_level;
-        int restarts = 1000; //If the restart length is too large this could be problematic ...
+        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;
+    }  
+    MPI_Barrier(MPI_COMM_WORLD);
 
-        spinor xgmres(Ntot,c_vector(2));
-        FGMRES_fine_level fgmres_fine_level(Ntot, 2, len, restarts,1e-10,GConf.Conf, m0);
-        start = clock();
-        fgmres_fine_level.fgmres(rhs,x0,xgmres,true);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl; 
-        */
+    int nu = 10;
+    double tol = 1e-10;
+    spinor v(Ntot, c_vector(2, 0)); //Solution vector for SAP
+    spinor v2(Ntot, c_vector(2, 0)); //Solution vector for SAP
+    SAP_fine_level sap_fine( LV::Ntot,  2, SAPV::sap_tolerance, LV::Nt, LV::Nx,SAPV::sap_block_x,SAPV::sap_block_t,GConf.Conf, m0);
+    sap_fine.set_params(GConf.Conf, m0);
+    sap_fine.SAP(rhs,v,nu, SAPV::sap_blocks_per_proc);
+    MPI_Barrier(MPI_COMM_WORLD);
 
-        std::cout << "Inverting the normal equations with CG" << std::endl; 
-        spinor xCG(Ntot,c_vector(2,0));
-        start = clock();
-        conjugate_gradient(GConf.Conf, rhs, xCG, m0);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for CG = " << elapsed_time << " seconds" << std::endl;  
-        
-
+    SAP(GConf.Conf, rhs,v2, m0,nu,SAPV::sap_blocks_per_proc);
+    //check if both solutions are equal
+    for(int n = 0; n < Ntot; n++) {
+        if (std::abs(v[n][0] - v2[n][0]) > tol || std::abs(v[n][1] - v2[n][1]) > tol) {
+            std::cout << "Solutions are not equal at index " << n << ": " << v[n][0] << " " << v[n][1] << " vs " << v2[n][0] << " " << v2[n][1] << std::endl;
+            exit(1);
+        }
     }
-  
-    
+
+    std::cout << "Solutions are equal!" << std::endl;
+
+    //Next step --> Implement the change in the rest of the code to use the SAP_fine_level class
 
 /*
     MPI_Barrier(MPI_COMM_WORLD);
@@ -192,7 +191,7 @@ int main(int argc, char **argv) {
 
     
     MPI_Barrier(MPI_COMM_WORLD);
-
+/*
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
     spinor xAMG(Ntot, c_vector(2, 0)); //Solution vector for SAP
     startT = MPI_Wtime();
@@ -203,9 +202,10 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
-    
+*/  
 
     MPI_Finalize();
 
     return 0;
 }
+

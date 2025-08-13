@@ -234,7 +234,7 @@ void SAP_C::SchwarzBlocks(){
             //Filling the block with the coordinates of the lattice points
             for(int x = x0; x < x1; x++) {
                 for (int t = t0; t < t1; t++) {
-                    SAP_Blocks[block][count++] = x * Nt+ t; 
+                    Blocks[block][count++] = x * Nt+ t; 
                     //Each block also considers both spin components, 
                     //so we only reference the lattice coordinates here.
                 }
@@ -271,16 +271,16 @@ void SAP_C::I_D_B_1_It(const spinor& v, spinor& x,const int& block){
     //temp = I_B^T v
     for (int j = 0; j < lattice_sites_per_block; j++){
         //Writing result to x 
-        temp[j][0] = v[SAP_Blocks[block][j]][0];
-        temp[j][1] = v[SAP_Blocks[block][j]][1];
+        temp[j][0] = v[Blocks[block][j]][0];
+        temp[j][1] = v[Blocks[block][j]][1];
     }
      
     set_zeros(x,lattice_sites_per_block,2); //Initialize x to zero
-
+    gmres_DB.set_block(block); //Set the block index for the GMRES_D_B operator
     gmres_DB.fgmres(temp,temp,x, print_message); //Call the GMRES solver 
 }
 
-int SAP_C::SAP(const spinor& v,spinor &x, const int& blocks_per_proc){
+int SAP_C::SAP(const spinor& v,spinor &x, const int& nu, const int& blocks_per_proc){
     /*
     Solves D x = v using the SAP method
     */
@@ -344,7 +344,7 @@ int SAP_C::SAP(const spinor& v,spinor &x, const int& blocks_per_proc){
         }
 
         for (int b = start; b < end; b++) {
-            int block = SAP_BlackBlocks[b];
+            int block = BlackBlocks[b];
             I_D_B_1_It(r, temp, block);
             //local_x = local_x + temp; // Local computation
             for(int n = 0; n < lattice_sites_per_block; n++) {
@@ -375,4 +375,55 @@ int SAP_C::SAP(const spinor& v,spinor &x, const int& blocks_per_proc){
    //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
     
     return 0; 
+}
+
+void SAP_fine_level::D_B(const c_matrix& U, const spinor& v, spinor& x, const double& m0,const int& block){
+    int RightPB_0, blockRPB_0; //Right periodic boundary in the 0-direction
+    int RightPB_1, blockRPB_1; //Right periodic boundary in the 1-direction
+    int LeftPB_0, blockLPB_0; //Left periodic boundary in the 0-direction
+    int LeftPB_1, blockLPB_1; //Left periodic boundary in the 1-direction
+
+    c_vector phi_RPB_0 = c_vector(2, 0);
+    c_vector phi_RPB_1 = c_vector(2, 0);
+    c_vector phi_LPB_0 = c_vector(2, 0);
+    c_vector phi_LPB_1 = c_vector(2, 0);
+
+    for (int m = 0; m < lattice_sites_per_block; m++) {
+		//n = x * Nt + t
+        int n = Blocks[block][m]; //n is the index of the lattice point in the block
+        
+        //Get m and block for the neighbors
+        getMandBlock(RightPB[n][0], RightPB_0, blockRPB_0);
+        getMandBlock(RightPB[n][1], RightPB_1, blockRPB_1); 
+        getMandBlock(LeftPB[n][0], LeftPB_0, blockLPB_0); 
+        getMandBlock(LeftPB[n][1], LeftPB_1, blockLPB_1); 
+        
+        if(blockRPB_0 == block){phi_RPB_0 = v[RightPB_0];}
+        else {phi_RPB_0[0] = 0; phi_RPB_0[1] = 0; }
+
+        if(blockRPB_1 == block){phi_RPB_1 = v[RightPB_1];}
+        else {phi_RPB_1[0] = 0; phi_RPB_1[1] = 0; }
+
+        if(blockLPB_0 == block){phi_LPB_0 = v[LeftPB_0];}
+        else {phi_LPB_0[0] = 0; phi_LPB_0[1] = 0; }
+
+        if(blockLPB_1 == block) {phi_LPB_1 = v[LeftPB_1];}
+        else {phi_LPB_1[0] = 0; phi_LPB_1[1] = 0; }
+ 
+		x[m][0] = (m0 + 2) * v[m][0] - 0.5 * ( 
+			U[n][0] * SignR[n][0] * (phi_RPB_0[0] - phi_RPB_0[1]) 
+		+   U[n][1] * SignR[n][1] * (phi_RPB_1[0] + I_number * phi_RPB_1[1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi_LPB_0[0] + phi_LPB_0[1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (phi_LPB_1[0] - I_number * phi_LPB_1[1])
+		);
+
+		x[m][1] = (m0 + 2) * v[m][1] - 0.5 * ( 
+			U[n][0] * SignR[n][0] * (-phi_RPB_0[0] + phi_RPB_0[1]) 
+		+   U[n][1] * SignR[n][1] * (-I_number*phi_RPB_1[0] + phi_RPB_1[1])
+		+   std::conj(U[LeftPB[n][0]][0]) * SignL[n][0] * (phi_LPB_0[0] + phi_LPB_0[1])
+		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (I_number*phi_LPB_1[0] + phi_LPB_1[1])
+		);
+			
+	}
+    
 }
