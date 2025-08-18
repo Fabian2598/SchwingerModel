@@ -96,10 +96,9 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    
+    double beta = 2;
+    int nconf = 0;
     {
-        double beta = 2;
-        int nconf = 0;
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
@@ -126,15 +125,44 @@ int main(int argc, char **argv) {
 
     gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
 
+    spinor rhs(Ntot, c_vector(2, 0)); //right hand side
+    spinor x0(Ntot, c_vector(2, 0)); //initial guess
     
-    spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
-    spinor x(Ntot, c_vector(2, 0)); //solution vector 
+    //rhs[0][0] = 1.0;
     //Random right hand side
-    rhs[0][0] = 1.0;
-    //for(int i = 0; i < Ntot; i++) {
-    //    rhs[i][0] = RandomU1();
-    //    rhs[i][1] = RandomU1();
-    //}
+    for(int i = 0; i < Ntot; i++) {
+        rhs[i][0] = RandomU1();
+        rhs[i][1] = RandomU1();
+    }
+
+    // Save rhs to a .txt file
+    if (rank == 0){
+        std::ostringstream FileName;
+                FileName << "rhs_conf" << nconf << "_" << Nx << "_Nt" << Nt
+                << ".rhs";
+        std::ofstream rhsfile(FileName.str());
+
+        if (!rhsfile.is_open()) {
+            std::cerr << "Error opening rhs.txt for writing." << std::endl;
+        } else {
+            int x,t;
+            //x, t, mu, real part, imaginary part
+            for (int n = 0; n < Ntot; ++n) {
+                x = n/LV::Nt;
+                t = n%LV::Nt;
+                rhsfile << x << std::setw(30) << t << std::setw(30) << 0 << std::setw(30)
+                    << std::setprecision(17) << std::scientific << std::real(rhs[n][0]) << std::setw(30)
+                    << std::setprecision(17) << std::scientific << std::imag(rhs[n][0]) << "\n";
+
+                rhsfile << x << std::setw(30) << t << std::setw(30) << 1 << std::setw(30)
+                    << std::setprecision(17) << std::scientific << std::real(rhs[n][1]) << std::setw(30)
+                    << std::setprecision(17) << std::scientific << std::imag(rhs[n][1]) << "\n";
+          
+            }
+        rhsfile.close();
+        }
+    }
+    
     
     clock_t start, end;
     double elapsed_time;
@@ -146,7 +174,6 @@ int main(int argc, char **argv) {
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
-        spinor x0(Ntot, c_vector(2, 0)); //Initial guess
         int max_iter = 10000;//100000; //Maximum number of iterations
         spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true);
         end = clock();
@@ -194,17 +221,27 @@ int main(int argc, char **argv) {
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
-    spinor xAMG(Ntot, c_vector(2, 0)); //Solution vector for SAP
+    spinor xAMG(Ntot, c_vector(2, 0)); //Solution 
     startT = MPI_Wtime();
     FGMRES_two_grid fgmres_two_grid(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf, m0);
-    fgmres_two_grid.fgmres(rhs,x,xAMG,true);
+    fgmres_two_grid.fgmres(rhs,x0,xAMG,true);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
     
-
+    //Checking solution 
+    /*
+    spinor xini(Ntot, c_vector(2, 0)); //Initial guess
+    D_phi(GConf.Conf, xAMG, xini, m0); //D_phi U x
+    for(int i = 0; i< Ntot; i++){
+        if (std::abs(xini[i][0] - rhs[i][0]) > 1e-10 || std::abs(xini[i][1] - rhs[i][1]) > 1e-10) {
+            std::cout << "Solution not correct at index " << i << ": " << xini[i][0] << " != " << rhs[i][0] << " or " << xini[i][1] << " != " << rhs[i][1] << std::endl;
+        }
+        //std::cout << xini[i][0] << "    " <<  rhs[i][0] << std::endl;
+    }
+    */
     MPI_Finalize();
 
     return 0;
