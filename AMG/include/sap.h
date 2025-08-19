@@ -115,42 +115,6 @@ inline void getMandBlock(const int& n, int &m, int &block) {
     m = mx * SAPV::sap_t_elements + mt; //Index in the block
 }
 
-/*  
-    FGMRES with SAP preconditioner
-    This method solves the original Dirac equation
-*/
-class FGMRES_SAP : public FGMRES {
-    public:
-    FGMRES_SAP(const int& dim1, const int& dim2, const int& m, const int& restarts, const double& tol,
-    const c_matrix& U, const double& m0) : FGMRES(dim1, dim2, m, restarts, tol), U(U), m0(m0), dim1(dim1), dim2(dim2) {
-    };
-    ~FGMRES_SAP() { };
-    
-private:
-    const c_matrix& U; //reference to Gauge configuration. This is to avoid copying the matrix
-    const double& m0; //reference to mass parameter
-    const int &dim1;
-    const int &dim2;
-    /*
-    Implementation of the function that computes the matrix-vector product for the fine level
-    */
-    void func(const spinor& in, spinor& out) override {
-        D_phi(U, in, out, m0); 
-    }
-
-
-    void preconditioner(const spinor& in, spinor& out) override {
-        //Initialize ZmT[j] to zero
-        for(int i = 0; i<dim1; i++){
-            for(int j = 0; j<dim2; j++){
-                out[i][j] = 0;
-            }
-        }
-        SAP(U, in, out, m0, 1,SAPV::sap_blocks_per_proc); //One SAP iteration
-    }
-};
-
-
 
 //-----------------------------------------------------------------------------------------------------------------//
 
@@ -196,10 +160,6 @@ public:
         SAPV::sap_gmres_tolerance,
         this)  
     {
-        if (nu > SAPV::sap_variables_per_block) {
-            std::cout << "Error: nu > sap_variables_per_block" << std::endl;
-            exit(1);
-        }
         
         x_elements = Nx/block_x, t_elements = Nt/block_t; //Number of elements in the x and t direction
         NBlocks = Block_x * Block_t; //Number of Schwarz blocks
@@ -212,7 +172,7 @@ public:
         RedBlocks = std::vector<int>(coloring_blocks, 0); //Red blocks
         BlackBlocks = std::vector<int>(coloring_blocks, 0); //Black blocks       
         SchwarzBlocks(); //Initialize the Schwarz blocks
-        std::cout << "Schwarz blocks initialized with " << NBlocks << " blocks, each with " << lattice_sites_per_block << " lattice points." << std::endl;
+        //std::cout << "Schwarz blocks initialized with " << NBlocks << " blocks, each with " << lattice_sites_per_block << " lattice points." << std::endl;
      };
 
     /*
@@ -274,8 +234,7 @@ private:
 
 class SAP_fine_level : public SAP_C {
 public:
-    SAP_fine_level(const int& dim1, const int& dim2, const double& tol,const int& Nt, const int& Nx,const int& block_x,const int& block_t,
-    const c_matrix& U, const double& m0) :
+    SAP_fine_level(const int& dim1, const int& dim2, const double& tol,const int& Nt, const int& Nx,const int& block_x,const int& block_t) :
     SAP_C(dim1, dim2, tol, Nt, Nx, block_x, block_t) {
     }
 
@@ -318,5 +277,50 @@ private:
     }
 
 };
+
+/*
+    SAP solver for D_B
+*/
+extern SAP_fine_level sap;
+
+/*  
+    FGMRES with SAP preconditioner
+    This method solves the original Dirac equation
+*/
+class FGMRES_SAP : public FGMRES {
+    public:
+    FGMRES_SAP(const int& dim1, const int& dim2, const int& m, const int& restarts, const double& tol,
+    const c_matrix& U, const double& m0) : FGMRES(dim1, dim2, m, restarts, tol), U(U), m0(m0), dim1(dim1), dim2(dim2)
+    //, sap(LV::Ntot,  2, SAPV::sap_tolerance, LV::Nt, LV::Nx,SAPV::sap_block_x,SAPV::sap_block_t)
+    {
+    };
+    ~FGMRES_SAP() { };
+    
+private:
+    const c_matrix& U; //reference to Gauge configuration. This is to avoid copying the matrix
+    const double& m0; //reference to mass parameter
+    const int &dim1;
+    const int &dim2;
+    //SAP_fine_level sap;
+    /*
+    Implementation of the function that computes the matrix-vector product for the fine level
+    */
+    void func(const spinor& in, spinor& out) override {
+        D_phi(U, in, out, m0); 
+    }
+
+
+    void preconditioner(const spinor& in, spinor& out) override {
+        //Initialize ZmT[j] to zero
+        for(int i = 0; i<dim1; i++){
+            for(int j = 0; j<dim2; j++){
+                out[i][j] = 0;
+            }
+        }
+        sap.SAP(in,out,1, SAPV::sap_blocks_per_proc);
+        //SAP(U, in, out, m0, 1,SAPV::sap_blocks_per_proc); //One SAP iteration
+    }
+};
+
 
 #endif

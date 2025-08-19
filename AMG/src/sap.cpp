@@ -424,6 +424,7 @@ void SAP_fine_level::D_B(const c_matrix& U, const spinor& v, spinor& x, const do
 		+   std::conj(U[LeftPB[n][1]][1]) * SignL[n][1] * (I_number*phi_LPB_1[0] + phi_LPB_1[1])
 		);
 			
-	}
-    
+	}   
 }
+
+SAP_fine_level sap(LV::Ntot,  2, SAPV::sap_tolerance, LV::Nt, LV::Nx,SAPV::sap_block_x,SAPV::sap_block_t);

@@ -96,10 +96,10 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    /*
+    
     {
         double beta = 2;
-        int nconf = 0;
+        int nconf = 3;
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
@@ -122,11 +122,11 @@ int main(int argc, char **argv) {
             std::cout << "Conf read from " << NameData.str() << std::endl;
         }
     }
-    */
+    
     
 
     gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
-
+    sap.set_params(GConf.Conf, m0); //Setting gauge conf and m0 for SAP 
     
     spinor rhs(Ntot, c_vector(2, 0)); //random right hand side 
     spinor x(Ntot, c_vector(2, 0)); //solution vector 
@@ -156,42 +156,18 @@ int main(int argc, char **argv) {
     }  
     MPI_Barrier(MPI_COMM_WORLD);
 
-    int nu = 10;
-    double tol = 1e-10;
-    spinor v(Ntot, c_vector(2, 0)); //Solution vector for SAP
-    spinor v2(Ntot, c_vector(2, 0)); //Solution vector for SAP
-    SAP_fine_level sap_fine( LV::Ntot,  2, SAPV::sap_tolerance, LV::Nt, LV::Nx,SAPV::sap_block_x,SAPV::sap_block_t,GConf.Conf, m0);
-    sap_fine.set_params(GConf.Conf, m0);
-    sap_fine.SAP(rhs,v,nu, SAPV::sap_blocks_per_proc);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    SAP(GConf.Conf, rhs,v2, m0,nu,SAPV::sap_blocks_per_proc);
-    //check if both solutions are equal
-    for(int n = 0; n < Ntot; n++) {
-        if (std::abs(v[n][0] - v2[n][0]) > tol || std::abs(v[n][1] - v2[n][1]) > tol) {
-            std::cout << "Solutions are not equal at index " << n << ": " << v[n][0] << " " << v[n][1] << " vs " << v2[n][0] << " " << v2[n][1] << std::endl;
-            exit(1);
-        }
-    }
-
-    std::cout << "Solutions are equal!" << std::endl;
-
-    //Next step --> Implement the change in the rest of the code to use the SAP_fine_level class
-
-/*
-    MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning version --------------" << std::endl;}   
     spinor xSAP(Ntot, c_vector(2, 0)); //Solution vector for SAP
     FGMRES_SAP fgmres_sap(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf.Conf, m0);
     startT = MPI_Wtime();
     fgmres_sap.fgmres(rhs,x,xSAP,true);
     endT = MPI_Wtime();
-    printf("[rank %d] time elapsed during the job NEW implementation: %.4fs.\n", rank, endT - startT);
-*/
+    printf("[rank %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
+
 
     
     MPI_Barrier(MPI_COMM_WORLD);
-/*
+
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
     spinor xAMG(Ntot, c_vector(2, 0)); //Solution vector for SAP
     startT = MPI_Wtime();
@@ -202,7 +178,7 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
-*/  
+
 
     MPI_Finalize();
 
