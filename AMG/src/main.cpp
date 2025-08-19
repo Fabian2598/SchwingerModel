@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
         std::cout << "| GMRES iterations for SAP blocks = " << sap_gmres_restarts << std::endl;
         std::cout << "| GMRES tolerance for SAP blocks = " << sap_gmres_tolerance << std::endl;
     }
-    SchwarzBlocks(); //Builds the blocks for the Schwarz alternating method
+
     CheckBlocks(); //Check blocks dimensions
 
     if (rank == 0){
@@ -121,9 +121,7 @@ int main(int argc, char **argv) {
             std::cout << "Conf read from " << NameData.str() << std::endl;
         }
     }
-    
-
-    gmres_DB.set_params(GConf.Conf,m0); //Setting gauge conf and m0 for GMRES used in the Schwarz blocks
+    sap.set_params(GConf.Conf, m0); //Setting gauge conf and m0 for SAP 
 
     spinor rhs(Ntot, c_vector(2, 0)); //right hand side
     spinor x0(Ntot, c_vector(2, 0)); //initial guess
@@ -239,7 +237,6 @@ int main(int argc, char **argv) {
         if (std::abs(xini[i][0] - rhs[i][0]) > 1e-10 || std::abs(xini[i][1] - rhs[i][1]) > 1e-10) {
             std::cout << "Solution not correct at index " << i << ": " << xini[i][0] << " != " << rhs[i][0] << " or " << xini[i][1] << " != " << rhs[i][1] << std::endl;
         }
-        //std::cout << xini[i][0] << "    " <<  rhs[i][0] << std::endl;
     }
     */
     MPI_Finalize();

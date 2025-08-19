@@ -152,7 +152,8 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		//The result will be stored in test_vectors[i]
 		double startT, endT;
 		startT = MPI_Wtime();
-		SAP(GConf.Conf, rhs, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations,SAPV::sap_blocks_per_proc);  
+		//SAP(GConf.Conf, rhs, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations,SAPV::sap_blocks_per_proc);  
+		sap.SAP(rhs,test_vectors[i],AMGV::SAP_test_vectors_iterations, SAPV::sap_blocks_per_proc);
 		endT = MPI_Wtime();
 		SAP_time += endT - startT; 
 			
@@ -361,7 +362,8 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		//Pre-smoothing
 		if (nu1>0){
 			//gmres smoothing
-			SAP(GConf.Conf, phi, x, m0, nu1,SAPV::sap_blocks_per_proc); 
+			//SAP(GConf.Conf, phi, x, m0, nu1,SAPV::sap_blocks_per_proc);
+			sap.SAP(phi,x,nu1, SAPV::sap_blocks_per_proc); 
 		} 
 
 		//*************Coarse grid correction*************//
@@ -400,7 +402,8 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			//Measure time spent smoothing
 			double startT, endT;
 			startT = MPI_Wtime();
-			SAP(GConf.Conf, phi, x, m0, nu2, SAPV::sap_blocks_per_proc); 
+			//SAP(GConf.Conf, phi, x, m0, nu2, SAPV::sap_blocks_per_proc); 
+			sap.SAP(phi,x,nu2, SAPV::sap_blocks_per_proc);
 			endT = MPI_Wtime();
 			smooth_time += endT - startT; //Add post-smoothing time
 			SAP_time += endT - startT; //Add post-smoothing time
