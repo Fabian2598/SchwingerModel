@@ -3,7 +3,8 @@
 
 //Solves Dx x = phi with the Bi-CGstab method
 spinor bi_cgstab(void (*func)(const c_matrix&, const spinor&, spinor&,const double&), const int& dim1, const int& dim2,
-const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& max_iter, const double& tol, const bool& print_message) {
+const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const int& max_iter, const double& tol, 
+const bool& save_res,const bool& print_message) {
 
     int k = 0; //Iteration number
     double err; // ||r||
@@ -22,6 +23,7 @@ const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const 
     axpy(phi,Dphi, -1.0, r); //r = b - A*x
     r_tilde = r;
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
+    std::vector<double> errors;
 
     while (k<max_iter) {
         rho_i = dot(r, r_tilde); //r . r_dagger
@@ -49,10 +51,17 @@ const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const 
 
         err = sqrt(std::real(dot(s, s)));
         
+        if (save_res == true)
+            errors.push_back(err);
+        
         if (err < tol * norm_phi) {
             axpy(x,d, alpha, x); //x = x + alpha * d;
-            if (print_message == true) {
+            if (print_message == true) 
                 std::cout << "Bi-CG-stab for D converged in " << k+1 << " iterations" << " Error " << err << std::endl;
+            if (save_res == true){
+                std::ostringstream NameData;
+                NameData << "BiCGstab_residual_" << LV::Nx << "x" << LV::Nt << ".txt";
+                save_vec(errors,NameData.str());
             }
             return x;
         }
@@ -70,9 +79,13 @@ const c_matrix& U, const spinor& phi, const spinor& x0, const double& m0, const 
         rho_i_2 = rho_i; //rho_{i-2} = rho_{i-1}
         k++;
     }
-    if (print_message == true) {
+    if (print_message == true) 
         std::cout << "Bi-CG-stab for D did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
-    }
+    if (save_res == true){
+                std::ostringstream NameData;
+                NameData << "BiCGstab_residual_" << LV::Nx << "x" << LV::Nt << "txt";
+                save_vec(errors,NameData.str());
+            }
     return x;
 }
 

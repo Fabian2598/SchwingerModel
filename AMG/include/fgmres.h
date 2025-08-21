@@ -59,6 +59,8 @@ class FGMRES{
     spinor Dx; //auxiliary spinor
     c_double beta; //not 1/g^2 from simulations
 
+    std::vector<double> res_norms;
+
 
     /*
     Matrix-vector operation

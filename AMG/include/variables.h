@@ -4,6 +4,9 @@
 #include <iostream>
 #include <complex>
 #include <vector>
+#include <string>
+#include <fstream>
+#include <iomanip>
 
 typedef std::complex<double> c_double;
 constexpr double pi=3.14159265359;
@@ -113,5 +116,7 @@ void MakeBlocks();
 
 void CheckBlocks(); //Check that Nx/block_x and Nt/block_t are integers, the same for Schwarz blocks
 void CheckAggregates(); //Check that the aggregates are initialized and have the correct size
+
+void save_vec(const std::vector<double>& vec,const std::string& name); //save vector to .txt file 
 
 #endif 

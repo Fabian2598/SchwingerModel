@@ -55,11 +55,19 @@ int FGMRES::fgmres(const spinor& phi, const spinor& x0, spinor& x,const bool& pr
         //Compute the residual
         func(x, Dx);
         axpy(phi,Dx, -1.0, r); //r = b - A*x
-
+        
+        
         err = sqrt(std::real(dot(r, r)));
+        //Checking the residual evolution
+        if(print_message == true)
+            //std::cout << "Residual at cycle " << k+1 << "   ||r||=" << err << std::endl;
+            res_norms.push_back(err);
         if (err < tol* norm_phi) {
             if (print_message == true) {
-             std::cout << "FGMRES converged in " << k + 1 << " iterations" << " Error " << err << std::endl;
+                std::cout << "FGMRES converged in " << k + 1 << " cycles" << " Error " << err << std::endl;
+                std::ostringstream NameData;
+                NameData << "FGMRES_residual_" << LV::Nx << "x" << LV::Nt << ".txt";
+                save_vec(res_norms,NameData.str());
             }
             return 1;
         }

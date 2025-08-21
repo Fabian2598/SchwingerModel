@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
     //Open conf from file//
     
     double beta = 2;
-    int nconf = 0;
+    int nconf = 20;
     {
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
@@ -172,8 +172,8 @@ int main(int argc, char **argv) {
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
-        int max_iter = 10000;//100000; //Maximum number of iterations
-        spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true);
+        int max_iter = 100000;//100000; //Maximum number of iterations
+        spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true,true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;  

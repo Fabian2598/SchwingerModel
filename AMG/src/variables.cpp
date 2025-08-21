@@ -144,3 +144,18 @@ void MakeBlocks(){
 	}
 }
 
+void save_vec(const std::vector<double>& vec,const std::string& Name){
+    std::ofstream Datfile(Name);
+    if (!Datfile.is_open()) {
+        std::cerr << "Error opening file: " << Name << std::endl;
+        return;
+    }
+    int size = vec.size();
+    for (int n = 0; n < size; n++) {
+        Datfile << n
+                << std::setw(30) << std::setprecision(17) << std::scientific << vec[n]
+                << "\n";
+    }
+        
+    
+}
