@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
     //Open conf from file//
     
     double beta = 2;
-    int nconf = 3;
+    int nconf = 0;
     {
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
