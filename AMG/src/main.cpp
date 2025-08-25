@@ -219,10 +219,11 @@ int main(int argc, char **argv) {
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
+    bool print = true, save_res = true;
     spinor xAMG(Ntot, c_vector(2, 0)); //Solution 
     startT = MPI_Wtime();
     FGMRES_two_grid fgmres_two_grid(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf, m0);
-    fgmres_two_grid.fgmres(rhs,x0,xAMG,true);
+    fgmres_two_grid.fgmres(rhs,x0,xAMG,save_res,print);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);

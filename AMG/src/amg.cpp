@@ -384,7 +384,7 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		
 		//Using GMRES for the coarse grid solver 
 		spinor gmresResult(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
-		gmres_c_level.fgmres(Pt_r,Pt_r,gmresResult,false);
+		gmres_c_level.fgmres(Pt_r,Pt_r,gmresResult,false,false);
 		P_v(gmresResult,temp);
 
 		for(int n = 0; n<LV::Ntot; n++){
