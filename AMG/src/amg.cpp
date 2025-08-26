@@ -175,7 +175,7 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 			//the function
 			double tolerance = 1e-10; 
 			rhs = test_vectors[i];
-			TwoGrid(two_grid_iter,tolerance, rhs,rhs, test_vectors[i], false); 
+			TwoGrid(two_grid_iter,tolerance, rhs,rhs, test_vectors[i], false,false); 
 		}
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
@@ -348,14 +348,14 @@ void AMG::Pt_D_P(const spinor& v,spinor& out){
 	Two-grid method for solving the linear system D x = phi
 */
 int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0, 
-	const spinor& phi, spinor& x, const bool& print_message) {
+	const spinor& phi, spinor& x,const bool& save_res, const bool& print_message) {
 
 	x = x0; //Solution spinor
 	spinor r(LV::Ntot,c_vector(2,0)); //Residual 
 	double err; //Error = sqrt(dot(r,r))
 	int k = 0; //Iteration number
-	double norm = sqrt(std::real(dot(phi,phi)));
-
+	double norm_phi = sqrt(std::real(dot(phi,phi)));
+	std::vector<double> residuals;
 	//The convergence criterion is ||r|| < ||phi|| * tol
 
 	while(k < max_iter){
@@ -420,16 +420,22 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 		
 		err = sqrt(std::real(dot(r,r)));
 
-		if (err < tol*norm){
+		residuals.push_back(err);
+
+		if (err < tol*norm_phi){
 			if (print_message == true){
-				std::cout << "Two-grid method converged in " << k+1 << " iterations" << " Error " << err << std::endl;
+				std::cout << "Two-grid method converged in " << k+1 << " cycles" << " Error " << err << std::endl;
 			}
+			if (save_res == true){
+                std::ostringstream NameData;
+                NameData << "TwoGrid_residual_" << LV::Nx << "x" << LV::Nt << ".txt";
+                save_vec(residuals,NameData.str());
+            }
 		return 1;
 		}
 		k++;
 	}
-	if (print_message == true){
-		std::cout << "Two-grid did not converge in " << max_iter << " iterations" << " Error " << err << std::endl;
-	}
+	if (print_message == true)
+		std::cout << "Two-grid did not converge in " << max_iter << " cycles" << " Error " << err << std::endl;
 	return 0;
 }

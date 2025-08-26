@@ -114,7 +114,7 @@ public:
 	The convergence criterion is ||D x - phi|| < ||phi|| * tol
 	*/
 	int TwoGrid(const int& max_iter, const double& tol,
-		const spinor& x0, const spinor& phi,spinor & x,const bool& print_message);
+		const spinor& x0, const spinor& phi,spinor & x,const bool& save_res,const bool& print_message);
 
 private:
 	GaugeConf GConf;
@@ -214,7 +214,7 @@ private:
                 out[i][j] = 0;
             }
         }
-        amg.TwoGrid(1, 1e-10, zeros, in, out,false);
+        amg.TwoGrid(1, 1e-10, zeros, in, out,false,false);
     }
 
 };

@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
     //Open conf from file//
     
     double beta = 2;
-    int nconf = 20;
+    int nconf = 0;
     {
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
         //Bi-cgstab inversion for comparison
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
-        int max_iter = 100000;//100000; //Maximum number of iterations
+        int max_iter = 10000;//100000; //Maximum number of iterations
         spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true,true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
@@ -190,6 +190,7 @@ int main(int argc, char **argv) {
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl; 
         */
+        
 
         std::cout << "Inverting the normal equations with CG" << std::endl; 
         spinor xCG(Ntot,c_vector(2,0));
@@ -201,6 +202,7 @@ int main(int argc, char **argv) {
         
 
     }
+    
   
     
 
@@ -218,6 +220,7 @@ int main(int argc, char **argv) {
     
     MPI_Barrier(MPI_COMM_WORLD);
 
+    
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
     bool print = true, save_res = true;
     spinor xAMG(Ntot, c_vector(2, 0)); //Solution 
@@ -229,6 +232,42 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
+    
+
+    //MPI_Barrier(MPI_COMM_WORLD);
+
+    /*
+    {
+    if (rank == 0){std::cout << "--------------2-level V-cycle as stand alone solver--------------" << std::endl;}
+    //      Set up phase for AMG     //
+    AMG amg(GConf, m0, AMGV::nu1, AMGV::nu2);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    startT = MPI_Wtime();
+    amg.setUpPhase(1, 1); //test vectors intialization
+    endT = MPI_Wtime();
+    elapsed_time = endT - startT;
+    std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl; 
+    
+    int nu = 100;
+    double tol = 1e-10;
+    spinor x2Grid(Ntot, c_vector(2, 0)); //Solution 
+    startT = MPI_Wtime(); 
+    amg.TwoGrid(nu,tol,x0,rhs,x2Grid,true,true);
+    endT = MPI_Wtime();
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("[MPI process %d] time elapsed during the solution: %.4fs.\n", rank, endT - startT);
+    
+    }
+    */
+    //For large lattices this needs a lot of fine tunning, like increasing the number of test vectors and improving the 
+    //coarse grid solver ... 
+    //Still, it is not guaranteed to converge due to this:  
+    //We again should use a ﬂexible Krylov subspace method such as ﬂexible GMRES or GCR,
+    //since the smoother MSAP is non-stationary and, moreover, we will solve the coarse
+    //system Dc only with low accuracy using some “inner iteration” in every step.
+    //---DDalpha original reference below equation 4.2
+    
+
     
     //Checking solution 
     /*
