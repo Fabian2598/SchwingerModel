@@ -55,77 +55,86 @@ spinor canonical_vector(const int& i, const int& N1, const int& N2) {
 	return e_i;
 }
 
-
 void AMG::orthonormalize(){
-	/*
-	Local orthonormalization of the test vectors
+	//Local orthonormalization of the test vectors
 	
-	Each test vector is chopped into the Nagg aggregates, which yields Ntest*Nagg columns for the interpolator.
-	Each column is orthonormalized with respect to the others that belong to the same aggregate.
-	This follows the steps from Section 3.1 of A. Frommer et al "Adaptive Aggregation-Based Domain Decomposition 
-	Multigrid for the Lattice Wilson-Dirac Operator", SIAM, 36 (2014).
-	*/
+	//Each test vector is chopped into the Nagg aggregates, which yields Ntest*Nagg columns for the interpolator.
+	//Each column is orthonormalized with respect to the others that belong to the same aggregate.
+	//This follows the steps from Section 3.1 of A. Frommer et al "Adaptive Aggregation-Based Domain Decomposition 
+	//Multigrid for the Lattice Wilson-Dirac Operator", SIAM, 36 (2014).
+	
 
 	using namespace AMGV; //AMG parameters
-
-	//Getting the columns of the interpolator for the orthonormalization
-	spinor e_i(Ntest, c_vector(Nagg,0));
-	int index1, index2;
-	for(int i = 0; i < Ntest*Nagg; i++){
-		//e_i = canonical_vector(i, Ntest, Nagg);
-		index1 = i / Nagg;
-		index2 = i % Nagg;
-		e_i[index1][index2] = 1.0;
-		P_v(e_i,v_chopped[i]); //Columns of the interpolator
-		e_i[index1][index2] = 0.0;
-	}
-
+	int x, t, s, n;
 	//Orthonormalization by applying Gram-Schmidt
-	c_double proj; 
-	for (int i = 0; i < Nagg; i++) {
+	c_double proj;
+	c_double norm;
+	for (int a = 0; a < Nagg; a++) {
 		for (int nt = 0; nt < Ntest; nt++) {
-			for (int j = 0; j < nt; j++) {
+			for(int ntt=0; ntt < nt; ntt++){
 				proj = 0;//dot(v_chopped[nt*Nagg+i], v_chopped[j*Nagg+i]);
-				for (int n = 0; n < LV::Ntot; n++) {
-        			for (int alf = 0; alf < 2; alf++) {
-            		proj += v_chopped[nt*Nagg+i][n][alf] * std::conj(v_chopped[j*Nagg+i][n][alf]);
-        			}
+				for (int j = 0; j < LV::x_elements * LV::t_elements; j++) {
+        			x = XCoord[Agg[a][j]], t = TCoord[Agg[a][j]], s = SCoord[Agg[a][j]];
+					n = Coords[x][t];
+					proj += interpolator_columns[nt][n][s] * std::conj(interpolator_columns[ntt][n][s]);
     			}
 
-				for(int n=0; n<LV::Ntot; n++){
-					for(int alf=0; alf<2; alf++){
-						v_chopped[nt*Nagg+i][n][alf] = v_chopped[nt*Nagg+i][n][alf] - proj * v_chopped[j*Nagg+i][n][alf];
-					}
-				}
+				for (int j = 0; j < LV::x_elements * LV::t_elements; j++) {
+        			x = XCoord[Agg[a][j]], t = TCoord[Agg[a][j]], s = SCoord[Agg[a][j]];
+					n = Coords[x][t];
+					interpolator_columns[nt][n][s] -= proj * interpolator_columns[ntt][n][s];
+    			}
 				
 			}
-			normalize(v_chopped[nt*Nagg+i]);
-		}
-	}
 
- 	//We sum all the columns of the interpolator that belong to the same aggregate and store the result
-	//in a single vector. We do that for each aggregate. This enables us to have all the information of 
-	//the locally orthonormalized test vectors in a single vector.
-
-	for(int i = 0; i < Ntest; i++){
-		for(int n = 0; n < LV::Ntot; n++){
-			for(int alf=0; alf<2; alf++){
-				interpolator_columns[i][n][alf] = 0;
+			//normalize
+			norm = 0.0;
+			for (int j = 0; j < LV::x_elements * LV::t_elements; j++) {
+				x = XCoord[Agg[a][j]], t = TCoord[Agg[a][j]], s = SCoord[Agg[a][j]];
+				n = Coords[x][t];
+				norm += interpolator_columns[nt][n][s] * std::conj(interpolator_columns[nt][n][s]);
+			}
+			norm = sqrt(std::real(norm)) + 0.0*c_double(0,1); 
+			for (int j = 0; j < LV::x_elements * LV::t_elements; j++) {
+				x = XCoord[Agg[a][j]], t = TCoord[Agg[a][j]], s = SCoord[Agg[a][j]];
+				n = Coords[x][t];
+				interpolator_columns[nt][n][s] /= norm;
 			}
 		}
 	}
+	
+}
 
-	for(int i = 0; i < Ntest; i++){
-		for(int j = 0; j < Nagg; j++){
-			for(int n = 0; n < LV::Ntot; n++){
-				for(int alf=0; alf<2; alf++){
-					interpolator_columns[i][n][alf] += v_chopped[i*Nagg + j][n][alf];
-				}
+
+void AMG::checkOrthogonality(){
+	//Check orthogonality of the test vectors
+	//aggregate 
+	for(int block = 0; block < LV::Nblocks; block++){
+	for (int alf = 0; alf < 2; alf++) {
+		//checking orthogonality 
+		for (int i = 0; i < AMGV::Ntest; i++) {
+		for (int j = 0; j < AMGV::Ntest; j++) {
+			c_double dot_product = 0.0;
+			for (int n: LatticeBlocks[block]) {
+				dot_product += std::conj(interpolator_columns[i][n][alf]) * interpolator_columns[j][n][alf];
 			}
-			
+			if (std::abs(dot_product) > 1e-8 && i!=j) {
+				std::cout << "Block " << block << " spin " << alf << std::endl;
+				std::cout << "Test vectors " << i << " and " << j << " are not orthogonal: " << dot_product << std::endl;
+				exit(1);
+			}
+			else if(std::abs(dot_product-1.0) > 1e-8 && i==j){
+				std::cout << "Test vector " << i << " not orthonormalized " << dot_product << std::endl;
+				exit(1);
+			}
+
+		}
 		}
 	}
-}; 
+	}
+	std::cout << "Test vectors are orthonormalized " << std::endl;
+
+}
 
 void AMG::setUpPhase(const double& eps,const int& Nit) {
 	//Call MPI for SAP parallelization
@@ -138,7 +147,7 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < LV::Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
-				test_vectors[i][j][k] = eps * RandomU1();
+				interpolator_columns[i][j][k] = eps * RandomU1();
 			}
 		}
 	}
@@ -152,15 +161,11 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		//The result will be stored in test_vectors[i]
 		double startT, endT;
 		startT = MPI_Wtime();
-		//SAP(GConf.Conf, rhs, test_vectors[i], m0, AMGV::SAP_test_vectors_iterations,SAPV::sap_blocks_per_proc);  
-		sap.SAP(rhs,test_vectors[i],AMGV::SAP_test_vectors_iterations, SAPV::sap_blocks_per_proc);
+		sap.SAP(rhs,interpolator_columns[i],AMGV::SAP_test_vectors_iterations, SAPV::sap_blocks_per_proc);
 		endT = MPI_Wtime();
 		SAP_time += endT - startT; 
 			
 	}
-
-	//This modifies interpolator_columns which is used in the interpolator NOT test_vectors
-	interpolator_columns = test_vectors; 
 	orthonormalize(); 
 	initializeCoarseLinks();
 	
@@ -174,7 +179,7 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 			//Tolerance for the two-grid method, but in this case it is not relevant. Still, it is needed to call
 			//the function
 			double tolerance = 1e-10; 
-			rhs = test_vectors[i];
+			rhs = interpolator_columns[i];
 			TwoGrid(two_grid_iter,tolerance, rhs,rhs, test_vectors[i], false,false); 
 		}
 		//"Assemble" the new interpolator

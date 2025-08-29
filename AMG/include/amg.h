@@ -83,8 +83,6 @@ public:
 		interpolator_columns = std::vector<spinor>(AMGV::Ntest,
 			spinor( LV::Ntot, c_vector (2,0))); 
 
-		v_chopped = std::vector<spinor>(AMGV::Ntest*AMGV::Nagg, spinor(LV::Ntot, c_vector(2,0)));
-		//c_matrix DcMatrix = c_matrix(AMGV::Ntest*AMGV::Nagg, c_vector(AMGV::Ntest*AMGV::Nagg,0));
 		P_TEMP = spinor(LV::Ntot, c_vector(2,0)); //Temporary spinor for the coarse grid operator
 		Pt_TEMP = spinor(AMGV::Ntest, c_vector(AMGV::Nagg, 0)); //Temporary spinor for the coarse grid operator
 	}
@@ -116,6 +114,7 @@ public:
 	int TwoGrid(const int& max_iter, const double& tol,
 		const spinor& x0, const spinor& phi,spinor & x,const bool& save_res,const bool& print_message);
 
+	void checkOrthogonality();
 private:
 	GaugeConf GConf;
 	double m0; 
@@ -148,7 +147,6 @@ private:
 	
 	std::vector<spinor> test_vectors; //test vectors[Ntest][Nx Nt][spin components], no color
 	std::vector<spinor> interpolator_columns; 
-	std::vector<spinor> v_chopped;
 	spinor Pt_TEMP;
 	spinor P_TEMP;
 	
@@ -190,6 +188,7 @@ class FGMRES_two_grid : public FGMRES {
     elapsed_time = endT - startT;
     std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl;   
     //---------------------------//
+	//amg.checkOrthogonality();
     
     };
     ~FGMRES_two_grid() { };

@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     MakeBlocks(); //Makes lattice blocks 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     
-    //double m0 = -0.62;
+    //double m0 = -0.5;
     double m0 = -0.18840579710144945;
 
     //Parameters in variables.cpp
@@ -96,8 +96,10 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
+    
     double beta = 2;
     int nconf = 0;
+    
     {
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
@@ -121,6 +123,7 @@ int main(int argc, char **argv) {
             std::cout << "Conf read from " << NameData.str() << std::endl;
         }
     }
+    
     sap.set_params(GConf.Conf, m0); //Setting gauge conf and m0 for SAP 
 
     spinor rhs(Ntot, c_vector(2, 0)); //right hand side
@@ -160,6 +163,7 @@ int main(int argc, char **argv) {
         rhsfile.close();
         }
     }
+    
     
     
     clock_t start, end;
