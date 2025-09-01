@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
     spinor rhs(Ntot, c_vector(2, 0)); //right hand side
     spinor x0(Ntot, c_vector(2, 0)); //initial guess
     
-    //rhs[0][0] = 1.0;
+    rhs[0][0] = 1.0;
     //Random right hand side
     for(int i = 0; i < Ntot; i++) {
         rhs[i][0] = RandomU1();
@@ -263,6 +263,7 @@ int main(int argc, char **argv) {
     
     }
     */
+
     //For large lattices this needs a lot of fine tunning, like increasing the number of test vectors and improving the 
     //coarse grid solver ... 
     //Still, it is not guaranteed to converge due to this:  
