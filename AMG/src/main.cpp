@@ -96,9 +96,15 @@ int main(int argc, char **argv) {
 
     //Open conf from file//
     
-    
     double beta = 2;
-    int nconf = 0;
+    int nconf = 20;
+    AMGV::Nit = 1;
+    if (LV::Nx == 64)
+        nconf = 0;
+    else if (LV::Nx == 128)
+        nconf = 3;
+    else if (LV::Nx == 256)
+        nconf = 20;  
     
     {
         std::ostringstream NameData;
@@ -129,7 +135,7 @@ int main(int argc, char **argv) {
     spinor rhs(Ntot, c_vector(2, 0)); //right hand side
     spinor x0(Ntot, c_vector(2, 0)); //initial guess
     
-    rhs[0][0] = 1.0;
+    //rhs[0][0] = 1.0;
     //Random right hand side
     for(int i = 0; i < Ntot; i++) {
         rhs[i][0] = RandomU1();
@@ -174,13 +180,15 @@ int main(int argc, char **argv) {
    
     if (rank == 0){
         //Bi-cgstab inversion for comparison
+        
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
         int max_iter = 10000;//100000; //Maximum number of iterations
         spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true,true);
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl;  
+        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl; 
+        
         
         /*
         int len = AMGV::gmres_restart_length_coarse_level;
@@ -195,7 +203,7 @@ int main(int argc, char **argv) {
         std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl; 
         */
         
-
+        
         std::cout << "Inverting the normal equations with CG" << std::endl; 
         spinor xCG(Ntot,c_vector(2,0));
         start = clock();
@@ -203,6 +211,7 @@ int main(int argc, char **argv) {
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for CG = " << elapsed_time << " seconds" << std::endl;  
+        
         
 
     }
@@ -237,17 +246,18 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
     
+    
 
     //MPI_Barrier(MPI_COMM_WORLD);
 
-    /*
+/*    
     {
     if (rank == 0){std::cout << "--------------2-level V-cycle as stand alone solver--------------" << std::endl;}
     //      Set up phase for AMG     //
     AMG amg(GConf, m0, AMGV::nu1, AMGV::nu2);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     startT = MPI_Wtime();
-    amg.setUpPhase(1, 1); //test vectors intialization
+    amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
     endT = MPI_Wtime();
     elapsed_time = endT - startT;
     std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl; 
@@ -262,7 +272,7 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] time elapsed during the solution: %.4fs.\n", rank, endT - startT);
     
     }
-    */
+*/    
 
     //For large lattices this needs a lot of fine tunning, like increasing the number of test vectors and improving the 
     //coarse grid solver ... 
