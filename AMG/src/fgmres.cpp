@@ -12,7 +12,7 @@ int FGMRES::fgmres(const spinor& phi, const spinor& x0, spinor& x,const bool& sa
 	double norm_phi = sqrt(std::real(dot(phi, phi))); //norm of the right hand side
     err = sqrt(std::real(dot(r, r))); //Initial error
     std::vector<double> residuals;
-
+    int maxIt = m;
     while (k < restarts) {
         beta = err + 0.0 * I_number;
         scal(1.0/beta, r,VmT[0]); //VmT[0] = r / ||r||
@@ -44,15 +44,18 @@ int FGMRES::fgmres(const spinor& phi, const spinor& x0, spinor& x,const bool& sa
             gm[j + 1] = -sn[j] * gm[j];
             gm[j] = std::conj(cn[j]) * gm[j];
             residuals.push_back(std::abs(gm[j+1]));
+            if (std::abs(gm[j+1]) < tol* norm_phi){
+                maxIt = j+1;
+                break;
+            }
             //std::cout << "residual " << std::abs(gm[j+1]) << std::endl;
-
         }        
         //Solve the upper triangular system//
-		solve_upper_triangular(Hm, gm,m,eta);
+		solve_upper_triangular(Hm, gm,maxIt,eta);
         
         for (int i = 0; i < dim1 * dim2; i++) {
             int n = i / dim2; int mu = i % dim2;
-            for (int j = 0; j < m; j++) {
+            for (int j = 0; j < maxIt; j++) {
                 x[n][mu] = x[n][mu] + eta[j] * ZmT[j][n][mu]; 
             }
         }
@@ -63,24 +66,24 @@ int FGMRES::fgmres(const spinor& phi, const spinor& x0, spinor& x,const bool& sa
         
         err = sqrt(std::real(dot(r, r)));
         //Checking the residual evolution
-        if(print_message == true)
-            //std::cout << "Residual at cycle " << k+1 << "   ||r||=" << err << std::endl;
         if (err < tol* norm_phi) {
-            if (print_message == true) 
+            if (print_message == true){ 
                 std::cout << "FGMRES converged in " << k + 1 << " cycles" << " Error " << err << std::endl;
+                std::cout << "With " << k*m + maxIt  << " iterations" <<  std::endl;
+            }
             if (save_res == true){
                 std::ostringstream NameData;
                 NameData << "FGMRES_residual_" << LV::Nx << "x" << LV::Nt << ".txt";
                 save_vec(residuals,NameData.str());
             }
-            return 1;
+            return k*m + maxIt;
         }
         k++;
     }
     if (print_message == true) 
         std::cout << "FGMRES did not converge in " << restarts << " restarts" << " Error " << err << std::endl;
     
-    return 0;
+    return restarts*m;
 }
 
 void FGMRES::rotation(const int& j) {

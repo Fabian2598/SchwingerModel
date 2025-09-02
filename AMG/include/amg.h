@@ -187,9 +187,7 @@ class FGMRES_two_grid : public FGMRES {
     endT = MPI_Wtime();
     elapsed_time = endT - startT;
     std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl;   
-    //---------------------------//
-	//amg.checkOrthogonality();
-    
+    //---------------------------//    
     };
     ~FGMRES_two_grid() { };
     

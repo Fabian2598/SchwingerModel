@@ -132,7 +132,7 @@ void AMG::checkOrthogonality(){
 		}
 	}
 	}
-	std::cout << "Test vectors are orthonormalized " << std::endl;
+	//std::cout << "Test vectors are orthonormalized " << std::endl;
 
 }
 
@@ -143,48 +143,71 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	spinor rhs(LV::Ntot, c_vector(2, 0));
 	using namespace AMGV; //AMG parameters namespace
 
+	//The initialization with random values can affect the result a lot.
+	static std::random_device seed;
+  	static std::mt19937 randomInt(seed());
+	std::uniform_real_distribution<double> distribution(0.0, 1.0/sqrt(2)); //mu, standard deviation
+
 	//Test vectors random initialization
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < LV::Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
+				//interpolator_columns[i][j][k] = 1.0 * distribution(randomInt) + I_number * distribution(randomInt);
 				interpolator_columns[i][j][k] = eps * RandomU1();
 			}
 		}
 	}
+	MPI_Barrier(MPI_COMM_WORLD);
+	//orthonormalize();
+	//checkOrthogonality();
+	//Test vectors random initialization
+	if (rank == 0){
+		for (int i = 0; i < Ntest; i++) {
+			//print the norm of the test vector
+			std::cout << "Test vector " << i << " norm^2 " << std::real(dot(interpolator_columns[i],interpolator_columns[i])) << std::endl;
+		}
+	}
 
-	//Improving the test vectors by approximately solving the linear system D test_vectors[i] = rhs 
+
+	//Improving the test vectors by approximately solving the linear system D test_vectors[i] = test_vectors[i] 
 	for (int i = 0; i < Ntest; i++) {
-	
-		//Right hand side of the linear system 
-		//rhs = test_vectors[i];  
-		//rhs(LV::Ntot, c_vector(2, 0));
-		//The result will be stored in test_vectors[i]
+		//rhs = interpolator_columns[i];  
+		// D^{-1} test_vector with SAP
 		double startT, endT;
 		startT = MPI_Wtime();
 		sap.SAP(rhs,interpolator_columns[i],AMGV::SAP_test_vectors_iterations, SAPV::sap_blocks_per_proc);
 		endT = MPI_Wtime();
 		SAP_time += endT - startT; 
+		if (rank == 0){
+			//print the norm of the test vector
+			std::cout << "Test vector " << i << " norm " << sqrt(std::real(dot(interpolator_columns[i],interpolator_columns[i]))) << std::endl;
+		}
 			
 	}
 	orthonormalize(); 
+	checkOrthogonality();
 	initializeCoarseLinks();
 	
 	//Improving the interpolator quality by iterating over the two-grid method defined by the current test vectors
 	if (rank == 0){std::cout << "Improving interpolator" << std::endl;}
 	for (int n = 0; n < Nit; n++) {
 		if (rank == 0){std::cout << "****** Bootstrap iteration " << n << " ******" << std::endl;}
+		test_vectors = interpolator_columns;
 		for (int i = 0; i < Ntest; i++) {
 			//Number of two-grid iterations for each test vector 
 			int two_grid_iter = 1; 
 			//Tolerance for the two-grid method, but in this case it is not relevant. Still, it is needed to call
 			//the function
 			double tolerance = 1e-10; 
-			rhs = interpolator_columns[i];
-			TwoGrid(two_grid_iter,tolerance, rhs,rhs, test_vectors[i], false,false); 
+			//D^{-1} test_vector with the two grid
+			//rhs = interpolator_columns[i];
+			//std::cout << "test vector " << i << std::endl;
+			TwoGrid(two_grid_iter,tolerance, rhs,interpolator_columns[i], test_vectors[i], false,false); 
 		}
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
 		orthonormalize();
+		checkOrthogonality();
 		initializeCoarseLinks();
 
 	}
@@ -366,8 +389,6 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 	while(k < max_iter){
 		//Pre-smoothing
 		if (nu1>0){
-			//gmres smoothing
-			//SAP(GConf.Conf, phi, x, m0, nu1,SAPV::sap_blocks_per_proc);
 			sap.SAP(phi,x,nu1, SAPV::sap_blocks_per_proc); 
 		} 
 

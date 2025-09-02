@@ -27,17 +27,19 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    srand(19);
+    //srand(19);
 
-    //srand(time(0));
+    srand(time(0));
     
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t
     MakeBlocks(); //Makes lattice blocks 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
     
-    //double m0 = -0.5;
+    //double m0 = -0.65;
     double m0 = -0.18840579710144945;
-
+    AMGV::SAP_test_vectors_iterations = 3;
+    AMGV::Nit = 3;
+    FGMRESV::fgmres_restart_length = 25;
     //Parameters in variables.cpp
     if (rank == 0){
         std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
@@ -98,7 +100,6 @@ int main(int argc, char **argv) {
     
     double beta = 2;
     int nconf = 20;
-    AMGV::Nit = 1;
     if (LV::Nx == 64)
         nconf = 0;
     else if (LV::Nx == 128)
@@ -134,15 +135,19 @@ int main(int argc, char **argv) {
 
     spinor rhs(Ntot, c_vector(2, 0)); //right hand side
     spinor x0(Ntot, c_vector(2, 0)); //initial guess
-    
+    std::ostringstream FileName;
+    FileName << "../../confs/rhs/rhs_conf" << nconf << "_" << Nx << "_Nt" << Nt << ".rhs";
+
+    read_rhs(rhs,FileName.str());
     //rhs[0][0] = 1.0;
     //Random right hand side
-    for(int i = 0; i < Ntot; i++) {
-        rhs[i][0] = RandomU1();
-        rhs[i][1] = RandomU1();
-    }
+    //for(int i = 0; i < Ntot; i++) {
+    //    rhs[i][0] = RandomU1();
+    //    rhs[i][1] = RandomU1();
+    //}
 
     // Save rhs to a .txt file
+    /*
     if (rank == 0){
         std::ostringstream FileName;
                 FileName << "rhs_conf" << nconf << "_" << Nx << "_Nt" << Nt
@@ -169,7 +174,7 @@ int main(int argc, char **argv) {
         rhsfile.close();
         }
     }
-    
+    */
     
     
     clock_t start, end;
@@ -180,7 +185,7 @@ int main(int argc, char **argv) {
    
     if (rank == 0){
         //Bi-cgstab inversion for comparison
-        
+        /*
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
         int max_iter = 10000;//100000; //Maximum number of iterations
@@ -188,7 +193,7 @@ int main(int argc, char **argv) {
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl; 
-        
+        */
         
         /*
         int len = AMGV::gmres_restart_length_coarse_level;
@@ -203,7 +208,7 @@ int main(int argc, char **argv) {
         std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl; 
         */
         
-        
+        /*
         std::cout << "Inverting the normal equations with CG" << std::endl; 
         spinor xCG(Ntot,c_vector(2,0));
         start = clock();
@@ -211,7 +216,7 @@ int main(int argc, char **argv) {
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for CG = " << elapsed_time << " seconds" << std::endl;  
-        
+        */
         
 
     }
@@ -234,23 +239,52 @@ int main(int argc, char **argv) {
     MPI_Barrier(MPI_COMM_WORLD);
 
     
+    int Meas = 1;
+    double iterations = 0;
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
+    for(int i = 0; i < Meas; i++){
+    if (rank == 0){std::cout << "Meas " << i << std::endl;}
     bool print = true, save_res = true;
     spinor xAMG(Ntot, c_vector(2, 0)); //Solution 
     startT = MPI_Wtime();
     FGMRES_two_grid fgmres_two_grid(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf, m0);
-    fgmres_two_grid.fgmres(rhs,x0,xAMG,save_res,print);
+    iterations += fgmres_two_grid.fgmres(rhs,x0,xAMG,save_res,print);
     endT = MPI_Wtime();
     printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
     printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
     printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
     printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
+
     
+    }
+     MPI_Barrier(MPI_COMM_WORLD);
+    if (rank == 0){
+        std::cout << "Average iteration number over " << Meas << " runs: " << iterations / Meas << std::endl;
+    }
+    
+    /*
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    //SAP 
+    spinor xSAP(Ntot, c_vector(2, 0)); //Solution 
+    spinor Dphi(Ntot, c_vector(2, 0)); 
+    spinor r(Ntot, c_vector(2, 0)); 
+    sap.SAP(rhs,xSAP,200, SAPV::sap_blocks_per_proc);
+
+    D_phi(GConf.Conf,xSAP,Dphi,m0);
+    //r = v - D x
+    axpy(xSAP,Dphi,-1.0,r);
+    double err = sqrt(std::real(dot(r, r)));
+    if (err  < FGMRESV::fgmres_tolerance * sqrt(std::real(dot(rhs, rhs)))) 
+        std::cout << "SAP converged " << err << std::endl;
+    else
+        std::cout << "SAP did not converge " << err << std::endl;
+    
+    */
     
 
-    //MPI_Barrier(MPI_COMM_WORLD);
 
-/*    
+    /*
     {
     if (rank == 0){std::cout << "--------------2-level V-cycle as stand alone solver--------------" << std::endl;}
     //      Set up phase for AMG     //
@@ -272,7 +306,8 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] time elapsed during the solution: %.4fs.\n", rank, endT - startT);
     
     }
-*/    
+    */
+    
 
     //For large lattices this needs a lot of fine tunning, like increasing the number of test vectors and improving the 
     //coarse grid solver ... 

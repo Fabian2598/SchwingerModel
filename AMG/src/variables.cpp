@@ -159,3 +159,18 @@ void save_vec(const std::vector<double>& vec,const std::string& Name){
         
     
 }
+
+void read_rhs(std::vector<std::vector<c_double>>& vec,const std::string& name){
+    std::ifstream infile(name);
+    if (!infile) {
+        std::cerr << "File " << name << " not found" << std::endl;
+    }
+    int x, t, mu;
+    double re, im;
+    //x, t, mu, real part, imaginary part
+    while (infile >> x >> t >> mu >> re >> im) {
+        vec[Coords[x][t]][mu] = c_double(re, im); 
+    }
+    infile.close();
+  
+}

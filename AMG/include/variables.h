@@ -118,5 +118,6 @@ void CheckBlocks(); //Check that Nx/block_x and Nt/block_t are integers, the sam
 void CheckAggregates(); //Check that the aggregates are initialized and have the correct size
 
 void save_vec(const std::vector<double>& vec,const std::string& name); //save vector to .txt file 
+void read_rhs(std::vector<std::vector<c_double>>& vec,const std::string& name);
 
 #endif 
