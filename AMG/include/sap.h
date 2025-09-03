@@ -90,7 +90,7 @@ public:
 
         The convergence criterion is ||r|| < ||phi|| * tol
     */
-    int SAP(const spinor& v,spinor &x,const int& nu, const int& blocks_per_proc);
+    int SAP(const spinor& v,spinor &x,const int& nu, const int& blocks_per_proc,const bool& print_message);
 
     int dim1, dim2, nu;
     int Nt, Nx; //Dimensions of the lattice
@@ -221,7 +221,7 @@ private:
             }
         }
         //Defined outside of the class
-        sap.SAP(in,out,1, SAPV::sap_blocks_per_proc);
+        sap.SAP(in,out,1, SAPV::sap_blocks_per_proc,false);
     }
 };
 

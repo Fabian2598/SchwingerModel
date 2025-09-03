@@ -75,7 +75,7 @@ public:
                     AMGV::gmres_restart_length_coarse_level,
                     AMGV::gmres_restarts_coarse_level,
                     AMGV::gmres_tol_coarse_level,
-                    this) 
+                    this)
 	{	
 		test_vectors = std::vector<spinor>(AMGV::Ntest,
 		spinor( LV::Ntot, c_vector (2,0))); 
@@ -115,6 +115,7 @@ public:
 		const spinor& x0, const spinor& phi,spinor & x,const bool& save_res,const bool& print_message);
 
 	void checkOrthogonality();
+	void testSetUp();
 private:
 	GaugeConf GConf;
 	double m0; 
@@ -188,6 +189,7 @@ class FGMRES_two_grid : public FGMRES {
     elapsed_time = endT - startT;
     std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl;   
     //---------------------------//    
+	//amg.testSetUp();
     };
     ~FGMRES_two_grid() { };
     

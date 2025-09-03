@@ -58,7 +58,7 @@ void SAP_C::I_D_B_1_It(const spinor& v, spinor& x,const int& block){
     gmres_DB.fgmres(temp,temp,x, false,print_message); //Call the GMRES solver 
 }
 
-int SAP_C::SAP(const spinor& v,spinor &x, const int& nu, const int& blocks_per_proc){
+int SAP_C::SAP(const spinor& v,spinor &x, const int& nu, const int& blocks_per_proc,const bool& print_message){
     /*
     Solves D x = v using the SAP method
     */
@@ -146,11 +146,13 @@ int SAP_C::SAP(const spinor& v,spinor &x, const int& nu, const int& blocks_per_p
 
         err = sqrt(std::real(dot(r, r))); 
         if (err < tol * v_norm) {
-            //std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
+            if (print_message && rank == 0)
+                std::cout << "SAP converged in " << i << " iterations, error: " << err << std::endl;
             return 1;
         }
     }
-   //std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
+    if (print_message && rank == 0)
+        std::cout << "SAP did not converge in " << nu << " iterations, error: " << err << std::endl;
     
     return 0; 
 }

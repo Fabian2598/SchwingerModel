@@ -14,6 +14,7 @@ set(SRC_FILES
     src/amg.cpp                 #Two-grid implementation 
     src/main.cpp                #Main program
     src/fgmres.cpp              #Flexible GMRES solver
+    src/jackknife.cpp           #Jackknife error analysis
 )
 
 #--------------------------Lattice dimensions---------------------------#

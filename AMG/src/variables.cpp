@@ -49,10 +49,6 @@ namespace AMGV {
     int gmres_restart_length_coarse_level = 20; //GMRES restart length for the coarse level
     double gmres_tol_coarse_level = 0.1; //GMRES tolerance for the coarse level
 
-    int gmres_restarts_smoother = 20; //Iterations for GMRES as a smoother (SAP is the default)
-
-    int bi_cgstab_Dc_iterations= 1000; //Number of iterations for the bi-cgstab method
-    double bi_cgstab_Dc_iterations_tol = 1e-10; //Tolerance for the bi-cgstab method
     int nu1 = 0; //Pre-smoothing iterations
     int nu2 = 2; //Post-smoothing iterations
     int Nit = 1; //Number of iterations for improving the interpolator

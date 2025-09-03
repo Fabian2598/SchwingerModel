@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include "jackknife.h"
 #include "bi_cgstab.h"
 #include "conjugate_gradient.h"
 #include "amg.h"
@@ -38,7 +39,7 @@ int main(int argc, char **argv) {
     //double m0 = -0.65;
     double m0 = -0.18840579710144945;
     AMGV::SAP_test_vectors_iterations = 3;
-    AMGV::Nit = 3;
+    AMGV::Nit = 1;
     FGMRESV::fgmres_restart_length = 25;
     //Parameters in variables.cpp
     if (rank == 0){
@@ -96,7 +97,6 @@ int main(int argc, char **argv) {
     GaugeConf GConf = GaugeConf(Nx, Nt);
     GConf.initialize(); //Initialize a random gauge configuration
 
-    //Open conf from file//
     
     double beta = 2;
     int nconf = 20;
@@ -107,44 +107,36 @@ int main(int argc, char **argv) {
     else if (LV::Nx == 256)
         nconf = 20;  
     
+    //Reading Conf
     {
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
-        //std::cout << "Reading conf from file: " << NameData.str() << std::endl;
-        std::ifstream infile(NameData.str());
-        if (!infile) {
-            std::cerr << "File not found on rank " << rank << std::endl;
-            MPI_Abort(MPI_COMM_WORLD, 1);
-        }
-        int x, t, mu;
-        double re, im;
-        
-        c_matrix CONF(Ntot,c_vector(2,0)); 
-        while (infile >> x >> t >> mu >> re >> im) {
-            CONF[Coords[x][t]][mu] = c_double(re, im); 
-        }
-        GConf.setGconf(CONF);
-        infile.close();
-        if (rank == 0){
-            std::cout << "Conf read from " << NameData.str() << std::endl;
-        }
+        GConf.read_conf(NameData.str());
     }
     
+
+
     sap.set_params(GConf.Conf, m0); //Setting gauge conf and m0 for SAP 
 
     spinor rhs(Ntot, c_vector(2, 0)); //right hand side
     spinor x0(Ntot, c_vector(2, 0)); //initial guess
     std::ostringstream FileName;
     FileName << "../../confs/rhs/rhs_conf" << nconf << "_" << Nx << "_Nt" << Nt << ".rhs";
-
     read_rhs(rhs,FileName.str());
+
     //rhs[0][0] = 1.0;
     //Random right hand side
-    //for(int i = 0; i < Ntot; i++) {
-    //    rhs[i][0] = RandomU1();
-    //    rhs[i][1] = RandomU1();
-    //}
+    //static std::random_device seed;
+    
+    /*
+  	static std::mt19937 randomInt(time(0));
+	std::uniform_real_distribution<double> distribution(-1.0, 1.0); //mu, standard deviation
+    for(int i = 0; i < Ntot; i++) {
+        rhs[i][0] = distribution(randomInt) + I_number * distribution(randomInt); //RandomU1();
+        rhs[i][1] = distribution(randomInt) + I_number * distribution(randomInt);
+    }
+    */
 
     // Save rhs to a .txt file
     /*
@@ -185,7 +177,7 @@ int main(int argc, char **argv) {
    
     if (rank == 0){
         //Bi-cgstab inversion for comparison
-        /*
+        
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
         int max_iter = 10000;//100000; //Maximum number of iterations
@@ -193,7 +185,8 @@ int main(int argc, char **argv) {
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl; 
-        */
+        
+        
         
         /*
         int len = AMGV::gmres_restart_length_coarse_level;
@@ -234,57 +227,49 @@ int main(int argc, char **argv) {
     endT = MPI_Wtime();
     printf("[rank %d] time elapsed during the job NEW implementation: %.4fs.\n", rank, endT - startT);
 */
-
     
     MPI_Barrier(MPI_COMM_WORLD);
 
     
-    int Meas = 1;
-    double iterations = 0;
+    int Meas = 2;
+    std::vector<double> iterations(Meas,0);
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
     for(int i = 0; i < Meas; i++){
-    if (rank == 0){std::cout << "Meas " << i << std::endl;}
-    bool print = true, save_res = true;
-    spinor xAMG(Ntot, c_vector(2, 0)); //Solution 
-    startT = MPI_Wtime();
-    FGMRES_two_grid fgmres_two_grid(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf, m0);
-    iterations += fgmres_two_grid.fgmres(rhs,x0,xAMG,save_res,print);
-    endT = MPI_Wtime();
-    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
-    printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
-    printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
-    printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
+        if (rank == 0){std::cout << "Meas " << i << std::endl;}
+        bool print = true, save_res = true;
+        spinor xAMG(Ntot, c_vector(2, 0)); //Solution 
+        startT = MPI_Wtime();
+        FGMRES_two_grid fgmres_two_grid(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf, m0);
+        iterations[i] = fgmres_two_grid.fgmres(rhs,x0,xAMG,save_res,print);
+        endT = MPI_Wtime();
+        printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
+        printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
+        printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
+        printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);    
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (rank == 0){
+        std::cout << "Average iteration number over " << Meas << " runs: " << mean(iterations) << " +- " 
+        << Jackknife_error(iterations, 5) << std::endl;
+        
+    }
+    
+
 
     
-    }
-     MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0){
-        std::cout << "Average iteration number over " << Meas << " runs: " << iterations / Meas << std::endl;
-    }
-    
-    /*
     MPI_Barrier(MPI_COMM_WORLD);
 
-    //SAP 
+    /*
     spinor xSAP(Ntot, c_vector(2, 0)); //Solution 
     spinor Dphi(Ntot, c_vector(2, 0)); 
     spinor r(Ntot, c_vector(2, 0)); 
-    sap.SAP(rhs,xSAP,200, SAPV::sap_blocks_per_proc);
-
-    D_phi(GConf.Conf,xSAP,Dphi,m0);
-    //r = v - D x
-    axpy(xSAP,Dphi,-1.0,r);
-    double err = sqrt(std::real(dot(r, r)));
-    if (err  < FGMRESV::fgmres_tolerance * sqrt(std::real(dot(rhs, rhs)))) 
-        std::cout << "SAP converged " << err << std::endl;
-    else
-        std::cout << "SAP did not converge " << err << std::endl;
-    
+    sap.SAP(rhs,xSAP,200, SAPV::sap_blocks_per_proc,true);
     */
+        
     
 
 
-    /*
+    
     {
     if (rank == 0){std::cout << "--------------2-level V-cycle as stand alone solver--------------" << std::endl;}
     //      Set up phase for AMG     //
@@ -306,7 +291,7 @@ int main(int argc, char **argv) {
     printf("[MPI process %d] time elapsed during the solution: %.4fs.\n", rank, endT - startT);
     
     }
-    */
+    
     
 
     //For large lattices this needs a lot of fine tunning, like increasing the number of test vectors and improving the 

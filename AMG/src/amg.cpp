@@ -73,6 +73,7 @@ void AMG::orthonormalize(){
 		for (int nt = 0; nt < Ntest; nt++) {
 			for(int ntt=0; ntt < nt; ntt++){
 				proj = 0;//dot(v_chopped[nt*Nagg+i], v_chopped[j*Nagg+i]);
+				//Addition over the elements of the aggregate a
 				for (int j = 0; j < LV::x_elements * LV::t_elements; j++) {
         			x = XCoord[Agg[a][j]], t = TCoord[Agg[a][j]], s = SCoord[Agg[a][j]];
 					n = Coords[x][t];
@@ -143,31 +144,20 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	spinor rhs(LV::Ntot, c_vector(2, 0));
 	using namespace AMGV; //AMG parameters namespace
 
-	//The initialization with random values can affect the result a lot.
-	static std::random_device seed;
-  	static std::mt19937 randomInt(seed());
-	std::uniform_real_distribution<double> distribution(0.0, 1.0/sqrt(2)); //mu, standard deviation
+
+  	static std::mt19937 randomInt(time(0)); //Same seed for all the MPI copies
+	std::uniform_real_distribution<double> distribution(-1.0, 1.0); //mu, standard deviation
 
 	//Test vectors random initialization
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < LV::Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
-				//interpolator_columns[i][j][k] = 1.0 * distribution(randomInt) + I_number * distribution(randomInt);
-				interpolator_columns[i][j][k] = eps * RandomU1();
+				interpolator_columns[i][j][k] = distribution(randomInt) + I_number * distribution(randomInt);
+				//interpolator_columns[i][j][k] = eps * RandomU1();
 			}
 		}
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
-	//orthonormalize();
-	//checkOrthogonality();
-	//Test vectors random initialization
-	if (rank == 0){
-		for (int i = 0; i < Ntest; i++) {
-			//print the norm of the test vector
-			std::cout << "Test vector " << i << " norm^2 " << std::real(dot(interpolator_columns[i],interpolator_columns[i])) << std::endl;
-		}
-	}
-
 
 	//Improving the test vectors by approximately solving the linear system D test_vectors[i] = test_vectors[i] 
 	for (int i = 0; i < Ntest; i++) {
@@ -175,13 +165,9 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		// D^{-1} test_vector with SAP
 		double startT, endT;
 		startT = MPI_Wtime();
-		sap.SAP(rhs,interpolator_columns[i],AMGV::SAP_test_vectors_iterations, SAPV::sap_blocks_per_proc);
+		sap.SAP(rhs,interpolator_columns[i],AMGV::SAP_test_vectors_iterations, SAPV::sap_blocks_per_proc,false);
 		endT = MPI_Wtime();
 		SAP_time += endT - startT; 
-		if (rank == 0){
-			//print the norm of the test vector
-			std::cout << "Test vector " << i << " norm " << sqrt(std::real(dot(interpolator_columns[i],interpolator_columns[i]))) << std::endl;
-		}
 			
 	}
 	orthonormalize(); 
@@ -233,14 +219,13 @@ void AMG::P_v(const spinor& v,spinor& out) {
 	int k, a;
 	int i, j; //Loop indices
 	for (j = 0; j < Ntest * Nagg; j++) {
-		k = j / Nagg; //Number of test vector
-		a = j % Nagg; //Number of aggregate
+		k = j % Ntest; //Number of test vector
+		a = j / Ntest; //Number of aggregate		
 		for (i = 0; i < Agg[a].size(); i++) {
 			x_coord = XCoord[Agg[a][i]], t_coord = TCoord[Agg[a][i]], s_coord = SCoord[Agg[a][i]];
 			out[Coords[x_coord][t_coord]][s_coord] += interpolator_columns[k][Coords[x_coord][t_coord]][s_coord] * v[k][a];			
 		}
 	}
-	//return x;
 }
 
 /*
@@ -261,8 +246,8 @@ void AMG::Pt_v(const spinor& v,spinor& out) {
 	int x_coord, t_coord, s_coord; //Coordinates of the lattice point
 	int i, j; //Loop indices
 	for (i = 0; i < Ntest*Nagg; i++) {
-		k = i / Nagg; //number of test vector
-		a = i % Nagg; //number of aggregate
+		k = i % Ntest; //Number of test vector
+		a = i / Ntest;
 		for (j = 0; j < Agg[a].size(); j++) {
 			x_coord = XCoord[Agg[a][j]], t_coord = TCoord[Agg[a][j]], s_coord = SCoord[Agg[a][j]];
 			out[k][a] += std::conj(interpolator_columns[k][Coords[x_coord][t_coord]][s_coord]) * v[Coords[x_coord][t_coord]][s_coord];
@@ -389,7 +374,7 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 	while(k < max_iter){
 		//Pre-smoothing
 		if (nu1>0){
-			sap.SAP(phi,x,nu1, SAPV::sap_blocks_per_proc); 
+			sap.SAP(phi,x,nu1, SAPV::sap_blocks_per_proc,false); 
 		} 
 
 		//*************Coarse grid correction*************//
@@ -428,8 +413,7 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 			//Measure time spent smoothing
 			double startT, endT;
 			startT = MPI_Wtime();
-			//SAP(GConf.Conf, phi, x, m0, nu2, SAPV::sap_blocks_per_proc); 
-			sap.SAP(phi,x,nu2, SAPV::sap_blocks_per_proc);
+			sap.SAP(phi,x,nu2, SAPV::sap_blocks_per_proc,false);
 			endT = MPI_Wtime();
 			smooth_time += endT - startT; //Add post-smoothing time
 			SAP_time += endT - startT; //Add post-smoothing time
@@ -463,5 +447,44 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 	}
 	if (print_message == true)
 		std::cout << "Two-grid did not converge in " << max_iter << " cycles" << " Error " << err << std::endl;
+	if (save_res == true){
+        std::ostringstream NameData;
+        NameData << "TwoGrid_residual_" << LV::Nx << "x" << LV::Nt << ".txt";
+        save_vec(residuals,NameData.str());
+    }
 	return 0;
+}
+
+
+void AMG::testSetUp(){
+	//Checking orthogonality
+
+    checkOrthogonality();
+
+	using namespace AMGV;
+     // Testing that P^dag D P = D_c 
+    spinor in(Ntest,c_vector(Nagg,1)); //in
+    spinor temp(LV::Ntot,c_vector(2,0));
+    spinor Dphi(LV::Ntot,c_vector(2,0));
+    spinor out(Ntest,c_vector(Nagg,0)); //out
+    spinor out_v2(Ntest,c_vector(Nagg,0)); //D_c
+    //P^H D P
+    P_v(in,temp);
+    D_phi(GConf.Conf,temp,Dphi,m0);
+    Pt_v(Dphi,out);
+
+    Pt_D_P(in,out_v2);
+    for(int x = 0; x<Ntest; x++){
+        for(int dof = 0; dof<Nagg; dof++){
+            if (std::abs(out[x][dof]-out_v2[x][dof]) > 1e-8 ){
+            std::cout << "[" << x << "][" << dof << "] " << " different" << std::endl; 
+            std::cout << out[x][dof] << "   /=    " << out_v2[x][dof] << std::endl;
+            return;
+            }
+        }
+    }
+    std::cout << "P^dag D P coincides with Dc" << std::endl;
+    std::cout << out[0][0] << "   =    " << out_v2[0][0] << std::endl;
+    
+     
 }

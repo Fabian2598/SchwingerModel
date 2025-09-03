@@ -61,11 +61,8 @@ namespace AMGV{
     extern int gmres_restarts_coarse_level; //restart length for GMRES at the coarse level
     extern int gmres_restart_length_coarse_level; //GMRES restart length for the coarse level
     extern double gmres_tol_coarse_level; //GMRES tolerance for the coarse level
-    //Parameters for GMRES as a smoother (the default AMG version uses SAP)
-    extern int gmres_restarts_smoother; //GMRES iterations for the smoother
-    //Paramaters for bi-cgstab as a coarse solver
-    extern int bi_cgstab_Dc_iterations;
-    extern double bi_cgstab_Dc_iterations_tol; //Tolerance for the bi-cgstab method
+
+
     extern int nu1; //Pre-smoothing iterations
     extern int nu2; //Post-smoothing iterations
     extern int Nit; //Number of iterations for improving the interpolator 
@@ -119,5 +116,6 @@ void CheckAggregates(); //Check that the aggregates are initialized and have the
 
 void save_vec(const std::vector<double>& vec,const std::string& name); //save vector to .txt file 
 void read_rhs(std::vector<std::vector<c_double>>& vec,const std::string& name);
+
 
 #endif 
