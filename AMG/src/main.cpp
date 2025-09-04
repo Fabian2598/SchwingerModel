@@ -38,9 +38,9 @@ int main(int argc, char **argv) {
     
     //double m0 = -0.65;
     double m0 = -0.18840579710144945;
-    AMGV::SAP_test_vectors_iterations = 3;
-    AMGV::Nit = 1;
+    AMGV::SAP_test_vectors_iterations = 2; //This parameter can change things quite a lot.
     FGMRESV::fgmres_restart_length = 25;
+    AMGV::Nit = 3;
     //Parameters in variables.cpp
     if (rank == 0){
         std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
     if (LV::Nx == 64)
         nconf = 0;
     else if (LV::Nx == 128)
-        nconf = 3;
+        nconf = 0;
     else if (LV::Nx == 256)
         nconf = 20;  
     
@@ -177,7 +177,7 @@ int main(int argc, char **argv) {
    
     if (rank == 0){
         //Bi-cgstab inversion for comparison
-        
+        /*
         std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
         start = clock();
         int max_iter = 10000;//100000; //Maximum number of iterations
@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
         end = clock();
         elapsed_time = double(end - start) / CLOCKS_PER_SEC;
         std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl; 
-        
+        */
         
         
         /*
@@ -220,18 +220,18 @@ int main(int argc, char **argv) {
 /*
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning version --------------" << std::endl;}   
-    spinor xSAP(Ntot, c_vector(2, 0)); //Solution vector for SAP
+    spinor xFSAP(Ntot, c_vector(2, 0)); //Solution vector for SAP
     FGMRES_SAP fgmres_sap(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf.Conf, m0);
     startT = MPI_Wtime();
-    fgmres_sap.fgmres(rhs,x,xSAP,true);
+    fgmres_sap.fgmres(rhs,x0,xFSAP,false,true);
     endT = MPI_Wtime();
-    printf("[rank %d] time elapsed during the job NEW implementation: %.4fs.\n", rank, endT - startT);
+    printf("[rank %d] time elapsed during the job implementation: %.4fs.\n", rank, endT - startT);
 */
     
     MPI_Barrier(MPI_COMM_WORLD);
 
     
-    int Meas = 2;
+    int Meas = 1;
     std::vector<double> iterations(Meas,0);
     if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
     for(int i = 0; i < Meas; i++){
@@ -255,18 +255,17 @@ int main(int argc, char **argv) {
     }
     
 
-
+/*
     
     MPI_Barrier(MPI_COMM_WORLD);
-
-    /*
     spinor xSAP(Ntot, c_vector(2, 0)); //Solution 
     spinor Dphi(Ntot, c_vector(2, 0)); 
     spinor r(Ntot, c_vector(2, 0)); 
-    sap.SAP(rhs,xSAP,200, SAPV::sap_blocks_per_proc,true);
-    */
-        
+    sap.SAP(rhs,xSAP,200, SAPV::sap_blocks_per_proc,true)
+*/
     
+        
+    MPI_Barrier(MPI_COMM_WORLD);
 
 
     

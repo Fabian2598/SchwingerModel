@@ -61,7 +61,9 @@ void SAP_C::I_D_B_1_It(const spinor& v, spinor& x,const int& block){
 int SAP_C::SAP(const spinor& v,spinor &x, const int& nu, const int& blocks_per_proc,const bool& print_message){
     /*
     Solves D x = v using the SAP method
+    The initial solution is whatever x is when the function is called
     */
+   
    int size, rank;
    MPI_Comm_size(MPI_COMM_WORLD, &size);
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -110,13 +112,12 @@ int SAP_C::SAP(const spinor& v,spinor &x, const int& nu, const int& blocks_per_p
             x[n][0] += global_buffer[2*n]; //global_x[n][0];
             x[n][1] += global_buffer[2*n+1]; //global_x[n][1];
         }
+
+
         funcGlobal(x,Dphi);
         //r = v - D x
         axpy(v,Dphi,-1.0,r);
-        //r = v - D_phi(U, x, m0); //r = v - D x
 
-
-        //set_zeros(local_x,Ntot,2); //Initialize local_x to zero
         for(int n = 0; n < Ntot * 2; n++) {
             local_buffer[n] = 0.0; //Initialize local_buffer to zero
         }

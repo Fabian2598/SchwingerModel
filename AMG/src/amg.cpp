@@ -142,13 +142,16 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	spinor rhs(LV::Ntot, c_vector(2, 0));
+	spinor x0(LV::Ntot, c_vector(2, 0));
 	using namespace AMGV; //AMG parameters namespace
 
 
-  	static std::mt19937 randomInt(time(0)); //Same seed for all the MPI copies
+  	static std::mt19937 randomInt(50); //Same seed for all the MPI copies
 	std::uniform_real_distribution<double> distribution(-1.0, 1.0); //mu, standard deviation
 
 	//Test vectors random initialization
+
+
 	for (int i = 0; i < Ntest; i++) {
 		for (int j = 0; j < LV::Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
@@ -157,7 +160,6 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 			}
 		}
 	}
-	MPI_Barrier(MPI_COMM_WORLD);
 
 	//Improving the test vectors by approximately solving the linear system D test_vectors[i] = test_vectors[i] 
 	for (int i = 0; i < Ntest; i++) {
@@ -178,17 +180,18 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	if (rank == 0){std::cout << "Improving interpolator" << std::endl;}
 	for (int n = 0; n < Nit; n++) {
 		if (rank == 0){std::cout << "****** Bootstrap iteration " << n << " ******" << std::endl;}
-		test_vectors = interpolator_columns;
-		for (int i = 0; i < Ntest; i++) {
+		for (int j = 0; j < Ntest; j++) {
+			int i = Ntest - 1 - j;
+			std::cout << "TEST VECTOR " << i << std::endl;
 			//Number of two-grid iterations for each test vector 
 			int two_grid_iter = 1; 
 			//Tolerance for the two-grid method, but in this case it is not relevant. Still, it is needed to call
 			//the function
-			double tolerance = 1e-10; 
+			double tolerance = 1e-2; 
 			//D^{-1} test_vector with the two grid
-			//rhs = interpolator_columns[i];
+			rhs = interpolator_columns[i];
 			//std::cout << "test vector " << i << std::endl;
-			TwoGrid(two_grid_iter,tolerance, rhs,interpolator_columns[i], test_vectors[i], false,false); 
+			TwoGrid(two_grid_iter,tolerance, rhs, interpolator_columns[i],test_vectors[i], false,true); 
 		}
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
@@ -356,7 +359,6 @@ void AMG::Pt_D_P(const spinor& v,spinor& out){
 	}
 }
 
-
 /*
 	Two-grid method for solving the linear system D x = phi
 */
@@ -365,33 +367,33 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 
 	x = x0; //Solution spinor
 	spinor r(LV::Ntot,c_vector(2,0)); //Residual 
+	spinor temp(LV::Ntot,c_vector(2,0));
+	spinor Dphi(LV::Ntot,c_vector(2,0));
 	double err; //Error = sqrt(dot(r,r))
 	int k = 0; //Iteration number
 	double norm_phi = sqrt(std::real(dot(phi,phi)));
 	std::vector<double> residuals;
 	//The convergence criterion is ||r|| < ||phi|| * tol
 
+	//Initial residual
+	D_phi(GConf.Conf, x, Dphi,m0); //D x
+	axpy(phi,Dphi,-1.0,r); //r = phi - D x
 	while(k < max_iter){
 		//Pre-smoothing
 		if (nu1>0){
 			sap.SAP(phi,x,nu1, SAPV::sap_blocks_per_proc,false); 
 		} 
 
-		//*************Coarse grid correction*************//
+		D_phi(GConf.Conf, x, Dphi,m0); //D x
+		axpy(phi,Dphi,-1.0,r); //r = phi - D x
+		//----------Coarse grid correction-------------//
 		double startT, endT;
 		startT = MPI_Wtime();
-		//x = x + P*Dc^-1 * P^H * (phi-D*x)  
-		spinor temp(LV::Ntot,c_vector(2,0));
-		spinor Dphi(LV::Ntot,c_vector(2,0));
-		D_phi(GConf.Conf, x, Dphi,m0); //D x
-		for(int n = 0; n<LV::Ntot; n++){
-			for(int alf=0; alf<2; alf++){
-				temp[n][alf] = phi[n][alf] - Dphi[n][alf]; //temp = phi - D x
-			}
-		}
+		//x = x + P*Dc^-1 * P^H * (phi-D*x)  	
+		
 		//spinor Pt_r = Pt_v(temp); //Pt_r = P^H (phi - D x)
 		spinor Pt_r(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
-		Pt_v(temp,Pt_r);
+		Pt_v(r,Pt_r);
 		
 		//Using GMRES for the coarse grid solver 
 		spinor gmresResult(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
@@ -406,26 +408,22 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 	
 		endT = MPI_Wtime();
 		coarse_time += endT - startT; //Measuring time spent for solving the coarse level 
-		//************************************************//
+		//------------------------------------------------------//
 		
 		//Post-smoothing
 		if (nu2>0){
 			//Measure time spent smoothing
 			double startT, endT;
 			startT = MPI_Wtime();
+			MPI_Barrier(MPI_COMM_WORLD);
 			sap.SAP(phi,x,nu2, SAPV::sap_blocks_per_proc,false);
 			endT = MPI_Wtime();
 			smooth_time += endT - startT; //Add post-smoothing time
 			SAP_time += endT - startT; //Add post-smoothing time
 		}
-		D_phi(GConf.Conf, x,Dphi, m0); 
-
 		//r = phi - D_phi(GConf.Conf, x, m0);		
-		for(int n = 0; n < LV::Ntot; n++){
-			for(int alf=0; alf<2; alf++){
-				r[n][alf] = phi[n][alf] - Dphi[n][alf];
-			}
-		}
+		D_phi(GConf.Conf, x, Dphi,m0); //D x
+		axpy(phi,Dphi,-1.0,r); //r = phi - D x
 		
 		
 		err = sqrt(std::real(dot(r,r)));
