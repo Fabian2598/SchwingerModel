@@ -7,6 +7,7 @@
 #include <string>
 #include <fstream>
 #include <iomanip>
+#include <random>
 
 typedef std::complex<double> c_double;
 constexpr double pi=3.14159265359;
@@ -14,7 +15,7 @@ constexpr double pi=3.14159265359;
 extern double coarse_time; //Time spent in the coarse grid solver
 extern double smooth_time; //Time spent in the smoother
 extern double SAP_time;
-
+extern double m0;
 
 //------------Lattice parameters--------------//
 namespace LV {
@@ -116,6 +117,9 @@ void CheckAggregates(); //Check that the aggregates are initialized and have the
 
 void save_vec(const std::vector<double>& vec,const std::string& name); //save vector to .txt file 
 void read_rhs(std::vector<std::vector<c_double>>& vec,const std::string& name);
+void save_rhs(std::vector<std::vector<c_double>>& vec,const std::string& name);
+void random_rhs(std::vector<std::vector<c_double>>& vec,const int seed);
 
+void print_parameters();
 
 #endif 

@@ -40,3 +40,4 @@ double Jackknife(std::vector<double> dat, std::vector<int> bins) {
     error = *std::max_element(errores.begin(), errores.end());
     return error;
 }
+

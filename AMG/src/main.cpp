@@ -5,9 +5,7 @@
 #include <sstream>
 #include <iomanip>
 #include "jackknife.h"
-#include "bi_cgstab.h"
-#include "conjugate_gradient.h"
-#include "amg.h"
+#include "tests.h"
 #include "mpi.h"
 
 //Formats decimal numbers
@@ -35,64 +33,17 @@ int main(int argc, char **argv) {
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t
     MakeBlocks(); //Makes lattice blocks 
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
+    Aggregates(); //build aggregates
+    CheckAggregates();
+    CheckBlocks(); //Check blocks dimensions
     
-    //double m0 = -0.65;
-    double m0 = -0.18840579710144945;
+    m0 = -0.18840579710144945; //Globally declared
     AMGV::SAP_test_vectors_iterations = 2; //This parameter can change things quite a lot.
     FGMRESV::fgmres_restart_length = 25;
     AMGV::Nit = 3;
     //Parameters in variables.cpp
-    if (rank == 0){
-        std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
-        std::cout << " Nx = " << Nx << " Nt = " << Nt << std::endl;
-        std::cout << " Lattice dimension = " << (Nx * Nt) << std::endl;
-        std::cout << " Number of entries of the Dirac matrix = (" << (2 * Nx * Nt) << ")^2 = " << (2 * Nx * Nt) * (2 * Nx * Nt) << std::endl;
-        std::cout << " Bare mass parameter m0 = " << m0 << std::endl;
-        std::cout << "-----------------------------------" << std::endl;
-        std::cout << " Lattice blocking for the aggregates" << std::endl;
-        std::cout << "| block_x = " << block_x << " block_t = " << block_t << std::endl;
-        std::cout << "| x_elements = " << x_elements << " t_elements = " << t_elements << std::endl;
-        std::cout << "| Each aggregate has x_elements * t_elements = " <<  x_elements * t_elements << " elements" << std::endl;
-        std::cout << "| Number of aggregates = " << AMGV::Nagg << std::endl;
-    } 
-    Aggregates(); //build aggregates
-    CheckAggregates();
-    if (rank == 0){
-        std::cout << "----------------------------------" << std::endl;
-        std::cout << " Variable blocking for SAP" << std::endl;
-        std::cout << "| sap_block_x = " << sap_block_x << " sap_block_t = " << sap_block_t << std::endl;
-        std::cout << "| Lattice sites in the x direction = " << sap_x_elements<< " and in the t direction = " << sap_t_elements<< std::endl;
-        std::cout << "| Each Schwarz block has " <<  sap_lattice_sites_per_block << " lattice points and " << sap_variables_per_block << " variables" << std::endl;
-        std::cout << "| D restricted to each block has (" << 2 * sap_lattice_sites_per_block << ")^2 = " << sap_variables_per_block*sap_variables_per_block << " entries" << std::endl;
-        std::cout << "| Number of Schwarz blocks = " << N_sap_blocks << std::endl;
-        std::cout << "| Red/Black blocks = " << sap_coloring_blocks << std::endl;
-        std::cout << "| Number of processes = " << size << std::endl;
-        std::cout << "| Number of blocks per process = " << sap_blocks_per_proc << std::endl;
-        std::cout << "| GMRES restart length for SAP blocks = " << sap_gmres_restart_length << std::endl;
-        std::cout << "| GMRES iterations for SAP blocks = " << sap_gmres_restarts << std::endl;
-        std::cout << "| GMRES tolerance for SAP blocks = " << sap_gmres_tolerance << std::endl;
-    }
-
-    CheckBlocks(); //Check blocks dimensions
-
-    if (rank == 0){
-        std::cout << "----------------------------------" << std::endl;
-        std::cout << " Two-grid parameters" << std::endl;
-        std::cout << "| Number of test vectors = " << AMGV::Ntest << std::endl;
-        std::cout << "| nu1 (pre-smoothing) = " << AMGV::nu1 << " nu2 (post-smoothing) = " << AMGV::nu2 << std::endl;
-        std::cout << "| Number of iterations for improving the interpolator = " << AMGV::Nit << std::endl;
-        std::cout << "| Coarse grid matrix (Dc) dimension = " << AMGV::Ntest * AMGV::Nagg << std::endl;
-        std::cout << "| Number of SAP iterations to smooth test vectors = " << AMGV::SAP_test_vectors_iterations << std::endl; 
-        std::cout << "| Restart length of GMRES at the coarse level = " << AMGV::gmres_restart_length_coarse_level << std::endl;
-        std::cout << "| Restarts of GMRES at the coarse level = " << AMGV::gmres_restarts_coarse_level << std::endl;
-        std::cout << "| GMRES tolerance for the coarse level solution = " << AMGV::gmres_tol_coarse_level << std::endl;
-        std::cout << "----------------------------------" << std::endl;
-        std::cout << " FGMRES with AMG preconditioning parameters" << std::endl;
-        std::cout << "| FGMRES restart length = " << FGMRESV::fgmres_restart_length << std::endl;
-        std::cout << "| FGMRES restarts = " << FGMRESV::fgmres_restarts << std::endl;
-        std::cout << "| FGMRES tolerance = " << FGMRESV::fgmres_tolerance << std::endl;
-        std::cout << "*****************************************************************************************************" << std::endl;
-    }
+    if (rank == 0)
+        print_parameters();
     
     GaugeConf GConf = GaugeConf(Nx, Nt);
     GConf.initialize(); //Initialize a random gauge configuration
@@ -112,10 +63,8 @@ int main(int argc, char **argv) {
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
-        GConf.read_conf(NameData.str());
+        //GConf.read_conf(NameData.str());
     }
-    
-
 
     sap.set_params(GConf.Conf, m0); //Setting gauge conf and m0 for SAP 
 
@@ -123,196 +72,63 @@ int main(int argc, char **argv) {
     spinor x0(Ntot, c_vector(2, 0)); //initial guess
     std::ostringstream FileName;
     FileName << "../../confs/rhs/rhs_conf" << nconf << "_" << Nx << "_Nt" << Nt << ".rhs";
-    read_rhs(rhs,FileName.str());
-
-    //rhs[0][0] = 1.0;
+    //read_rhs(rhs,FileName.str());
     //Random right hand side
-    //static std::random_device seed;
-    
-    /*
-  	static std::mt19937 randomInt(time(0));
-	std::uniform_real_distribution<double> distribution(-1.0, 1.0); //mu, standard deviation
-    for(int i = 0; i < Ntot; i++) {
-        rhs[i][0] = distribution(randomInt) + I_number * distribution(randomInt); //RandomU1();
-        rhs[i][1] = distribution(randomInt) + I_number * distribution(randomInt);
-    }
-    */
+    random_rhs(rhs,10);
 
     // Save rhs to a .txt file
-    /*
     if (rank == 0){
         std::ostringstream FileName;
-                FileName << "rhs_conf" << nconf << "_" << Nx << "_Nt" << Nt
-                << ".rhs";
-        std::ofstream rhsfile(FileName.str());
-
-        if (!rhsfile.is_open()) {
-            std::cerr << "Error opening rhs.txt for writing." << std::endl;
-        } else {
-            int x,t;
-            //x, t, mu, real part, imaginary part
-            for (int n = 0; n < Ntot; ++n) {
-                x = n/LV::Nt;
-                t = n%LV::Nt;
-                rhsfile << x << std::setw(30) << t << std::setw(30) << 0 << std::setw(30)
-                    << std::setprecision(17) << std::scientific << std::real(rhs[n][0]) << std::setw(30)
-                    << std::setprecision(17) << std::scientific << std::imag(rhs[n][0]) << "\n";
-
-                rhsfile << x << std::setw(30) << t << std::setw(30) << 1 << std::setw(30)
-                    << std::setprecision(17) << std::scientific << std::real(rhs[n][1]) << std::setw(30)
-                    << std::setprecision(17) << std::scientific << std::imag(rhs[n][1]) << "\n";
-          
-            }
-        rhsfile.close();
-        }
+        FileName << "rhs_conf" << nconf << "_" << Nx << "_Nt" << Nt
+                 << ".rhs";
+        //save_rhs(rhs,FileName.str());
     }
-    */
+    
     
     
     clock_t start, end;
     double elapsed_time;
     double startT, endT;
 
-   
-   
+    spinor x_bi(Ntot, c_vector(2, 0));
+    spinor x_cg(Ntot, c_vector(2, 0));
+    spinor x_gmres(Ntot, c_vector(2, 0));
+    spinor x_fsap(Ntot, c_vector(2, 0));
+    spinor x_sap(Ntot, c_vector(2, 0));
+    spinor x_famg(Ntot,c_vector(2,0));
+    spinor x_amg(Ntot,c_vector(2,0));
+
+    Tests tests(GConf,rhs,x0, m0);
+
     if (rank == 0){
-        //Bi-cgstab inversion for comparison
-        /*
-        std::cout << "--------------Bi-CGstab inversion--------------" << std::endl;
-        start = clock();
-        int max_iter = 10000;//100000; //Maximum number of iterations
-        spinor x_bi = bi_cgstab(&D_phi,Ntot,2,GConf.Conf, rhs, x0, m0, max_iter, 1e-10, true,true);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for Bi-CGstab = " << elapsed_time << " seconds" << std::endl; 
-        */
-        
-        
-        /*
-        int len = AMGV::gmres_restart_length_coarse_level;
-        int restarts = 1000; //If the restart length is too large this could be problematic ...
-
-        spinor xgmres(Ntot,c_vector(2));
-        FGMRES_fine_level fgmres_fine_level(Ntot, 2, len, restarts,1e-10,GConf.Conf, m0);
-        start = clock();
-        fgmres_fine_level.fgmres(rhs,x0,xgmres,true);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for GMRES = " << elapsed_time << " seconds" << std::endl; 
-        */
-        
-        /*
-        std::cout << "Inverting the normal equations with CG" << std::endl; 
-        spinor xCG(Ntot,c_vector(2,0));
-        start = clock();
-        conjugate_gradient(GConf.Conf, rhs, xCG, m0);
-        end = clock();
-        elapsed_time = double(end - start) / CLOCKS_PER_SEC;
-        std::cout << "Elapsed time for CG = " << elapsed_time << " seconds" << std::endl;  
-        */
-        
-
+        tests.BiCG(x_bi,10000,false,true); 
+        //tests.GMRES(x_gmres,25, 100,false,true);
+        //tests.CG(x_cg);
     }
-    
-  
-    
 
-/*
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0){std::cout << "--------------Flexible GMRES with SAP preconditioning version --------------" << std::endl;}   
-    spinor xFSAP(Ntot, c_vector(2, 0)); //Solution vector for SAP
-    FGMRES_SAP fgmres_sap(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf.Conf, m0);
-    startT = MPI_Wtime();
-    fgmres_sap.fgmres(rhs,x0,xFSAP,false,true);
-    endT = MPI_Wtime();
-    printf("[rank %d] time elapsed during the job implementation: %.4fs.\n", rank, endT - startT);
-*/
-    
-    MPI_Barrier(MPI_COMM_WORLD);
+    //tests.FGMRES_sap(x_fsap,false,true);
+    //tests.SAP(x_sap,200,true);
 
-    
+
     int Meas = 1;
     std::vector<double> iterations(Meas,0);
-    if (rank == 0){std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;}
+    if (rank == 0) std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;
+
     for(int i = 0; i < Meas; i++){
-        if (rank == 0){std::cout << "Meas " << i << std::endl;}
-        bool print = true, save_res = true;
-        spinor xAMG(Ntot, c_vector(2, 0)); //Solution 
-        startT = MPI_Wtime();
-        FGMRES_two_grid fgmres_two_grid(Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf, m0);
-        iterations[i] = fgmres_two_grid.fgmres(rhs,x0,xAMG,save_res,print);
-        endT = MPI_Wtime();
-        printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
-        printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
-        printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
-        printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);    
+        if (rank == 0) std::cout << "Meas " << i << std::endl;
+
+        tests.FGMRES_2grid(x_famg,false, true);
     }
-    MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0){
         std::cout << "Average iteration number over " << Meas << " runs: " << mean(iterations) << " +- " 
         << Jackknife_error(iterations, 5) << std::endl;
-        
-    }
-    
-
-/*
-    
-    MPI_Barrier(MPI_COMM_WORLD);
-    spinor xSAP(Ntot, c_vector(2, 0)); //Solution 
-    spinor Dphi(Ntot, c_vector(2, 0)); 
-    spinor r(Ntot, c_vector(2, 0)); 
-    sap.SAP(rhs,xSAP,200, SAPV::sap_blocks_per_proc,true)
-*/
-    
-        
-    MPI_Barrier(MPI_COMM_WORLD);
-
-
-    
-    {
-    if (rank == 0){std::cout << "--------------2-level V-cycle as stand alone solver--------------" << std::endl;}
-    //      Set up phase for AMG     //
-    AMG amg(GConf, m0, AMGV::nu1, AMGV::nu2);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    startT = MPI_Wtime();
-    amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
-    endT = MPI_Wtime();
-    elapsed_time = endT - startT;
-    std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl; 
-    
-    int nu = 100;
-    double tol = 1e-10;
-    spinor x2Grid(Ntot, c_vector(2, 0)); //Solution 
-    startT = MPI_Wtime(); 
-    amg.TwoGrid(nu,tol,x0,rhs,x2Grid,true,true);
-    endT = MPI_Wtime();
-    MPI_Barrier(MPI_COMM_WORLD);
-    printf("[MPI process %d] time elapsed during the solution: %.4fs.\n", rank, endT - startT);
     
     }
+            
+    MPI_Barrier(MPI_COMM_WORLD);
+    //tests.twoLevel(x_amg,false,true);
+    //tests.check_solution(x_amg);
     
-    
-
-    //For large lattices this needs a lot of fine tunning, like increasing the number of test vectors and improving the 
-    //coarse grid solver ... 
-    //Still, it is not guaranteed to converge due to this:  
-    //We again should use a ﬂexible Krylov subspace method such as ﬂexible GMRES or GCR,
-    //since the smoother MSAP is non-stationary and, moreover, we will solve the coarse
-    //system Dc only with low accuracy using some “inner iteration” in every step.
-    //---DDalpha original reference below equation 4.2
-    
-
-    
-    //Checking solution 
-    /*
-    spinor xini(Ntot, c_vector(2, 0)); //Initial guess
-    D_phi(GConf.Conf, xAMG, xini, m0); //D_phi U x
-    for(int i = 0; i< Ntot; i++){
-        if (std::abs(xini[i][0] - rhs[i][0]) > 1e-10 || std::abs(xini[i][1] - rhs[i][1]) > 1e-10) {
-            std::cout << "Solution not correct at index " << i << ": " << xini[i][0] << " != " << rhs[i][0] << " or " << xini[i][1] << " != " << rhs[i][1] << std::endl;
-        }
-    }
-    */
     MPI_Finalize();
 
     return 0;

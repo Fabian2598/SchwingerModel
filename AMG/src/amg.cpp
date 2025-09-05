@@ -180,9 +180,7 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	if (rank == 0){std::cout << "Improving interpolator" << std::endl;}
 	for (int n = 0; n < Nit; n++) {
 		if (rank == 0){std::cout << "****** Bootstrap iteration " << n << " ******" << std::endl;}
-		for (int j = 0; j < Ntest; j++) {
-			int i = Ntest - 1 - j;
-			std::cout << "TEST VECTOR " << i << std::endl;
+		for (int i = 0; i < Ntest; i++) {
 			//Number of two-grid iterations for each test vector 
 			int two_grid_iter = 1; 
 			//Tolerance for the two-grid method, but in this case it is not relevant. Still, it is needed to call
@@ -191,7 +189,7 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 			//D^{-1} test_vector with the two grid
 			rhs = interpolator_columns[i];
 			//std::cout << "test vector " << i << std::endl;
-			TwoGrid(two_grid_iter,tolerance, rhs, interpolator_columns[i],test_vectors[i], false,true); 
+			TwoGrid(two_grid_iter,tolerance, rhs, interpolator_columns[i],test_vectors[i], false,false); 
 		}
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
@@ -375,9 +373,6 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 	std::vector<double> residuals;
 	//The convergence criterion is ||r|| < ||phi|| * tol
 
-	//Initial residual
-	D_phi(GConf.Conf, x, Dphi,m0); //D x
-	axpy(phi,Dphi,-1.0,r); //r = phi - D x
 	while(k < max_iter){
 		//Pre-smoothing
 		if (nu1>0){

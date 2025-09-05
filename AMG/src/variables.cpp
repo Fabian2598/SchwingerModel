@@ -4,6 +4,7 @@ typedef std::complex<double> c_double;
 double coarse_time = 0.0; //Time spent in the coarse grid solver
 double smooth_time = 0.0; //Time spent in the smoother
 double SAP_time = 0.0; //Time spent in the SAP method
+double m0 = 0.0;
 
 
 std::vector<std::vector<int>>Coords = std::vector<std::vector<int>>(LV::Nx, std::vector<int>(LV::Nt, 0));
@@ -169,4 +170,91 @@ void read_rhs(std::vector<std::vector<c_double>>& vec,const std::string& name){
     }
     infile.close();
   
+}
+
+void save_rhs(std::vector<std::vector<c_double>>& rhs,const std::string& name){
+    std::ofstream rhsfile(name);
+    if (!rhsfile.is_open()) {
+        std::cerr << "Error opening rhs.txt for writing." << std::endl;
+    } 
+    else {
+        int x,t;
+        //x, t, mu, real part, imaginary part
+        for (int n = 0; n < LV::Ntot; ++n) {
+            x = n/LV::Nt;
+            t = n%LV::Nt;
+            rhsfile << x << std::setw(30) << t << std::setw(30) << 0 << std::setw(30)
+                    << std::setprecision(17) << std::scientific << std::real(rhs[n][0]) << std::setw(30)
+                    << std::setprecision(17) << std::scientific << std::imag(rhs[n][0]) << "\n";
+
+            rhsfile << x << std::setw(30) << t << std::setw(30) << 1 << std::setw(30)
+                    << std::setprecision(17) << std::scientific << std::real(rhs[n][1]) << std::setw(30)
+                    << std::setprecision(17) << std::scientific << std::imag(rhs[n][1]) << "\n";
+          
+        }
+        rhsfile.close();
+    }
+
+}
+
+
+void random_rhs(std::vector<std::vector<c_double>>& vec,const int seed){
+    c_double I_number(0,1);
+    static std::mt19937 randomInt(seed);
+	std::uniform_real_distribution<double> distribution(-1.0, 1.0); //mu, standard deviation
+    for(int i = 0; i < LV::Ntot; i++) {
+        vec[i][0] = distribution(randomInt) + I_number * distribution(randomInt); //RandomU1();
+        vec[i][1] = distribution(randomInt) + I_number * distribution(randomInt);
+    }
+
+}
+
+
+void print_parameters(){
+    using namespace SAPV;
+    using namespace AMGV;
+    std::cout << "******************* Two-grid method for the Dirac matrix in the Schwinger model *******************" << std::endl;
+    std::cout << " Nx = " << Nx << " Nt = " << Nt << std::endl;
+    std::cout << " Lattice dimension = " << (Nx * Nt) << std::endl;
+    std::cout << " Number of entries of the Dirac matrix = (" << (2 * Nx * Nt) << ")^2 = " << (2 * Nx * Nt) * (2 * Nx * Nt) << std::endl;
+    std::cout << " Bare mass parameter m0 = " << m0 << std::endl;
+    std::cout << "-----------------------------------" << std::endl;
+    std::cout << " Lattice blocking for the aggregates" << std::endl;
+    std::cout << "| block_x = " << block_x << " block_t = " << block_t << std::endl;
+    std::cout << "| x_elements = " << x_elements << " t_elements = " << t_elements << std::endl;
+    std::cout << "| Each aggregate has x_elements * t_elements = " <<  x_elements * t_elements << " elements" << std::endl;
+    std::cout << "| Number of aggregates = " << AMGV::Nagg << std::endl;
+     
+    
+    std::cout << "----------------------------------" << std::endl;
+    std::cout << " Variable blocking for SAP" << std::endl;
+    std::cout << "| sap_block_x = " << sap_block_x << " sap_block_t = " << sap_block_t << std::endl;
+    std::cout << "| Lattice sites in the x direction = " << sap_x_elements<< " and in the t direction = " << sap_t_elements<< std::endl;
+    std::cout << "| Each Schwarz block has " <<  sap_lattice_sites_per_block << " lattice points and " << sap_variables_per_block << " variables" << std::endl;
+    std::cout << "| D restricted to each block has (" << 2 * sap_lattice_sites_per_block << ")^2 = " << sap_variables_per_block*sap_variables_per_block << " entries" << std::endl;
+    std::cout << "| Number of Schwarz blocks = " << N_sap_blocks << std::endl;
+    std::cout << "| Red/Black blocks = " << sap_coloring_blocks << std::endl;
+    std::cout << "| Number of blocks per process = " << sap_blocks_per_proc << std::endl;
+    std::cout << "| GMRES restart length for SAP blocks = " << sap_gmres_restart_length << std::endl;
+    std::cout << "| GMRES iterations for SAP blocks = " << sap_gmres_restarts << std::endl;
+    std::cout << "| GMRES tolerance for SAP blocks = " << sap_gmres_tolerance << std::endl;
+    
+    std::cout << "----------------------------------" << std::endl;
+    std::cout << " Two-grid parameters" << std::endl;
+    std::cout << "| Number of test vectors = " << AMGV::Ntest << std::endl;
+    std::cout << "| nu1 (pre-smoothing) = " << AMGV::nu1 << " nu2 (post-smoothing) = " << AMGV::nu2 << std::endl;
+    std::cout << "| Number of iterations for improving the interpolator = " << AMGV::Nit << std::endl;
+    std::cout << "| Coarse grid matrix (Dc) dimension = " << AMGV::Ntest * AMGV::Nagg << std::endl;
+    std::cout << "| Number of SAP iterations to smooth test vectors = " << AMGV::SAP_test_vectors_iterations << std::endl; 
+    std::cout << "| Restart length of GMRES at the coarse level = " << AMGV::gmres_restart_length_coarse_level << std::endl;
+    std::cout << "| Restarts of GMRES at the coarse level = " << AMGV::gmres_restarts_coarse_level << std::endl;
+    std::cout << "| GMRES tolerance for the coarse level solution = " << AMGV::gmres_tol_coarse_level << std::endl;
+    std::cout << "----------------------------------" << std::endl;
+    std::cout << " FGMRES with AMG preconditioning parameters" << std::endl;
+    std::cout << "| FGMRES restart length = " << FGMRESV::fgmres_restart_length << std::endl;
+    std::cout << "| FGMRES restarts = " << FGMRESV::fgmres_restarts << std::endl;
+    std::cout << "| FGMRES tolerance = " << FGMRESV::fgmres_tolerance << std::endl;
+    std::cout << "*****************************************************************************************************" << std::endl;
+    
+
 }

@@ -14,7 +14,8 @@ set(SRC_FILES
     src/amg.cpp                 #Two-grid implementation 
     src/main.cpp                #Main program
     src/fgmres.cpp              #Flexible GMRES solver
-    src/jackknife.cpp           #Jackknife error analysis
+    src/jackknife.cpp           #Jackknife error analysis and standard deviation
+    src/tests.cpp
 )
 
 #--------------------------Lattice dimensions---------------------------#
@@ -42,7 +43,7 @@ set(SAP_BLOCK_T "4")
 #-----------------------------------------------------------------------#
 
 #Number of test vectors
-set(NTEST "20") 
+set(NTEST "10") 
 #The coarse grid matrix dimension is NTEST * 2 * BLOCK_X * BLOCK_T
 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)

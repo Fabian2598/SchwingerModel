@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 
 //mean of a vector
 template <typename T>
@@ -13,6 +14,17 @@ double mean(std::vector<T> x){
     }   
     prom = prom / x.size();
     return prom;
+}
+
+template <typename T>
+double standard_deviation(const std::vector<T>& data) {
+    if (data.empty()) return 0.0;
+    double mean = std::accumulate(data.begin(), data.end(), 0.0) / data.size();
+    double sq_sum = 0.0;
+    for (const auto& val : data) {
+        sq_sum += (static_cast<double>(val) - mean) * (static_cast<double>(val) - mean);
+    }
+    return std::sqrt(sq_sum / data.size());
 }
 
 //----------Jackknife---------//
