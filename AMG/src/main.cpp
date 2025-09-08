@@ -26,9 +26,9 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    //srand(19);
+    srand(19);
 
-    srand(time(0));
+    //srand(time(0));
     
     Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t
     MakeBlocks(); //Makes lattice blocks 
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     m0 = -0.18840579710144945; //Globally declared
     AMGV::SAP_test_vectors_iterations = 2; //This parameter can change things quite a lot.
     FGMRESV::fgmres_restart_length = 25;
-    AMGV::Nit = 3;
+    AMGV::Nit = 6;
     //Parameters in variables.cpp
     if (rank == 0)
         print_parameters();
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     if (LV::Nx == 64)
         nconf = 0;
     else if (LV::Nx == 128)
-        nconf = 0;
+        nconf = 3;
     else if (LV::Nx == 256)
         nconf = 20;  
     
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
         std::ostringstream NameData;
         NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
         format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
-        //GConf.read_conf(NameData.str());
+        GConf.read_conf(NameData.str());
     }
 
     sap.set_params(GConf.Conf, m0); //Setting gauge conf and m0 for SAP 
@@ -72,10 +72,9 @@ int main(int argc, char **argv) {
     spinor x0(Ntot, c_vector(2, 0)); //initial guess
     std::ostringstream FileName;
     FileName << "../../confs/rhs/rhs_conf" << nconf << "_" << Nx << "_Nt" << Nt << ".rhs";
-    //read_rhs(rhs,FileName.str());
-    //Random right hand side
-    random_rhs(rhs,10);
-
+    read_rhs(rhs,FileName.str());
+    //random_rhs(rhs,10);
+    
     // Save rhs to a .txt file
     if (rank == 0){
         std::ostringstream FileName;
@@ -100,6 +99,9 @@ int main(int argc, char **argv) {
 
     Tests tests(GConf,rhs,x0, m0);
 
+    double Iter[3];
+    double dIter[3];
+
     if (rank == 0){
         tests.BiCG(x_bi,10000,false,true); 
         //tests.GMRES(x_gmres,25, 100,false,true);
@@ -110,26 +112,65 @@ int main(int argc, char **argv) {
     //tests.SAP(x_sap,200,true);
 
 
-    int Meas = 1;
+    for(int i = 1; i < 3; i++){
+
+    AMGV::Nit = 3*i;
+    if (rank == 0) std::cout << "Number of iterations for improving the interpolator: " << AMGV::Nit << std::endl;
+
+    int Meas = 10;
     std::vector<double> iterations(Meas,0);
     if (rank == 0) std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;
 
     for(int i = 0; i < Meas; i++){
         if (rank == 0) std::cout << "Meas " << i << std::endl;
-
-        tests.FGMRES_2grid(x_famg,false, true);
+        iterations[i] = tests.FGMRES_2grid(x_famg,false, true);
     }
     if (rank == 0){
         std::cout << "Average iteration number over " << Meas << " runs: " << mean(iterations) << " +- " 
-        << Jackknife_error(iterations, 5) << std::endl;
+        << standard_deviation(iterations)/sqrt(1.0*Meas) << std::endl;
     
     }
+
+    Iter[i] = mean(iterations);
+    dIter[i] = standard_deviation(iterations)/sqrt(1.0*Meas);
+    }
+
+    for(int i = 0; i < 3; i++){
+        if (rank == 0) std::cout << "Nit: " << 3*i << " Iter: " << Iter[i] << " +- " << dIter[i] << std::endl;
+    }
+
             
     MPI_Barrier(MPI_COMM_WORLD);
     //tests.twoLevel(x_amg,false,true);
     //tests.check_solution(x_amg);
     
     MPI_Finalize();
+//Nit: number of bootrap iterations
+//20 test vectors
+
+    //With a random right-hand side
+    //Nit: 0 Iter: 42.3 +- 0.707814
+    //Nit: 3 Iter: 48.3 +- 0.530094
+    //Nit: 6 Iter: 49.8 +- 1.22311
+
+    //With a point source at (0,0)
+    //Nit: 0 Iter: 42.4 +- 0.70993
+    //Nit: 3 Iter: 30.2 +- 0.544059
+    //Nit: 6 Iter: 31.2 +- 0.368782
+
+//25 test vectors
+    //With a random right-hand side
+
+    //With a point source
+    //Nit: 0 Iter: 31.1 +- 0.359166
+    //Nit: 3 Iter: 21.8 +- 0.189737
+    //Nit: 6 Iter: 22.3 +- 0.202485
+
+    //Nit: 0 Iter: 31.8 +- 0.309839
+    //Nit: 3 Iter: 22.1 +- 0.170294
+    //Nit: 6 Iter: 22.3 +- 0.246982
+
+
 
     return 0;
 }

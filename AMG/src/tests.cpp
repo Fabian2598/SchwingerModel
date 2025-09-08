@@ -95,7 +95,7 @@ void Tests::twoLevel(spinor& x,const bool save, const bool print){
     AMG amg(GConf, m0, AMGV::nu1, AMGV::nu2);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     startT = MPI_Wtime();
-    amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
+    amg.setUpPhase(AMGV::Nit); //test vectors intialization
     endT = MPI_Wtime();
     elapsed_time = endT - startT;
     std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl; 

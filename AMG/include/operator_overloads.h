@@ -94,10 +94,10 @@ inline void scal(const T& lambda, const c_matrix& X, c_matrix& Y) {
 /*
     Complex matrix addition
     Also works for spinors, since they are just matrices with 2 columns.
+    X + Lambda*Y = Out
 */
 template <typename T>
 inline void axpy(const c_matrix& X, const c_matrix& Y, const T& lambda, c_matrix& out) {
-    // A + B = C
     int size1 = X.size();
     int size2 = X[0].size();
     for (int i = 0; i < size1; i++) {

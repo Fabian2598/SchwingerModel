@@ -94,10 +94,9 @@ public:
 		AMGV::SAP_test_vectors_iterations iterations to approximately solve the linear system D x = v_i.
 	    The test vectors are then locally orthonormalized according to the aggregation.abort
 
-	eps: Norm of the test vectors during random initialization
 	Nit: Number of iterations for improving the interpolator
 	*/
-	void setUpPhase(const double& eps, const int& Nit);
+	void setUpPhase(const int& Nit);
 
 	/*
 	Two-grid method for solving the linear system D x = phi
@@ -145,6 +144,8 @@ private:
 	Local orthonormalization of the test vectors
 	*/
 	void orthonormalize(); 
+
+	void test_vectors_update(const spinor & in,spinor & out);
 	
 	std::vector<spinor> test_vectors; //test vectors[Ntest][Nx Nt][spin components], no color
 	std::vector<spinor> interpolator_columns; 
@@ -184,7 +185,7 @@ class FGMRES_two_grid : public FGMRES {
     double elapsed_time;
     double startT, endT;     
     startT = MPI_Wtime();
-    amg.setUpPhase(1, AMGV::Nit); //test vectors intialization
+    amg.setUpPhase(AMGV::Nit); //test vectors intialization
     endT = MPI_Wtime();
     elapsed_time = endT - startT;
     std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl;   

@@ -137,7 +137,7 @@ void AMG::checkOrthogonality(){
 
 }
 
-void AMG::setUpPhase(const double& eps,const int& Nit) {
+void AMG::setUpPhase(const int& Nit) {
 	//Call MPI for SAP parallelization
 	int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -156,7 +156,6 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 		for (int j = 0; j < LV::Ntot; j++) {
 			for (int k = 0; k < 2; k++) {
 				interpolator_columns[i][j][k] = distribution(randomInt) + I_number * distribution(randomInt);
-				//interpolator_columns[i][j][k] = eps * RandomU1();
 			}
 		}
 	}
@@ -176,20 +175,26 @@ void AMG::setUpPhase(const double& eps,const int& Nit) {
 	checkOrthogonality();
 	initializeCoarseLinks();
 	
+	spinor D_v(LV::Ntot, c_vector(2, 0));
+	int two_grid_iter = 1; 
+	double tolerance = 1e-2;
 	//Improving the interpolator quality by iterating over the two-grid method defined by the current test vectors
 	if (rank == 0){std::cout << "Improving interpolator" << std::endl;}
 	for (int n = 0; n < Nit; n++) {
 		if (rank == 0){std::cout << "****** Bootstrap iteration " << n << " ******" << std::endl;}
 		for (int i = 0; i < Ntest; i++) {
-			//Number of two-grid iterations for each test vector 
-			int two_grid_iter = 1; 
-			//Tolerance for the two-grid method, but in this case it is not relevant. Still, it is needed to call
-			//the function
-			double tolerance = 1e-2; 
-			//D^{-1} test_vector with the two grid
-			rhs = interpolator_columns[i];
-			//std::cout << "test vector " << i << std::endl;
-			TwoGrid(two_grid_iter,tolerance, rhs, interpolator_columns[i],test_vectors[i], false,false); 
+			//D_phi(GConf.Conf,interpolator_columns[i],D_v,m0); //D times the i-th test vector
+			//axpy(interpolator_columns[i], D_v, -1.0, rhs); //rhs = v_i - D v_i
+
+			//TwoGrid(two_grid_iter,tolerance, x0, interpolator_columns[i],test_vectors[i], false,false); 
+			
+			//for(int n = 0; n < LV::Ntot; n++){
+			//	for(int k = 0; k < 2; k++){
+			//		test_vectors[i][n][k] += interpolator_columns[i][n][k]; 
+			//	}
+			//}
+
+			test_vectors_update(interpolator_columns[i],test_vectors[i]); 
 		}
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
@@ -448,6 +453,25 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 	return 0;
 }
 
+
+void AMG::test_vectors_update(const spinor & in,spinor & out){
+	spinor temp(LV::Ntot,c_vector(2,0));
+	spinor Pt_r(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
+	//out = temp;
+	Pt_v(in,Pt_r); // v_c = P_dagg v
+	spinor gmresResult(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
+	gmres_c_level.fgmres(Pt_r,Pt_r,gmresResult,false,false); //u_c \approx Dc^-1 v_c
+	P_v(gmresResult,temp); //u = P u_c
+	
+	for(int n = 0; n<LV::Ntot; n++){
+		for(int alf=0; alf<2; alf++){
+			out[n][alf] += temp[n][alf]; 
+		}
+	}
+
+	sap.SAP(in,out,AMGV::nu2, SAPV::sap_blocks_per_proc,false);
+
+}
 
 void AMG::testSetUp(){
 	//Checking orthogonality

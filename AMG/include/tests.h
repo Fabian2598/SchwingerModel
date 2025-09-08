@@ -14,7 +14,7 @@
 class Tests{
 public:
 
-    Tests(const GaugeConf& GConf, const spinor& rhs, const spinor& x0 ,double m0): 
+    Tests(const GaugeConf& GConf, const spinor& rhs, const spinor& x0 ,const double m0): 
     GConf(GConf), rhs(rhs), x0(x0), m0(m0){
 
     }
