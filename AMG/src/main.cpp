@@ -38,9 +38,8 @@ int main(int argc, char **argv) {
     CheckBlocks(); //Check blocks dimensions
     
     m0 = -0.18840579710144945; //Globally declared
-    AMGV::SAP_test_vectors_iterations = 2; //This parameter can change things quite a lot.
+    AMGV::SAP_test_vectors_iterations = 4; 
     FGMRESV::fgmres_restart_length = 25;
-    AMGV::Nit = 6;
     //Parameters in variables.cpp
     if (rank == 0)
         print_parameters();
@@ -103,7 +102,7 @@ int main(int argc, char **argv) {
     double dIter[3];
 
     if (rank == 0){
-        tests.BiCG(x_bi,10000,false,true); 
+        //tests.BiCG(x_bi,10000,false,true); 
         //tests.GMRES(x_gmres,25, 100,false,true);
         //tests.CG(x_cg);
     }
@@ -112,7 +111,7 @@ int main(int argc, char **argv) {
     //tests.SAP(x_sap,200,true);
 
 
-    for(int i = 1; i < 3; i++){
+    for(int i = 0; i < 3; i++){
 
     AMGV::Nit = 3*i;
     if (rank == 0) std::cout << "Number of iterations for improving the interpolator: " << AMGV::Nit << std::endl;
@@ -145,32 +144,6 @@ int main(int argc, char **argv) {
     //tests.check_solution(x_amg);
     
     MPI_Finalize();
-//Nit: number of bootrap iterations
-//20 test vectors
-
-    //With a random right-hand side
-    //Nit: 0 Iter: 42.3 +- 0.707814
-    //Nit: 3 Iter: 48.3 +- 0.530094
-    //Nit: 6 Iter: 49.8 +- 1.22311
-
-    //With a point source at (0,0)
-    //Nit: 0 Iter: 42.4 +- 0.70993
-    //Nit: 3 Iter: 30.2 +- 0.544059
-    //Nit: 6 Iter: 31.2 +- 0.368782
-
-//25 test vectors
-    //With a random right-hand side
-
-    //With a point source
-    //Nit: 0 Iter: 31.1 +- 0.359166
-    //Nit: 3 Iter: 21.8 +- 0.189737
-    //Nit: 6 Iter: 22.3 +- 0.202485
-
-    //Nit: 0 Iter: 31.8 +- 0.309839
-    //Nit: 3 Iter: 22.1 +- 0.170294
-    //Nit: 6 Iter: 22.3 +- 0.246982
-
-
 
     return 0;
 }

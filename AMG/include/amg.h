@@ -145,7 +145,6 @@ private:
 	*/
 	void orthonormalize(); 
 
-	void test_vectors_update(const spinor & in,spinor & out);
 	
 	std::vector<spinor> test_vectors; //test vectors[Ntest][Nx Nt][spin components], no color
 	std::vector<spinor> interpolator_columns; 
@@ -188,7 +187,8 @@ class FGMRES_two_grid : public FGMRES {
     amg.setUpPhase(AMGV::Nit); //test vectors intialization
     endT = MPI_Wtime();
     elapsed_time = endT - startT;
-    std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl;   
+	if (rank == 0)
+    	std::cout << "[MPI Process " << rank << "] Elapsed time for Set-up phase = " << elapsed_time << " seconds" << std::endl;   
     //---------------------------//    
 	//amg.testSetUp();
     };

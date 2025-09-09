@@ -74,10 +74,11 @@ int Tests::FGMRES_2grid(spinor& x,const bool save, const bool print){
     FGMRES_two_grid fgmres_two_grid(LV::Ntot, 2, FGMRESV::fgmres_restart_length, FGMRESV::fgmres_restarts,FGMRESV::fgmres_tolerance,GConf, m0);
     iter = fgmres_two_grid.fgmres(rhs,x0,x,save,print);
     endT = MPI_Wtime();
-    printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
-    printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
-    printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
-    printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
+    if (rank == 0)
+        printf("[MPI process %d] time elapsed during the job: %.4fs.\n", rank, endT - startT);
+    //printf("[MPI process %d] coarse time: %.4fs.\n", rank, coarse_time);
+    //printf("[MPI process %d] smooth time: %.4fs.\n", rank, smooth_time);
+    //printf("[MPI process %d] SAP time: %.4fs.\n", rank, SAP_time);
     fflush(stdout);
 
     return iter;

@@ -183,18 +183,18 @@ void AMG::setUpPhase(const int& Nit) {
 	for (int n = 0; n < Nit; n++) {
 		if (rank == 0){std::cout << "****** Bootstrap iteration " << n << " ******" << std::endl;}
 		for (int i = 0; i < Ntest; i++) {
-			//D_phi(GConf.Conf,interpolator_columns[i],D_v,m0); //D times the i-th test vector
-			//axpy(interpolator_columns[i], D_v, -1.0, rhs); //rhs = v_i - D v_i
-
-			//TwoGrid(two_grid_iter,tolerance, x0, interpolator_columns[i],test_vectors[i], false,false); 
 			
-			//for(int n = 0; n < LV::Ntot; n++){
-			//	for(int k = 0; k < 2; k++){
-			//		test_vectors[i][n][k] += interpolator_columns[i][n][k]; 
-			//	}
-			//}
+			D_phi(GConf.Conf,interpolator_columns[i],D_v,m0); //D times the i-th test vector
+			axpy(interpolator_columns[i], D_v, -1.0, rhs); //rhs = v_i - D v_i
 
-			test_vectors_update(interpolator_columns[i],test_vectors[i]); 
+			TwoGrid(two_grid_iter,tolerance, x0, interpolator_columns[i],test_vectors[i], false,false); 
+			
+			for(int n = 0; n < LV::Ntot; n++){
+				for(int k = 0; k < 2; k++){
+					test_vectors[i][n][k] += interpolator_columns[i][n][k]; 
+				}
+			}
+			
 		}
 		//"Assemble" the new interpolator
 		interpolator_columns = test_vectors; 
@@ -453,25 +453,6 @@ int AMG::TwoGrid(const int& max_iter, const double& tol, const spinor& x0,
 	return 0;
 }
 
-
-void AMG::test_vectors_update(const spinor & in,spinor & out){
-	spinor temp(LV::Ntot,c_vector(2,0));
-	spinor Pt_r(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
-	//out = temp;
-	Pt_v(in,Pt_r); // v_c = P_dagg v
-	spinor gmresResult(AMGV::Ntest, c_vector(AMGV::Nagg, 0));
-	gmres_c_level.fgmres(Pt_r,Pt_r,gmresResult,false,false); //u_c \approx Dc^-1 v_c
-	P_v(gmresResult,temp); //u = P u_c
-	
-	for(int n = 0; n<LV::Ntot; n++){
-		for(int alf=0; alf<2; alf++){
-			out[n][alf] += temp[n][alf]; 
-		}
-	}
-
-	sap.SAP(in,out,AMGV::nu2, SAPV::sap_blocks_per_proc,false);
-
-}
 
 void AMG::testSetUp(){
 	//Checking orthogonality
