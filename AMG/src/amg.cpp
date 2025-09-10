@@ -159,10 +159,8 @@ void AMG::setUpPhase(const int& Nit) {
 			}
 		}
 	}
-
-	//Improving the test vectors by approximately solving the linear system D test_vectors[i] = test_vectors[i] 
+	
 	for (int i = 0; i < Ntest; i++) {
-		//rhs = interpolator_columns[i];  
 		// D^{-1} test_vector with SAP
 		double startT, endT;
 		startT = MPI_Wtime();
@@ -171,6 +169,7 @@ void AMG::setUpPhase(const int& Nit) {
 		SAP_time += endT - startT; 
 			
 	}
+	
 	orthonormalize(); 
 	checkOrthogonality();
 	initializeCoarseLinks();

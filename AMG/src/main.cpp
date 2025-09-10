@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
     AMGV::Nit = 3*i;
     if (rank == 0) std::cout << "Number of iterations for improving the interpolator: " << AMGV::Nit << std::endl;
 
-    int Meas = 10;
+    int Meas = 5;
     std::vector<double> iterations(Meas,0);
     if (rank == 0) std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;
 

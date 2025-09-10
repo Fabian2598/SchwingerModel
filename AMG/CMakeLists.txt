@@ -19,8 +19,8 @@ set(SRC_FILES
 )
 
 #--------------------------Lattice dimensions---------------------------#
-set(NS "256") #Space
-set(NT "256") #Time
+set(NS "128") #Space
+set(NT "128") #Time
 #-----------------------------------------------------------------------#
 
 
@@ -43,7 +43,7 @@ set(SAP_BLOCK_T "4")
 #-----------------------------------------------------------------------#
 
 #Number of test vectors
-set(NTEST "20") 
+set(NTEST "10") 
 #The coarse grid matrix dimension is NTEST * 2 * BLOCK_X * BLOCK_T
 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
