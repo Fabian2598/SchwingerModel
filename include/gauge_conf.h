@@ -15,7 +15,7 @@ c_double RandomU1();
 /*
 	Save Gauge configuration
 */
-void SaveConf(c_matrix& Conf, const std::string& Name); 
+void SaveConf(const c_double (&Conf)[2*LV::Ntot], const std::string& Name); 
 
 
 class GaugeConf {
@@ -27,9 +27,6 @@ public:
 	GaugeConf() {} 
 
 	GaugeConf(const int& Nspace, const int& Ntime) : Nx(Nspace), Nt(Ntime), Ntot(Nspace* Ntime) {
-		Conf = c_matrix(Ntot, c_vector(2, 0)); //Gauge configuration
-		Plaquette01 = c_vector(Ntot, 0); //Plaquettes
-		Staples = c_matrix(Ntot, c_vector(2, 0)); //Staples
 	}
 
 	/*
@@ -43,7 +40,8 @@ public:
 	/*
 	Destructor
 	*/
-	~GaugeConf() {}; 
+	~GaugeConf() {
+	}; 
 
 	/*
 		Random initialization of the gauge configuration
@@ -57,9 +55,9 @@ public:
 		std::vector with the gauge configuration. Conf[Nx*Nt][2]
 		The first entry is the number of lattice points, the second entry is mu
 	*/
-	c_matrix Conf; 
-	c_matrix Staples; //Staples
-	c_vector Plaquette01; //Plaquette U_01(x)
+	spinor Conf; 
+	spinor Staples; //Staples
+	c_double Plaquette01[2*LV::Ntot]; //Plaquette U_01(x)
 
 	/*
 		Computes staple

@@ -59,39 +59,5 @@ private:
 	
 };
 
-/*
-inline re_field RandomMomentum() {
-	using namespace LV;
-	//We use a Gaussian distribution to sample the momenta
-	static std::random_device rd;
-	static std::default_random_engine generator(rd());
-	//generator.seed(rd()); 
-	static std::normal_distribution<double> distribution(0.0, 1.0); //mu, std
-	
-	re_field RandPI(Ntot, re_vector(2, 0));
-	for (int n = 0; n < Ntot; n++) {
-		RandPI[n][0] = distribution(generator);
-		RandPI[n][1] = distribution(generator);
-	}
-	return RandPI;
-}
-
-//Random Chi vector 
-inline spinor RandomChi() {
-	using namespace LV;
-	static std::random_device rd;
-	static std::default_random_engine generator(rd());
-	static std::normal_distribution<double> distribution(0.0, 1/sqrt(2)); //mu, standard deviation
-	
-	
-	spinor RandPI(Ntot, c_vector(2, 0));
-	for (int n = 0; n < Ntot; n++) {
-		RandPI[n][0] = 1.0 * distribution(generator) + I_number * distribution(generator);
-		RandPI[n][1] = 1.0 * distribution(generator) + I_number * distribution(generator);
-	}
-	return RandPI;
-}
-*/
-
 
 #endif

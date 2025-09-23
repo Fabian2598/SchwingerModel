@@ -10,9 +10,9 @@ c_double RandomU1() {
 }
 
 void GaugeConf::initialization() {
-	for (int i = 0; i < Ntot; i++) {
+	for (int n = 0; n < Ntot; n++) {
 		for (int mu = 0; mu < 2; mu++) {
-			Conf[i][mu] = RandomU1(); //Conf[Nx Nt][mu in {0,1}]
+			Conf[2*n+mu] = RandomU1(); 
 		}
 	}
 }
@@ -22,7 +22,7 @@ void GaugeConf::Compute_Plaquette01() {
 	//mu = 0 time direction, mu = 1 space direction
     for (int n = 0; n<Ntot; n++){
         //int Coord0 = Coords[x][t], Coord1 = Coords[x][modulo(t + 1, Nt)], Coord2 = Coords[modulo(x + 1, Ns)][t];
-		Plaquette01[n] = Conf[n][0] * Conf[RightPB[n][0]][1] * std::conj(Conf[RightPB[n][1]][0]) * std::conj(Conf[n][1]);
+		Plaquette01[n] = Conf[2*n] * Conf[2*RightPB[2*n]+1] * std::conj(Conf[2*RightPB[2*n+1]]) * std::conj(Conf[2*n+1]);
     }		
 }
 
@@ -33,29 +33,29 @@ void GaugeConf::Compute_Staple() {
     //mu = 0 time direction, mu = 1 space direction
     for (int n = 0; n < Ntot; n++) {
         //These coordinates could change depending on the conventions 
-		int x1 = RightPB[n][1];  //Coords[modulo(x + 1, Ns) ,t]
-		int x_1 = LeftPB[n][1];  //Coords[modulo(x - 1, Ns) ,t]
-		int t1 = RightPB[n][0];  //Coords[x, modulo(t + 1, Nt)]
-		int t_1 = LeftPB[n][0];  //Coords[x, modulo(t - 1, Nt)]
+		int x1 = RightPB[2*n+1];  //Coords[modulo(x + 1, Ns) ,t]
+		int x_1 = LeftPB[2*n+1];  //Coords[modulo(x - 1, Ns) ,t]
+		int t1 = RightPB[2*n];  //Coords[x, modulo(t + 1, Nt)]
+		int t_1 = LeftPB[2*n];  //Coords[x, modulo(t - 1, Nt)]
         for (int mu = 0; mu < 2; mu++) {
             if (mu == 0) {
-                const c_double& conf1 = Conf[n][1];
-                const c_double& conf2 = Conf[x1][0];
-                const c_double& conf3 = Conf[t1][1];
-                const c_double& conf4 = Conf[x_1][1];
-                const c_double& conf5 = Conf[x_1][0];
-                const c_double& conf6 = Conf[ x_1_t1[n] ][1]; //Coords[mod(x - 1, Ns)][mod(t + 1, Nt)];
-                Staples[n][mu] = conf1 * conf2 * std::conj(conf3) +
+                const c_double& conf1 = Conf.mu1[n];
+                const c_double& conf2 = Conf.mu0[x1]; 
+                const c_double& conf3 = Conf.mu1[t1];
+                const c_double& conf4 = Conf.mu1[x_1];
+                const c_double& conf5 = Conf.mu0[x_1];
+                const c_double& conf6 = Conf.mu1[x_1_t1[n]]; //Coords[mod(x - 1, Ns)][mod(t + 1, Nt)];
+                Staples.mu0[n] = conf1 * conf2 * std::conj(conf3) +
                     std::conj(conf4) * conf5 * conf6;
             }
             else {
-                const c_double& conf1 = Conf[n][0];
-                const c_double& conf2 = Conf[t1][1];
-                const c_double& conf3 = Conf[x1][0];
-                const c_double& conf4 = Conf[t_1][0];
-                const c_double& conf5 = Conf[t_1][1];
-                const c_double& conf6 = Conf[ x1_t_1[n] ][0]; //Coords[mod(x + 1, Ns)][mod(t - 1, Nt)];
-                Staples[n][mu] = conf1 * conf2 * std::conj(conf3) +
+                const c_double& conf1 = Conf[2*n];
+                const c_double& conf2 = Conf[2*t1+1];
+                const c_double& conf3 = Conf[2*x1];
+                const c_double& conf4 = Conf[2*t_1];
+                const c_double& conf5 = Conf[2*t_1+1];
+                const c_double& conf6 = Conf[2*x1_t_1[n]]; //Coords[mod(x + 1, Ns)][mod(t - 1, Nt)];
+                Staples.mu1[n] = conf1 * conf2 * std::conj(conf3) +
                     std::conj(conf4) * conf5 * conf6;
             }
         }
@@ -66,7 +66,7 @@ void GaugeConf::Compute_Staple() {
 /*
 Save Gauge configuration
 */ 
-void SaveConf(c_matrix& Conf, const std::string& Name) {
+void SaveConf(const c_double (&Conf)[2*LV::Ntot], const std::string& Name) {
     std::ofstream Datfile(Name);
     if (!Datfile.is_open()) {
         std::cerr << "Error opening file: " << Name << std::endl;
@@ -75,13 +75,13 @@ void SaveConf(c_matrix& Conf, const std::string& Name) {
     using namespace LV;
     for (int x = 0; x < Nx; x++) {
         for (int t = 0; t < Nt; t++) {
-            int i = x * Nx + t;
+            int n = x * Nx + t;
             for (int mu = 0; mu < 2; mu++) {
                 Datfile << x
                         << std::setw(30) << t
                         << std::setw(30) << mu
-                        << std::setw(30) << std::setprecision(17) << std::scientific << std::real(Conf[i][mu])
-                        << std::setw(30) << std::setprecision(17) << std::scientific << std::imag(Conf[i][mu])
+                        << std::setw(30) << std::setprecision(17) << std::scientific << std::real(Conf[2*n+mu])
+                        << std::setw(30) << std::setprecision(17) << std::scientific << std::imag(Conf[2*n+mu])
                         << "\n";
             }
         }

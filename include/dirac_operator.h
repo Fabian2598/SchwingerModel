@@ -33,15 +33,17 @@ inline void periodic_boundary() {
 	std::vector<std::vector<int>>hat_mu(2, std::vector<int>(2, 0));
 	hat_mu[0] = { 1, 0 }; //hat_t
 	hat_mu[1] = { 0, 1 }; //hat_x
+	int n;
 	for (int x = 0; x < Nx; x++) {
 		for (int t = 0; t < Nt; t++) {
-			x_1_t1[Coords[x][t]] = Coords[mod(x - 1, Nx)][mod(t + 1, Nt)];
-			x1_t_1[Coords[x][t]] = Coords[mod(x + 1, Nx)][mod(t - 1, Nt)];
+			n = x * Nt + t;
+			x_1_t1[n] = Coords(mod(x - 1, Nx),mod(t + 1, Nt));
+			x1_t_1[n] = Coords(mod(x + 1, Nx),mod(t - 1, Nt)); 
 			for (int mu = 0; mu < 2; mu++) {
-				RightPB[Coords[x][t]][mu] = Coords[mod(x + hat_mu[mu][1], Nx)][mod(t + hat_mu[mu][0], Nt)]; 
-				LeftPB[Coords[x][t]][mu] = Coords[mod(x - hat_mu[mu][1], Nx)][mod(t - hat_mu[mu][0], Nt)];
-				SignR[Coords[x][t]][mu] = (mu == 0 && t == Nt - 1) ? -1 : 1; //sign for the right boundary in time
-				SignL[Coords[x][t]][mu] = (mu == 0 && t == 0) ? -1 : 1; //sign for the left boundary in time
+				RightPB[2*n+mu] = Coords(mod(x + hat_mu[mu][1], Nx),mod(t + hat_mu[mu][0], Nt)); 
+				LeftPB[2*n+mu] = Coords(mod(x - hat_mu[mu][1], Nx),mod(t - hat_mu[mu][0], Nt));
+				SignR[2*n+mu] = (mu == 0 && t == Nt - 1) ? -1 : 1; //sign for the right boundary in time
+				SignL[2*n+mu] = (mu == 0 && t == 0) ? -1 : 1; //sign for the left boundary in time
 				
 			}
 		}
@@ -55,7 +57,7 @@ inline void periodic_boundary() {
 	phi: spinor to apply the operator to
 	m0: mass parameter
 */
-void D_phi(const c_matrix& U, const spinor& phi, spinor &Dphi, const double& m0);
+void D_phi(const c_double (&U)[2*LV::Ntot], const c_double (&phi)[2*LV::Ntot],const c_double (&Dphi)[2*LV::Ntot], const double& m0);
 
 
 /*
@@ -64,14 +66,14 @@ void D_phi(const c_matrix& U, const spinor& phi, spinor &Dphi, const double& m0)
 	phi: spinor to apply the operator to
 	m0: mass parameter
 */
-void D_dagger_phi(const c_matrix& U, const spinor& phi, spinor &Dphi, const double& m0);
+void D_dagger_phi(const c_double& U, const spinor& phi, spinor &Dphi, const double& m0);
 
 
 /*
 	Application of D D^+
 	It just calls the previous functions
 */
-void D_D_dagger_phi(const c_matrix& U, const spinor& phi, spinor &Dphi,const double& m0);
+void D_D_dagger_phi(const c_double& U, const spinor& phi, spinor &Dphi,const double& m0);
 
 /*
 	2* Re ( left^+ d D / d omega(z) right )
