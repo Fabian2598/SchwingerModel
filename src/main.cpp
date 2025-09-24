@@ -7,6 +7,7 @@
 
 
 int main() {
+    allocate_lattice_arrays();
     srand(time(0));
     
     int Ntherm, Nmeas, Nsteps, Nm0; //Simulation parameters
@@ -47,17 +48,11 @@ int main() {
     std::cout << " " << std::endl;
     
     std::vector<double> Masses(Nm0);
-    
-	Coordinates(); //Compute vectorized coordinates
+
     periodic_boundary(); //Compute right and left periodic boundary
     
 	GaugeConf GConf = GaugeConf(LV::Nx, LV::Nt);  //Gauge configuration
-    /*spinor phi(LV::Ntot, c_vector(2, 0)); //Fermion field
-    for(int n = 0; n < LV::Ntot; n++) {
-        phi[n][0] = RandomU1(); //spin up
-        phi[n][1] = RandomU1(); //spin down
-    }
-    */
+ 
     if (Nm0 == 1) {
         Masses = { m0_min };
     }
@@ -87,13 +82,13 @@ int main() {
 
 
         HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, LV::Nx, LV::Nt, m0,saveconf);   
-        clock_t begin = clock();
+        double begin = omp_get_wtime();
         hmc.HMC_algorithm();
-        clock_t end = clock();
+        double end = omp_get_wtime();
         std::cout << "Average plaquette value / volume: Ep = " << hmc.getEp() << " dEp = " << hmc.getdEp() << std::endl;
         std::cout << "Average gauge action / volume: gS = " << hmc.getgS() << " dgS = " << hmc.getdgS() << std::endl;
         std::cout << "Acceptance rate: " << hmc.getacceptance_rate() << std::endl;
-        double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+        double elapsed_secs = end - begin;
 
         Datfile << std::format("{:<30.17g}\n", m0);
         Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getEp(), hmc.getdEp());
@@ -108,6 +103,8 @@ int main() {
     }
     Datfile.close();
     
+    //Free coordinate arrays
+    free_lattice_arrays();
 
 	return 0;
 }

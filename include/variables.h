@@ -7,12 +7,6 @@
 extern double pi;
 typedef std::complex<double> c_double;
 
-struct spinor{
-    c_double mu0[LV::Ntot];
-    c_double mu1[LV::Ntot];
-};
-
-
 //------------Lattice parameters--------------//
 namespace LV {
     //Lattice dimensions//
@@ -26,18 +20,106 @@ namespace CG{
     extern double tol; //Tolerance for convergence
 }
 
+struct spinor {
+    c_double* mu0;
+    c_double* mu1;
+    int size;
+    //Constructor
+    spinor(int N = LV::Ntot) : size(N) {
+        mu0 = new c_double[N]();
+        mu1 = new c_double[N]();
+    }
+
+    // Copy constructor (deep copy)
+    spinor(const spinor& other) : size(other.size) {
+        mu0 = new c_double[size];
+        mu1 = new c_double[size];
+        std::copy(other.mu0, other.mu0 + size, mu0);
+        std::copy(other.mu1, other.mu1 + size, mu1);
+    }
+
+    // Assignment operator (deep copy)
+    spinor& operator=(const spinor& other) {
+        if (this != &other) {
+            if (size != other.size) {
+                delete[] mu0;
+                delete[] mu1;
+                size = other.size;
+                mu0 = new c_double[size];
+                mu1 = new c_double[size];
+            }
+            std::copy(other.mu0, other.mu0 + size, mu0);
+            std::copy(other.mu1, other.mu1 + size, mu1);
+        }
+        return *this;
+    }
+
+    // Destructor
+    ~spinor() {
+        delete[] mu0;
+        delete[] mu1;
+    }
+};
+
+struct re_field {
+    double* mu0;
+    double* mu1;
+    int size;
+    //Constructor
+    re_field(int N = LV::Ntot) : size(N) {
+        mu0 = new double[N]();
+        mu1 = new double[N]();
+    }
+
+    // Copy constructor (deep copy)
+    re_field(const re_field& other) : size(other.size) {
+        mu0 = new double[size];
+        mu1 = new double[size];
+        std::copy(other.mu0, other.mu0 + size, mu0);
+        std::copy(other.mu1, other.mu1 + size, mu1);
+    }
+
+    // Assignment operator (deep copy)
+    re_field& operator=(const re_field& other) {
+        if (this != &other) {
+            if (size != other.size) {
+                delete[] mu0;
+                delete[] mu1;
+                size = other.size;
+                mu0 = new double[size];
+                mu1 = new double[size];
+            }
+            std::copy(other.mu0, other.mu0 + size, mu0);
+            std::copy(other.mu1, other.mu1 + size, mu1);
+        }
+        return *this;
+    }
+
+    // Destructor
+    ~re_field() {
+        delete[] mu0;
+        delete[] mu1;
+    }
+};
+
+typedef spinor c_matrix;
+
 int Coords(const int& x, const int& t);
-extern int LeftPB[LV::Ntot*2]; 
-extern int RightPB[LV::Ntot*2]; 
-extern c_double SignL[LV::Ntot*2]; 
-extern c_double SignR[LV::Ntot*2]; 
-extern int x_1_t1[LV::Ntot]; 
-extern int x1_t_1[LV::Ntot]; 
+extern int* LeftPB;
+extern int* RightPB;
+extern c_double* SignL;
+extern c_double* SignR;
+extern int* x_1_t1;
+extern int* x1_t_1;
+
+void allocate_lattice_arrays();
+void free_lattice_arrays();
 
 
 //Memory preallocation
-extern std::vector<std::vector<c_double>> TEMP;
-extern std::vector<std::vector<c_double>> DTEMP;
+extern spinor DTEMP;
+extern spinor TEMP; 
+
 
 
 

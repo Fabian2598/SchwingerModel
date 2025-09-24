@@ -13,7 +13,7 @@
         
     The convergence criterion is ||r|| < ||phi|| * tol
 */
-int conjugate_gradient(const c_matrix& U, const spinor& phi, spinor &x, const double& m0); 
+int conjugate_gradient(const spinor& U, const spinor& phi, spinor &x, const double& m0); 
 
 /*
     Bi-cgstab for inverting the Dirac matrix
@@ -27,6 +27,6 @@ int conjugate_gradient(const c_matrix& U, const spinor& phi, spinor &x, const do
         
     The convergence criterion is ||r|| < ||phi|| * tol
 */
-spinor bi_cgstab(const c_matrix& U, const spinor& phi, const spinor& x0,const double& m0, const int& max_iter, const double& tol, const bool& print_message); //D^-1 phi
+spinor bi_cgstab(const spinor& U, const spinor& phi, const spinor& x0,const double& m0, const int& max_iter, const double& tol, const bool& print_message); //D^-1 phi
 
 #endif

@@ -13,12 +13,9 @@ public:
 		MD_steps(MD_steps), trajectory_length(trajectory_length), Ntherm(Ntherm), Nmeas(Nmeas), Nsteps(Nsteps), 
 		beta(beta), Nx(Nspace), Nt(Ntime), Ntot(Nspace*Ntime), m0(m0), saveconf(saveconf), GConf(GConf) {
 
-		PConf = re_field(Ntot, re_vector(2, 0));//Momenta PI
-		PConf_copy = re_field(Ntot, re_vector(2, 0));//Momenta PI copy
-		Forces = re_field(Ntot, re_vector(2, 0)); //Forces
 		Ep = 0; dEp = 0;
 		acceptance_rate = 0;
-		chi = spinor(Ntot,c_vector(2,0));
+	
 	}
 	~HMC() {} 
 	
@@ -40,9 +37,9 @@ private:
 	double gS, dgS;
 	double acceptance_rate;
 	bool therm = false;
-	re_field PConf;
-	re_field PConf_copy;
-	re_field Forces;
+	re_field PConf; //Momenta PI
+	re_field PConf_copy; //Momenta PI copy
+	re_field Forces; //Forces
 	GaugeConf GConf; //Gauge configuration
 	GaugeConf GConf_copy; //Copy of the gauge configuration
 	spinor chi;

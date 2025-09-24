@@ -9,9 +9,10 @@
 	static std::default_random_engine generator(rd());
 	std::normal_distribution<double> distribution(0.0, 1.0); //mu, std
 	
+    #pragma omp parallel for
 	for (int n = 0; n < Ntot; n++) {
-		PConf[n][0] = distribution(generator);
-		PConf[n][1] = distribution(generator);
+		PConf.mu0[n] = distribution(generator);
+		PConf.mu1[n] = distribution(generator);
 	}
 
 }
@@ -21,9 +22,11 @@ void HMC::RandomCHI() {
 	static std::random_device rd;
 	static std::default_random_engine generator(rd());
 	std::normal_distribution<double> distribution(0.0, 1/sqrt(2)); //mu, standard deviation
+
+    #pragma omp parallel for
 	for (int n = 0; n < Ntot; n++) {
-		chi[n][0] = 1.0 * distribution(generator) + I_number * distribution(generator);
-		chi[n][1] = 1.0 * distribution(generator) + I_number * distribution(generator);
+		chi.mu0[n] = 1.0 * distribution(generator) + I_number * distribution(generator);
+		chi.mu1[n] = 1.0 * distribution(generator) + I_number * distribution(generator);
 	}
 }
 
@@ -31,9 +34,11 @@ void HMC::RandomCHI() {
 //NOTE: phi_dag_partialD_phi HAS TO BE CALLED FIRST
 void HMC::Force_G(GaugeConf& GConfig) {
     GConfig.Compute_Staple(); //Computes staples
+
+    #pragma omp parallel for
 	for (int n = 0; n < Ntot; n++) {
-		Forces[n][0] += -beta * std::imag(GConfig.Conf[n][0] * std::conj(GConfig.Staples[n][0]));
-        Forces[n][1] += -beta * std::imag(GConfig.Conf[n][1] * std::conj(GConfig.Staples[n][1]));
+		Forces.mu0[n] += -beta * std::imag(GConfig.Conf.mu0[n] * std::conj(GConfig.Staples.mu0[n]));
+        Forces.mu1[n] += -beta * std::imag(GConfig.Conf.mu1[n] * std::conj(GConfig.Staples.mu1[n]));
 	}
 		
 }
@@ -41,7 +46,7 @@ void HMC::Force_G(GaugeConf& GConfig) {
 //Fermions force
 //2* Re[ Psi^dagger partial D / partial omega(n) D Psi], where Psi = (DD^dagger)^(-1)phi, phi = D chi
 void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
-    spinor psi(LV::Ntot, c_vector(2, 0)); //psi[Ntot][2]
+    spinor psi; //psi[Ntot][2]
     conjugate_gradient(GConfig.Conf, phi,psi, m0);  //(DD^dagger)^-1 phi
     D_dagger_phi(GConfig.Conf, psi,TEMP, m0);
     Forces = phi_dag_partialD_phi(GConfig.Conf,psi,TEMP); //psi^dagger partial D / partial omega(n) D psi
@@ -54,11 +59,11 @@ void HMC::Leapfrog(const spinor& phi){
     PConf_copy = PConf;
     c_double inumber(0.0, 1.0); //imaginary number
 	GConf_copy = GConf; //Copy of the gauge configuration
-
     //Conf_copy = Conf*exp(0.5i * StepSize * PConf_copy)
+    #pragma omp parallel for
     for (int n = 0; n < Ntot; n++) {
-        GConf_copy.Conf[n][0] = GConf_copy.Conf[n][0] * exp(0.5 * inumber * StepSize * PConf_copy[n][0]);
-        GConf_copy.Conf[n][1] = GConf_copy.Conf[n][1] * exp(0.5 * inumber * StepSize * PConf_copy[n][1]);   
+        GConf_copy.Conf.mu0[n] = GConf_copy.Conf.mu0[n] * exp(0.5 * inumber * StepSize * PConf_copy.mu0[n]);
+        GConf_copy.Conf.mu1[n] = GConf_copy.Conf.mu1[n] * exp(0.5 * inumber * StepSize * PConf_copy.mu1[n]);   
     }
 
 	Force(GConf_copy,phi); 
@@ -66,28 +71,30 @@ void HMC::Leapfrog(const spinor& phi){
     for (int step = 1; step < MD_steps - 1; step++) {
         //PConf_copy += StepSize*force
         //Conf_copy *= exp(i * StepSize * PConf_copy)
+        #pragma omp parallel for
         for (int n = 0; n < Ntot; n++) {
             //mu = 0
-            PConf_copy[n][0] += StepSize *  Forces[n][0];
-            GConf_copy.Conf[n][0] *= exp(inumber * StepSize * PConf_copy[n][0]);
+            PConf_copy.mu0[n] += StepSize *  Forces.mu0[n];
+            GConf_copy.Conf.mu0[n] *= exp(inumber * StepSize * PConf_copy.mu0[n]);
 
             //mu = 1
-            PConf_copy[n][1] += StepSize *  Forces[n][1];
-            GConf_copy.Conf[n][1] *= exp(inumber * StepSize * PConf_copy[n][1]);
+            PConf_copy.mu1[n] += StepSize *  Forces.mu1[n];
+            GConf_copy.Conf.mu1[n] *= exp(inumber * StepSize * PConf_copy.mu1[n]);
         }
         Force(GConf_copy,phi);
     }
 
     //PConf_copy += StepSize*force
     //Conf_copy = Conf*exp(0.5i * StepSize* PConf_copy)
+    #pragma omp parallel for
     for (int n = 0; n < Ntot; n++) {
         //mu = 0
-        PConf_copy[n][0] += StepSize * Forces[n][0];
-        GConf_copy.Conf[n][0] *= exp(0.5 * inumber * StepSize * PConf_copy[n][0]);
+        PConf_copy.mu0[n] += StepSize * Forces.mu0[n];
+        GConf_copy.Conf.mu0[n] *= exp(0.5 * inumber * StepSize * PConf_copy.mu0[n]);
 
         //mu = 1
-        PConf_copy[n][1] += StepSize * Forces[n][1];
-        GConf_copy.Conf[n][1] *= exp(0.5 * inumber * StepSize * PConf_copy[n][1]);
+        PConf_copy.mu1[n] += StepSize * Forces.mu1[n];
+        GConf_copy.Conf.mu1[n] *= exp(0.5 * inumber * StepSize * PConf_copy.mu1[n]);
     }
 
 }
@@ -96,8 +103,9 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     double action = 0;
     GConfig.Compute_Plaquette01();
     //Gauge contribution
-	for (int i = 0; i < Ntot; i++) {
-        action += beta * std::real(1.0-GConfig.Plaquette01[i]);
+    #pragma omp parallel for
+	for (int n = 0; n < Ntot; n++) {
+        action += beta * std::real(1.0-GConfig.Plaquette01[n]);
 	}
     //Fermions contribution
     //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
@@ -109,10 +117,11 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
 double HMC::Hamiltonian(GaugeConf& GConfig, const re_field& Pi,const spinor& phi) {
     double H = 0;
     //Momentum contribution
-    for (int i = 0; i < Ntot; i++) {
-        for (int mu = 0; mu < 2; mu++) {
-			H += 0.5 * Pi[i][mu] * Pi[i][mu];
-        }
+    #pragma omp parallel for
+    for (int n = 0; n < Ntot; n++) {
+        H += 0.5 * Pi.mu0[n] * Pi.mu0[n];
+		H += 0.5 * Pi.mu1[n] * Pi.mu1[n];
+        
     }
     //Action contribution
     H += Action(GConfig,phi);
@@ -128,7 +137,7 @@ void HMC::HMC_Update() {
     //spinor chi = RandomChi();
     RandomCHI();
 
-    spinor phi(LV::Ntot, c_vector(2, 0)); //phi[Ntot][2]
+    spinor phi;
     D_phi(GConf.Conf, chi,phi, m0);
     Leapfrog(phi); //Evolve [Pi] and [U] 
     double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
@@ -153,8 +162,8 @@ static std::string format(const double& number) {
 }
 
 void HMC::HMC_algorithm(){
-    re_vector SpVector(Nmeas);
-    re_vector gAction(Nmeas);
+    std::vector<double> SpVector(Nmeas);
+    std::vector<double> gAction(Nmeas);
 	GConf.initialization(); //Initialize the gauge configuration randomly
     for(int i = 0; i < Ntherm; i++) {HMC_Update();} //Thermalization
     therm = true; //Set the flag to true
@@ -169,7 +178,7 @@ void HMC::HMC_algorithm(){
                 << "_b" << format(beta)
                 << "_m" << format(m0)
                 << "_" << i << ".ctxt";
-            SaveConf(GConf.Conf, NameData.str());
+            SaveConf(GConf, NameData.str());
 		}
 		for (int j = 0; j < Nsteps; j++) { HMC_Update(); } //Decorrelation
     }

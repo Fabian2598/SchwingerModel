@@ -1,21 +1,16 @@
 #ifndef GAUGECONF_H_INCLUDED
 #define GAUGECONF_H_INCLUDED
-#include "operator_overloads.h"
-#include <complex>  
 #include "variables.h"
 #include "statistics.h"
 #include <iomanip>
 #include <fstream>
+#include <iostream>
+#include <string>
 
 /*
 Generate a random U(1) variable
 */
 c_double RandomU1(); 
-
-/*
-	Save Gauge configuration
-*/
-void SaveConf(const c_double (&Conf)[2*LV::Ntot], const std::string& Name); 
 
 
 class GaugeConf {
@@ -24,9 +19,12 @@ public:
 	Nspace: number of lattice points in the space direction
 	Ntime: number of lattice points in the time direction
 	*/
-	GaugeConf() {} 
+	GaugeConf() {
+		Plaquette01 = new c_double[1];
+	} 
 
 	GaugeConf(const int& Nspace, const int& Ntime) : Nx(Nspace), Nt(Ntime), Ntot(Nspace* Ntime) {
+		Plaquette01 = new c_double[Ntot];
 	}
 
 	/*
@@ -34,13 +32,32 @@ public:
 	*/
 	GaugeConf(const GaugeConf& GConfig) : Nx(GConfig.getNx()), Nt(GConfig.getNt()), Ntot(Nx*Nt) {
 		Conf = GConfig.Conf; 
-		Plaquette01 = GConfig.Plaquette01; 
 		Staples = GConfig.Staples; 
+		Plaquette01 = new c_double[Ntot];
+        std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + Ntot, Plaquette01);
+	}
+
+	/*
+	Assignment operator
+	*/
+	GaugeConf& operator=(const GaugeConf& GConfig) {
+		if (this != &GConfig) {
+			Nx = GConfig.getNx();
+			Nt = GConfig.getNt();
+			Ntot = Nx * Nt;
+			Conf = GConfig.Conf;
+			Staples = GConfig.Staples;
+			delete[] Plaquette01;
+			Plaquette01 = new c_double[Ntot];
+			std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + Ntot, Plaquette01);
+		}
+		return *this;
 	}
 	/*
 	Destructor
 	*/
 	~GaugeConf() {
+		delete[] Plaquette01;
 	}; 
 
 	/*
@@ -57,7 +74,7 @@ public:
 	*/
 	spinor Conf; 
 	spinor Staples; //Staples
-	c_double Plaquette01[2*LV::Ntot]; //Plaquette U_01(x)
+	c_double* Plaquette01; //Plaquette U_01(x)
 
 	/*
 		Computes staple
@@ -89,10 +106,21 @@ public:
 		Plaquettes have to be measured before
 	*/
 	double Compute_gaugeAction(const double& beta); //Computes the gauge action
+
+	//Reads a gauge configuration from a file
+	void read_conf(const std::string& name);
+	
+
+
 private:
 	int Nx, Nt, Ntot;
 };
 
+
+/*
+	Save Gauge configuration
+*/
+void SaveConf(const GaugeConf& GConf, const std::string& Name); 
 
 
 

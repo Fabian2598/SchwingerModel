@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
     if (rank == 0){
         //tests.BiCG(x_bi,10000,false,true); 
         //tests.GMRES(x_gmres,25, 100,false,true);
-        //tests.CG(x_cg);
+        tests.CG(x_cg);
     }
 
     //tests.FGMRES_sap(x_fsap,false,true);

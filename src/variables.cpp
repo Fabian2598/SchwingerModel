@@ -13,14 +13,31 @@ namespace CG{
 	double tol = 1e-10; //Tolerance for convergence
 }
 
-int LeftPB[LV::Ntot*2]; 
-int RightPB[LV::Ntot*2]; 
-c_double SignL[LV::Ntot*2]; 
-c_double SignR[LV::Ntot*2]; 
-int x_1_t1[LV::Ntot]; 
-int x1_t_1[LV::Ntot]; 
+int* LeftPB = nullptr;
+int* RightPB = nullptr;
+c_double* SignL = nullptr;
+c_double* SignR = nullptr;
+int* x_1_t1 = nullptr;
+int* x1_t_1 = nullptr;
 
+void allocate_lattice_arrays() {
+    LeftPB  = new int[LV::Ntot * 2];
+    RightPB = new int[LV::Ntot * 2];
+    SignL   = new c_double[LV::Ntot * 2];
+    SignR   = new c_double[LV::Ntot * 2];
+    x_1_t1  = new int[LV::Ntot];
+    x1_t_1  = new int[LV::Ntot];
+}
+
+void free_lattice_arrays() {
+    delete[] LeftPB;
+    delete[] RightPB;
+    delete[] SignL;
+    delete[] SignR;
+    delete[] x_1_t1;
+    delete[] x1_t_1;
+}
 
 //Memory preallocation
-std::vector<std::vector<c_double>> TEMP = std::vector<std::vector<c_double>>(LV::Ntot, std::vector<c_double>(2, 0));
-std::vector<std::vector<c_double>> DTEMP = std::vector<std::vector<c_double>>(LV::Ntot, std::vector<c_double>(2, 0)); 
+spinor DTEMP;
+spinor TEMP; 

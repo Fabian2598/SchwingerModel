@@ -1,9 +1,9 @@
 #ifndef DIRAC_OPERATOR_INCLUDED
 #define DIRAC_OPERATOR_INCLUDED
 #include <complex>
-#include "variables.h"
-#include "operator_overloads.h"
-//#include "omp.h"
+#include "gauge_conf.h"
+#include "matrix_operations.h"
+#include "omp.h"
 
 
 extern c_double I_number; //imaginary number
@@ -57,7 +57,7 @@ inline void periodic_boundary() {
 	phi: spinor to apply the operator to
 	m0: mass parameter
 */
-void D_phi(const c_double (&U)[2*LV::Ntot], const c_double (&phi)[2*LV::Ntot],const c_double (&Dphi)[2*LV::Ntot], const double& m0);
+void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0);
 
 
 /*
@@ -66,90 +66,19 @@ void D_phi(const c_double (&U)[2*LV::Ntot], const c_double (&phi)[2*LV::Ntot],co
 	phi: spinor to apply the operator to
 	m0: mass parameter
 */
-void D_dagger_phi(const c_double& U, const spinor& phi, spinor &Dphi, const double& m0);
+void D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0);
 
 
 /*
 	Application of D D^+
 	It just calls the previous functions
 */
-void D_D_dagger_phi(const c_double& U, const spinor& phi, spinor &Dphi,const double& m0);
+void D_D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi,const double& m0);
 
 /*
 	2* Re ( left^+ d D / d omega(z) right )
 	This derivative is needed for the fermion force
 */
-re_field phi_dag_partialD_phi(const c_matrix& U, const spinor& left, const spinor& right);
-
-
-/*
-
-Old version of the functions
-
-
-extern std::vector<c_matrix> gamma_mat;  //Pauli matrices
-extern c_matrix Identity; //2 x 2 identity matrix
-
-//unit vectors in the "mu" direction
-//mu = 0 -> time, mu = 1 -> space
-extern std::vector<std::vector<int>> hat_mu; //hat_mu[mu][2] = {hat_mu_x, hat_mu_t}
-
-
-	Intialize gamma matrices, identity and unit vectors
-	Has to be called at the beginning of the program once
-
-void initialize_matrices();
-
-
-
-spinor D_phi_old(const c_matrix& U, const spinor& phi, const double& m0);
-spinor D_dagger_phi_old(const c_matrix& U, const spinor& phi, const double& m0);
-re_field phi_dag_partialD_phi_old(const c_matrix& U, const spinor& left, const spinor& right);
-
-	Right boundary phi(n+hat{mu}) used for fermions (antiperiodic in time, periodic in space) 
-	phi: spinor
-	x: coordinate in the x direction
- 	t: coordinate in the t direction
-	mu: neighbor direction (0 for time, 1 for space)
-
-inline c_double rfb(const spinor& phi, const int& x, const int& t, const int& mu, const int& bet) {
-	//time
-	if (mu == 0) {
-		if (t == LV::Nt - 1) {
-			return -phi[Coords[x][0]][bet];
-		}
-		else {
-			return phi[Coords[x][t + 1]][bet];
-		}
-	}
-	else {
-	//space
-		return phi[ Coords[mod(x + 1, LV::Nx)][t] ][bet];
-	}
-}
-
-
-	Left boundary phi(n-hat{mu}) used for fermions (antiperiodic in time, periodic in space) 
-	phi: spinor
-	x: coordinate in the x direction
- 	t: coordinate in the t direction
-	mu: neighbor direction (0 for time, 1 for space)
-
-inline c_double lfb(const spinor& phi, const int& x, const int& t, const int& mu, const int& bet) {
-	//time
-	if (mu == 0) {
-		if (t == 0) {
-			return -phi[Coords[x][LV::Nt-1]][bet];
-		}
-		else {
-			return phi[Coords[x][t-1]][bet];
-		}
-	}
-	else {
-	//space
-		return phi[ Coords[mod(x - 1, LV::Nx)][t] ][bet];
-	}
-}
-*/
+re_field phi_dag_partialD_phi(const spinor& U, const spinor& left, const spinor& right);
 
 #endif
