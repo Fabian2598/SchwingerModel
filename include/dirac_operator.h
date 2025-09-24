@@ -3,7 +3,7 @@
 #include <complex>
 #include "gauge_conf.h"
 #include "matrix_operations.h"
-#include "omp.h"
+#include "mpi.h"
 
 
 extern c_double I_number; //imaginary number

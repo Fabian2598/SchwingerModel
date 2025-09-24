@@ -11,7 +11,7 @@ set(SOURCES
     src/gauge_conf.cpp          #Gauge configuration (computes staples, plaquettes and gauge action)
     src/dirac_operator.cpp      #Implementation of D, D^+ and 2* Re ( left^+ d D / d omega(z) right )
     src/conjugate_gradient.cpp  #Conjugate gradient and Bi-cgstab
-    src/hmc.cpp                 #Hybrid Monte Carlo
+    #src/hmc.cpp                 #Hybrid Monte Carlo
 )
 
 set(NS "64")   #Lattice dimension x
@@ -30,11 +30,15 @@ target_include_directories("SM_${NS}x${NT}"
 target_compile_options("SM_${NS}x${NT}" PRIVATE
 			-O3
             #-g #For profiling
-			-fopenmp
+			#-fopenmp
 )
 
-find_package(OpenMP REQUIRED)
-target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
+#find_package(OpenMP REQUIRED)
+#target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
+
+find_package(MPI REQUIRED)
+target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
+
 
 
 #---------------------------------------#

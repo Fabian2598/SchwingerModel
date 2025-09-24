@@ -19,7 +19,6 @@ void GaugeConf::initialization() {
 void GaugeConf::Compute_Plaquette01() {
 	//U_mv(x) = U_m(x) U_v(x+m) U*_m(x+v) U*_v(x)
 	//mu = 0 time direction, mu = 1 space direction
-    #pragma omp parallel for
     for (int n = 0; n<Ntot; n++){
         //int Coord0 = Coords[x][t], Coord1 = Coords[x][modulo(t + 1, Nt)], Coord2 = Coords[modulo(x + 1, Ns)][t];
 		Plaquette01[n] = Conf.mu0[n] * Conf.mu1[RightPB[2*n]] * std::conj(Conf.mu0[RightPB[2*n+1]]) * std::conj(Conf.mu1[n]);
@@ -31,7 +30,6 @@ void GaugeConf::Compute_Staple() {
     // WARNING: Some references define the staple as the conjugate of this:
     //U_v(x) U_m(x+v) U*_v(x+m) + U*_v(x-v) U_m(x-v) U_v(x+m-v)
     //mu = 0 time direction, mu = 1 space direction
-    #pragma omp parallel for
     for (int n = 0; n < Ntot; n++) {
         //These coordinates could change depending on the conventions 
 		int x1 = RightPB[2*n+1];  //Coords[modulo(x + 1, Ns) ,t]

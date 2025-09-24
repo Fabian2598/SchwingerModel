@@ -6,8 +6,15 @@ c_double I_number(0, 1); //imaginary number
 void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 	using namespace LV;
 
-	#pragma omp parallel for
-	for (int n = 0; n < Ntot; n++) {
+	MPI_Init(&argc, &argv);
+    int rank, size; 
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	int ini, fin;
+	ini = rank * (Ntot / size);
+	fin = (rank + 1 != size) ? (rank + 1) * (Ntot / size) : Ntot;
+	for (int n = ini; n < fin; n++) {
 		//n = x * Nt + t
 		Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] - 0.5 * ( 
 			U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] - phi.mu1[RightPB[2*n]])
