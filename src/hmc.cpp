@@ -103,7 +103,7 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     double action = 0;
     GConfig.Compute_Plaquette01();
     //Gauge contribution
-    #pragma omp parallel for
+    #pragma omp parallel for reduction(+:action)
 	for (int n = 0; n < Ntot; n++) {
         action += beta * std::real(1.0-GConfig.Plaquette01[n]);
 	}
@@ -117,7 +117,7 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
 double HMC::Hamiltonian(GaugeConf& GConfig, const re_field& Pi,const spinor& phi) {
     double H = 0;
     //Momentum contribution
-    #pragma omp parallel for
+    #pragma omp parallel for reduction(+:H)
     for (int n = 0; n < Ntot; n++) {
         H += 0.5 * Pi.mu0[n] * Pi.mu0[n];
 		H += 0.5 * Pi.mu1[n] * Pi.mu1[n];

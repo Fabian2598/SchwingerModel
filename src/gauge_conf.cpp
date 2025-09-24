@@ -105,6 +105,7 @@ double GaugeConf::MeasureSp_HMC() {
 
 double GaugeConf::Compute_gaugeAction(const double& beta) {
 	double action = 0;
+    #pragma omp parallel for reduction(+:action)
 	for (int n = 0; n < Ntot; n++) {
         action += beta * std::real(1.0-Plaquette01[n]);
 	}

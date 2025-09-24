@@ -65,7 +65,7 @@ re_field phi_dag_partialD_phi(const spinor& U, const spinor& left,const spinor& 
 	using namespace LV;
 	re_field Dphi; 
 
-	//#pragma omp parallel for
+	#pragma omp parallel for
 	for (int n = 0; n < Ntot; n++) {
 		//mu = 0
 		Dphi.mu0[n] = std::imag(
