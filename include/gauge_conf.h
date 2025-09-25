@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include "mpi.h"
 
 /*
 Generate a random U(1) variable
@@ -15,26 +16,21 @@ c_double RandomU1();
 
 class GaugeConf {
 public:
-	/*
-	Nspace: number of lattice points in the space direction
-	Ntime: number of lattice points in the time direction
-	*/
-	GaugeConf() {
-		Plaquette01 = new c_double[1];
-	} 
 
-	GaugeConf(const int& Nspace, const int& Ntime) : Nx(Nspace), Nt(Ntime), Ntot(Nspace* Ntime) {
-		Plaquette01 = new c_double[Ntot];
+	GaugeConf() {
+		Plaquette01 = new c_double[mpi::maxSize];
+		Conf = spinor(mpi::maxSize); //Gauge configuration
+		Staples = spinor(mpi::maxSize); //Staples
 	}
 
 	/*
 	Copy constructor
 	*/
-	GaugeConf(const GaugeConf& GConfig) : Nx(GConfig.getNx()), Nt(GConfig.getNt()), Ntot(Nx*Nt) {
+	GaugeConf(const GaugeConf& GConfig) {
 		Conf = GConfig.Conf; 
 		Staples = GConfig.Staples; 
-		Plaquette01 = new c_double[Ntot];
-        std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + Ntot, Plaquette01);
+		Plaquette01 = new c_double[mpi::maxSize];
+        std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + mpi::maxSize, Plaquette01);
 	}
 
 	/*
@@ -42,17 +38,15 @@ public:
 	*/
 	GaugeConf& operator=(const GaugeConf& GConfig) {
 		if (this != &GConfig) {
-			Nx = GConfig.getNx();
-			Nt = GConfig.getNt();
-			Ntot = Nx * Nt;
 			Conf = GConfig.Conf;
 			Staples = GConfig.Staples;
 			delete[] Plaquette01;
-			Plaquette01 = new c_double[Ntot];
-			std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + Ntot, Plaquette01);
+			Plaquette01 = new c_double[mpi::maxSize];
+			std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + mpi::maxSize, Plaquette01);
 		}
 		return *this;
 	}
+
 	/*
 	Destructor
 	*/
@@ -65,8 +59,6 @@ public:
 		It calls RandomU(1) for every site
 	*/
 	void initialization(); 
-	int getNx() const { return Nx; }
-	int getNt() const { return Nt; }
 
 	/*
 		std::vector with the gauge configuration. Conf[Nx*Nt][2]
@@ -83,7 +75,7 @@ public:
 		WARNING: Some references define the staple as the conjugate of the term I just wrote above. 
 		PERIODIC BOUNDARIES MUST BE PRECOMPUTED FIRST
 	*/
-	void Compute_Staple();
+	//void Compute_Staple();
 
 	/*
 		Compute the plaquette
@@ -91,36 +83,32 @@ public:
 		with m = 0, nu = 1
 		PERIODIC BOUNDARIES MUST BE PRECOMPUTED FIRST
 	*/
-	void Compute_Plaquette01(); 
+	//void Compute_Plaquette01(); 
 
 	/*
 		Measures average plaquette real value
 		Sp = < U_01(x) >
 		Plaquettes have to be measured before
 	*/
-	double MeasureSp_HMC();
+	//double MeasureSp_HMC();
 
 	/*
 		Gauge action
 		S_G = beta * sum_x (1 - U_01(x))
 		Plaquettes have to be measured before
 	*/
-	double Compute_gaugeAction(const double& beta); //Computes the gauge action
+	//double Compute_gaugeAction(const double& beta); //Computes the gauge action
 
 	//Reads a gauge configuration from a file
 	void read_conf(const std::string& name);
 	
-
-
-private:
-	int Nx, Nt, Ntot;
 };
 
 
 /*
 	Save Gauge configuration
 */
-void SaveConf(const GaugeConf& GConf, const std::string& Name); 
+//void SaveConf(const GaugeConf& GConf, const std::string& Name); 
 
 
 

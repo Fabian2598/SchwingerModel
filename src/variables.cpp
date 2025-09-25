@@ -8,6 +8,12 @@ int Coords(const int& x, const int& t){
 	return x*LV::Nt + t;
 }
 
+namespace mpi{
+    int rank = 0;
+    int size = 1; 
+    int maxSize = LV::Ntot; //Default value, will be updated in main
+}
+
 namespace CG{
 	int max_iter = 1000; //Maximum number of iterations for the conjugate gradient method
 	double tol = 1e-10; //Tolerance for convergence
@@ -21,12 +27,13 @@ int* x_1_t1 = nullptr;
 int* x1_t_1 = nullptr;
 
 void allocate_lattice_arrays() {
-    LeftPB  = new int[LV::Ntot * 2];
-    RightPB = new int[LV::Ntot * 2];
-    SignL   = new c_double[LV::Ntot * 2];
-    SignR   = new c_double[LV::Ntot * 2];
-    x_1_t1  = new int[LV::Ntot];
-    x1_t_1  = new int[LV::Ntot];
+    using namespace mpi;
+    LeftPB  = new int[maxSize * 2];
+    RightPB = new int[maxSize * 2];
+    SignL   = new c_double[maxSize * 2];
+    SignR   = new c_double[maxSize * 2];
+    x_1_t1  = new int[maxSize];
+    x1_t_1  = new int[maxSize];
 }
 
 void free_lattice_arrays() {
@@ -41,3 +48,8 @@ void free_lattice_arrays() {
 //Memory preallocation
 spinor DTEMP;
 spinor TEMP; 
+
+
+//Buffers for MPI communication
+spinor TopRow(LV::Nt);
+spinor BottomRow(LV::Nt);

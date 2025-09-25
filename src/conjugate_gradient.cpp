@@ -21,7 +21,7 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
 
     d = r; //initial search direction
  
-    c_double r_norm2 = dot(r, r);
+    c_double r_norm2 = dot(r, r); 
     double phi_norm2 = sqrt(std::real(dot(phi, phi)));
 
     while (k<CG::max_iter) {

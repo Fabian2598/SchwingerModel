@@ -7,6 +7,13 @@
 extern double pi;
 typedef std::complex<double> c_double;
 
+namespace mpi{
+    extern int rank;
+    extern int size; 
+    extern int maxSize;
+}
+
+
 //------------Lattice parameters--------------//
 namespace LV {
     //Lattice dimensions//
@@ -19,6 +26,7 @@ namespace CG{
     extern int max_iter; //Maximum number of iterations for the conjugate gradient method
     extern double tol; //Tolerance for convergence
 }
+
 
 struct spinor {
     c_double* mu0;
@@ -119,6 +127,12 @@ void free_lattice_arrays();
 //Memory preallocation
 extern spinor DTEMP;
 extern spinor TEMP; 
+
+//Buffers for MPI communication
+extern spinor TopRow;
+extern spinor BottomRow;
+constexpr int tagTop = 0;
+constexpr int tagBottom = 1;
 
 
 

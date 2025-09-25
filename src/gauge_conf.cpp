@@ -10,12 +10,13 @@ c_double RandomU1() {
 }
 
 void GaugeConf::initialization() {
-	for (int n = 0; n < Ntot; n++) {
+	for (int n = 0; n < mpi::maxSize; n++) {
 		Conf.mu0[n] = RandomU1(); 
 		Conf.mu1[n] = RandomU1(); 
 	}
 }
 
+/*
 void GaugeConf::Compute_Plaquette01() {
 	//U_mv(x) = U_m(x) U_v(x+m) U*_m(x+v) U*_v(x)
 	//mu = 0 time direction, mu = 1 space direction
@@ -61,10 +62,13 @@ void GaugeConf::Compute_Staple() {
         
     }
 }
+*/
+
 
 /*
 Save Gauge configuration
 */ 
+/*
 void SaveConf(const GaugeConf& GConf, const std::string& Name) {
     std::ofstream Datfile(Name);
     if (!Datfile.is_open()) {
@@ -89,8 +93,9 @@ void SaveConf(const GaugeConf& GConf, const std::string& Name) {
         }
     }
 }
+*/
 
-
+/*
 double GaugeConf::MeasureSp_HMC() {
 	//Plaquettes have to be computed during the HMC update
 	double Sp = 0.0;
@@ -99,8 +104,9 @@ double GaugeConf::MeasureSp_HMC() {
 	}
 	return Sp;
 }
+*/
 
-
+/*
 double GaugeConf::Compute_gaugeAction(const double& beta) {
 	double action = 0;
 	for (int n = 0; n < Ntot; n++) {
@@ -108,6 +114,8 @@ double GaugeConf::Compute_gaugeAction(const double& beta) {
 	}
 	return action;
 }
+*/
+
 
 void GaugeConf::read_conf(const std::string& name){
     std::ifstream infile(name);
@@ -115,15 +123,29 @@ void GaugeConf::read_conf(const std::string& name){
         std::cerr << "File " << name << " not found " << std::endl;
         exit(1);
     }
-    int x, t, mu;
-    double re, im; 
-    while (infile >> x >> t >> mu >> re >> im) {
-        if (mu == 0)
-            Conf.mu0[x*Nt+t] = c_double(re, im); 
-        else
-            Conf.mu1[x*Nt+t] = c_double(re, im); 
+    spinor GlobalConf(LV::Ntot); //Temporary variable to store the full configuration
+    int counts[mpi::size], displs[mpi::size];
+    for(int i = 0; i < mpi::size; i++) {
+        counts[i] = (i != mpi::size-1) ? LV::Ntot/mpi::size : LV::Ntot/mpi::size + LV::Ntot%mpi::size;
+        displs[i] = i * LV::Ntot / mpi::size;
     }
-    infile.close();
-    std::cout << "Conf read from " << name << std::endl;
-    
+    if (mpi::rank == 0){
+        
+        int x, t, mu;
+        double re, im; 
+        while (infile >> x >> t >> mu >> re >> im) {
+            if (mu == 0)
+                GlobalConf.mu0[x*LV::Nt+t] = c_double(re, im); 
+            else
+                GlobalConf.mu1[x*LV::Nt+t] = c_double(re, im); 
+        }
+        infile.close();
+        std::cout << "Conf read from " << name << std::endl;     
+    }
+
+    MPI_Scatterv(GlobalConf.mu0, counts, displs, MPI_DOUBLE_COMPLEX,
+                 Conf.mu0, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+    MPI_Scatterv(GlobalConf.mu1, counts, displs, MPI_DOUBLE_COMPLEX,
+                 Conf.mu1, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+
 }
