@@ -23,7 +23,7 @@ int main() {
     
     double beta = 2; 
     double m0 = -0.18840579710144945;
-    int nconf;
+    int nconf = 0;
     if (LV::Nx == 64)
         nconf = 0;
     else if (LV::Nx == 128)
@@ -50,8 +50,8 @@ int main() {
 
     spinor sol,rhs;
     for(int n = 0; n < LV::Ntot; n++) {
-        rhs.mu0[n] = RandomU1(); //spin up
-        rhs.mu1[n] = RandomU1(); //spin down
+        rhs.mu0[n] = 1;//RandomU1(); //spin up
+        rhs.mu1[n] = 1;//RandomU1(); //spin down
     }
     
     
@@ -60,6 +60,11 @@ int main() {
     NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
     format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
     GConf.read_conf(NameData.str());
+
+    D_phi(GConf.Conf, rhs, sol, m0);
+    for(int n = 0; n < LV::Ntot; n++) {
+        std::cout << sol.mu0[n] << " " << sol.mu1[n] << std::endl;
+    }
 
     //Checking that the operatons have no problem 
     GConf.Compute_Staple(); //Compute staples 
