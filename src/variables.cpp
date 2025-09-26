@@ -12,8 +12,6 @@ namespace mpi{
     int rank = 0;
     int size = 1; 
     int maxSize = LV::Ntot; //Default value, will be updated in main
-    int tagTop = 0;
-    int tagBottom = 1;
 }
 
 namespace CG{
@@ -47,7 +45,7 @@ void free_lattice_arrays() {
     delete[] x1_t_1;
 }
 
-//Memory preallocation
+//Memory preallocation I need to give them the right dimension mpi::maxSize, but I only know it in main after MPI_Init ...
 spinor DTEMP;
 spinor TEMP; 
 
