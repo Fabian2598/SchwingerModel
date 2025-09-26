@@ -7,7 +7,7 @@ project(Schwinger_model VERSION 1.0)
 set(SOURCES
     src/statistics.cpp          #Functions to perform statistical analysis
     src/variables.cpp           #Relevant parameters for the lattice
-    src/main.cpp                #Main program
+    src/maintest.cpp                #Main program
     src/gauge_conf.cpp          #Gauge configuration (computes staples, plaquettes and gauge action)
     src/dirac_operator.cpp      #Implementation of D, D^+ and 2* Re ( left^+ d D / d omega(z) right )
     src/conjugate_gradient.cpp  #Conjugate gradient and Bi-cgstab

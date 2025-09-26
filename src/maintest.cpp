@@ -63,7 +63,7 @@ int main() {
 
     D_phi(GConf.Conf, rhs, sol, m0);
     for(int n = 0; n < LV::Ntot; n++) {
-        std::cout << sol.mu0[n] << " " << sol.mu1[n] << std::endl;
+        std::cout << sol.mu0[n] << "\n" << sol.mu1[n] << std::endl;
     }
 
     //Checking that the operatons have no problem 
