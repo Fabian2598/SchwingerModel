@@ -19,9 +19,10 @@ int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
-    mpi::maxSize = (mpi::rank != mpi::size-1) ? LV::Ntot/mpi::size :  LV::Ntot/mpi::size + LV::Ntot%mpi::size;
-    if (mpi::size == 1) mpi::maxSize = LV::Ntot;
 
+    mpi::maxSize = (mpi::rank != mpi::size-1) ? LV::Nx/mpi::size * LV::Nt :  LV::Nx/mpi::size * LV::Nt + (LV::Nx%mpi::size)*LV::Nt;
+    if (mpi::size == 1) mpi::maxSize = LV::Ntot;
+    std::cout << "MPI size: " << mpi::size << " Rank: " << mpi::rank << " maxSize: " << mpi::maxSize << std::endl;
     allocate_lattice_arrays();
 
     
@@ -65,13 +66,33 @@ int main(int argc, char **argv) {
     for(int i = 0; i < mpi::size; i++) {
         MPI_Barrier(MPI_COMM_WORLD);
         if (i == mpi::rank) {
-            printf("Rank %d\n", mpi::rank);
+            //printf("Rank %d\n", mpi::rank);
             for(int n = 0; n < mpi::maxSize; n++) {
-                std::cout << "Rank " << mpi::rank << " sol.mu0[" << n << "] = " << sol.mu0[n] << std::endl;
-                std::cout << "Rank " << mpi::rank << " sol.mu1[" << n << "] = " << sol.mu1[n] << std::endl;
+                //std::cout << "Rank " << mpi::rank << " sol.mu0[" << n << "] = " << sol.mu0[n] << std::endl;
+                //std::cout << "Rank " << mpi::rank << " sol.mu1[" << n << "] = " << sol.mu1[n] << std::endl;
+                std::cout << sol.mu0[n] << std::endl;
+                std::cout << sol.mu1[n] << std::endl;
             }
         }
     }
+    
+
+    /*
+    for(int i = 0; i < mpi::size; i++) {
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (i == mpi::rank) {
+            //printf("Rank %d\n", mpi::rank);
+            for(int n = 0; n < mpi::maxSize; n++) {
+                //std::cout << "Rank " << mpi::rank << " U.mu0[" << n << "] = " << GConf.Conf.mu0[n] << std::endl;
+                //std::cout << "Rank " << mpi::rank << " U.mu1[" << n << "] = " << GConf.Conf.mu1[n] << std::endl;
+                std::cout << GConf.Conf.mu0[n] << std::endl;
+                std::cout << GConf.Conf.mu1[n] << std::endl;
+            }
+        }
+    }
+    */
+    
+        
     
         
         

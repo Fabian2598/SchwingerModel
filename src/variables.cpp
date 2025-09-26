@@ -55,5 +55,3 @@ spinor TEMP;
 //Buffers for MPI communication
 spinor TopRow(LV::Nt);
 spinor BottomRow(LV::Nt);
-spinor TopRowReceive(LV::Nt);
-spinor BottomRowReceive(LV::Nt);

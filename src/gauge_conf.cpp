@@ -126,8 +126,9 @@ void GaugeConf::read_conf(const std::string& name){
     spinor GlobalConf(LV::Ntot); //Temporary variable to store the full configuration
     int counts[mpi::size], displs[mpi::size];
     for(int i = 0; i < mpi::size; i++) {
-        counts[i] = (i != mpi::size-1) ? LV::Ntot/mpi::size : LV::Ntot/mpi::size + LV::Ntot%mpi::size;
-        displs[i] = i * LV::Ntot / mpi::size;
+        //counts[i] = (i != mpi::size-1) ? LV::Ntot/mpi::size : LV::Ntot/mpi::size + LV::Ntot%mpi::size;
+        counts[i] = (i != mpi::size-1) ?  LV::Nx/mpi::size * LV::Nt :  LV::Nx/mpi::size * LV::Nt + (LV::Nx%mpi::size)*LV::Nt;
+        displs[i] = i * LV::Nx/mpi::size * LV::Nt;
     }
     if (mpi::rank == 0){
         
