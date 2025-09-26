@@ -11,6 +11,8 @@ namespace mpi{
     extern int rank;
     extern int size; 
     extern int maxSize;
+    extern int tagTop;
+    extern int tagBottom;
 }
 
 
@@ -131,8 +133,9 @@ extern spinor TEMP;
 //Buffers for MPI communication
 extern spinor TopRow;
 extern spinor BottomRow;
-constexpr int tagTop = 0;
-constexpr int tagBottom = 1;
+extern spinor TopRowReceive;
+extern spinor BottomRowReceive;
+
 
 
 

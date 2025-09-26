@@ -20,7 +20,8 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
     mpi::maxSize = (mpi::rank != mpi::size-1) ? LV::Ntot/mpi::size :  LV::Ntot/mpi::size + LV::Ntot%mpi::size;
-
+    //mpi::tagTop = mod(mpi::rank - 1,mpi::size);
+    //mpi::tagBottom = mod(mpi::rank + 1,mpi::size);
 
 
     allocate_lattice_arrays();
@@ -59,9 +60,10 @@ int main(int argc, char **argv) {
         rhs.mu1[n] = 1;//RandomU1(); //spin down
     }
   
-    D_phi(GConf.Conf, rhs, sol, m0); //Applies Dirac operator to rhs and stores the result in sol
+   D_phi(GConf.Conf, rhs, sol, m0); //Applies Dirac operator to rhs and stores the result in sol
 
     //print sol for each rank
+    
     
     for(int i = 0; i < mpi::size; i++) {
         MPI_Barrier(MPI_COMM_WORLD);
@@ -73,15 +75,14 @@ int main(int argc, char **argv) {
             }
         }
     }
+        
     
 
-    MPI_Finalize();
-
-
-    
 
     //Free coordinate arrays
     free_lattice_arrays();
+
+     MPI_Finalize();
 
 	return 0;
 }

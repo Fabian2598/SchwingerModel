@@ -12,6 +12,8 @@ namespace mpi{
     int rank = 0;
     int size = 1; 
     int maxSize = LV::Ntot; //Default value, will be updated in main
+    int tagTop = 0;
+    int tagBottom = 1;
 }
 
 namespace CG{
@@ -53,3 +55,5 @@ spinor TEMP;
 //Buffers for MPI communication
 spinor TopRow(LV::Nt);
 spinor BottomRow(LV::Nt);
+spinor TopRowReceive(LV::Nt);
+spinor BottomRowReceive(LV::Nt);
