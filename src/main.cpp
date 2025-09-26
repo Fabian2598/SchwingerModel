@@ -20,9 +20,7 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
     mpi::maxSize = (mpi::rank != mpi::size-1) ? LV::Ntot/mpi::size :  LV::Ntot/mpi::size + LV::Ntot%mpi::size;
-    //mpi::tagTop = mod(mpi::rank - 1,mpi::size);
-    //mpi::tagBottom = mod(mpi::rank + 1,mpi::size);
-
+    if (mpi::size == 1) mpi::maxSize = LV::Ntot;
 
     allocate_lattice_arrays();
 
@@ -62,7 +60,6 @@ int main(int argc, char **argv) {
   
    D_phi(GConf.Conf, rhs, sol, m0); //Applies Dirac operator to rhs and stores the result in sol
 
-    //print sol for each rank
     
     
     for(int i = 0; i < mpi::size; i++) {
@@ -75,6 +72,9 @@ int main(int argc, char **argv) {
             }
         }
     }
+    
+        
+        
         
     
 

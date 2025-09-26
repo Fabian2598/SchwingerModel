@@ -34,18 +34,21 @@ inline void periodic_boundary() {
 	hat_mu[0] = { 1, 0 }; //hat_t
 	hat_mu[1] = { 0, 1 }; //hat_x
 	int x, t;
+
+
 	for (int n = 0; n < mpi::maxSize; n++){
 		//n = x * Nt + t;
 		x = n / Nt; t = n % Nt;
-		x_1_t1[n] = Coords(mod(x - 1, Nx),mod(t + 1, Nt));
-		x1_t_1[n] = Coords(mod(x + 1, Nx),mod(t - 1, Nt)); 
+		x_1_t1[n] = Coords(mod(x - 1, Nx/mpi::size),mod(t + 1, Nt));
+		x1_t_1[n] = Coords(mod(x + 1, Nx/mpi::size),mod(t - 1, Nt)); 
 		for (int mu = 0; mu < 2; mu++) {
-			RightPB[2*n+mu] = Coords(mod(x + hat_mu[mu][1], Nx),mod(t + hat_mu[mu][0], Nt)); 
-			LeftPB[2*n+mu] = Coords(mod(x - hat_mu[mu][1], Nx),mod(t - hat_mu[mu][0], Nt));
+			RightPB[2*n+mu] = Coords(mod(x + hat_mu[mu][1], Nx/mpi::size),mod(t + hat_mu[mu][0], Nt)); 
+			LeftPB[2*n+mu] = Coords(mod(x - hat_mu[mu][1], Nx/mpi::size),mod(t - hat_mu[mu][0], Nt));
 			SignR[2*n+mu] = (mu == 0 && t == Nt - 1) ? -1 : 1; //sign for the right boundary in time
 			SignL[2*n+mu] = (mu == 0 && t == 0) ? -1 : 1; //sign for the left boundary in time				
 		}
 	}
+		
 }
 
 
