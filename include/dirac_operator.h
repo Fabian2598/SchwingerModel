@@ -34,7 +34,7 @@ inline void periodic_boundary() {
 	hat_mu[0] = { 1, 0 }; //hat_t
 	hat_mu[1] = { 0, 1 }; //hat_x
 	int x, t;
-	int x_width = (mpi::rank != mpi::size-1) ? Nx/mpi::size : Nx/mpi::size + (Nx%mpi::size);
+	int x_width = (mpi::rank != mpi::size-1) ? (Nx/mpi::size) : (Nx/mpi::size) + (Nx%mpi::size);
 	if (mpi::size == 1) x_width = Nx;
 	for (int n = 0; n < mpi::maxSize; n++){
 		//n = x * Nt + t;

@@ -59,12 +59,15 @@ int main(int argc, char **argv) {
         rhs.mu1[n] = 1;//RandomU1(); //spin down
     }
   
-   //D_D_dagger_phi(GConf.Conf, rhs, sol, m0); //Applies Dirac operator to rhs and stores the result in sol
+   D_phi(GConf.Conf, rhs, sol, m0); //Applies Dirac operator to rhs and stores the result in sol
+    
+   
     double startT, endT;
     startT = MPI_Wtime();
     conjugate_gradient(GConf.Conf, rhs, sol,m0);
     endT = MPI_Wtime();
     printf("[rank %d] time elapsed during CG implementation: %.4fs.\n", mpi::rank, endT - startT);
+    
 
     /*
     for(int i = 0; i < mpi::size; i++) {
@@ -79,7 +82,25 @@ int main(int argc, char **argv) {
             }
         }
     }
-        */
+    */
+    
+    
+     /*
+    for(int i = 0; i < mpi::size; i++) {
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (i == mpi::rank) {
+            //printf("Rank %d\n", mpi::rank);
+            for(int n = 0; n < mpi::maxSize; n++) {
+                //std::cout << "Rank " << mpi::rank << " sol.mu0[" << n << "] = " << sol.mu0[n] << std::endl;
+                //std::cout << "Rank " << mpi::rank << " sol.mu1[" << n << "] = " << sol.mu1[n] << std::endl;
+                std::cout << GConf.Conf.mu0[n] << std::endl;
+                std::cout << GConf.Conf.mu1[n] << std::endl;
+            }
+        }
+    }
+    */
+        
+        
     
 
     
