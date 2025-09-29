@@ -15,6 +15,11 @@ public:
 
 		Ep = 0; dEp = 0;
 		acceptance_rate = 0;
+
+		PConf = re_field(mpi::maxSize); //Momenta PI
+		PConf_copy = re_field(mpi::maxSize); //Momenta PI copy
+		Forces = re_field(mpi::maxSize); //Forces
+		chi = spinor(mpi::maxSize);
 	
 	}
 	~HMC() {} 

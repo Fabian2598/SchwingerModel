@@ -9,8 +9,7 @@
 	static std::default_random_engine generator(rd());
 	std::normal_distribution<double> distribution(0.0, 1.0); //mu, std
 	
-    #pragma omp parallel for
-	for (int n = 0; n < Ntot; n++) {
+	for (int n = 0; n < mpi::maxSize; n++) {
 		PConf.mu0[n] = distribution(generator);
 		PConf.mu1[n] = distribution(generator);
 	}
@@ -23,8 +22,7 @@ void HMC::RandomCHI() {
 	static std::default_random_engine generator(rd());
 	std::normal_distribution<double> distribution(0.0, 1/sqrt(2)); //mu, standard deviation
 
-    #pragma omp parallel for
-	for (int n = 0; n < Ntot; n++) {
+	for (int n = 0; n < mpi::maxSize; n++) {
 		chi.mu0[n] = 1.0 * distribution(generator) + I_number * distribution(generator);
 		chi.mu1[n] = 1.0 * distribution(generator) + I_number * distribution(generator);
 	}
@@ -35,8 +33,7 @@ void HMC::RandomCHI() {
 void HMC::Force_G(GaugeConf& GConfig) {
     GConfig.Compute_Staple(); //Computes staples
 
-    #pragma omp parallel for
-	for (int n = 0; n < Ntot; n++) {
+	for (int n = 0; n < mpi::maxSize; n++) {
 		Forces.mu0[n] += -beta * std::imag(GConfig.Conf.mu0[n] * std::conj(GConfig.Staples.mu0[n]));
         Forces.mu1[n] += -beta * std::imag(GConfig.Conf.mu1[n] * std::conj(GConfig.Staples.mu1[n]));
 	}
@@ -46,7 +43,7 @@ void HMC::Force_G(GaugeConf& GConfig) {
 //Fermions force
 //2* Re[ Psi^dagger partial D / partial omega(n) D Psi], where Psi = (DD^dagger)^(-1)phi, phi = D chi
 void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
-    spinor psi; //psi[Ntot][2]
+    spinor psi(mpi::maxSize); 
     conjugate_gradient(GConfig.Conf, phi,psi, m0);  //(DD^dagger)^-1 phi
     D_dagger_phi(GConfig.Conf, psi,TEMP, m0);
     Forces = phi_dag_partialD_phi(GConfig.Conf,psi,TEMP); //psi^dagger partial D / partial omega(n) D psi
@@ -60,8 +57,7 @@ void HMC::Leapfrog(const spinor& phi){
     c_double inumber(0.0, 1.0); //imaginary number
 	GConf_copy = GConf; //Copy of the gauge configuration
     //Conf_copy = Conf*exp(0.5i * StepSize * PConf_copy)
-    #pragma omp parallel for
-    for (int n = 0; n < Ntot; n++) {
+    for (int n = 0; n < mpi::maxSize; n++) {
         GConf_copy.Conf.mu0[n] = GConf_copy.Conf.mu0[n] * exp(0.5 * inumber * StepSize * PConf_copy.mu0[n]);
         GConf_copy.Conf.mu1[n] = GConf_copy.Conf.mu1[n] * exp(0.5 * inumber * StepSize * PConf_copy.mu1[n]);   
     }
@@ -71,8 +67,7 @@ void HMC::Leapfrog(const spinor& phi){
     for (int step = 1; step < MD_steps - 1; step++) {
         //PConf_copy += StepSize*force
         //Conf_copy *= exp(i * StepSize * PConf_copy)
-        #pragma omp parallel for
-        for (int n = 0; n < Ntot; n++) {
+        for (int n = 0; n < mpi::maxSize; n++) {
             //mu = 0
             PConf_copy.mu0[n] += StepSize *  Forces.mu0[n];
             GConf_copy.Conf.mu0[n] *= exp(inumber * StepSize * PConf_copy.mu0[n]);
@@ -86,8 +81,7 @@ void HMC::Leapfrog(const spinor& phi){
 
     //PConf_copy += StepSize*force
     //Conf_copy = Conf*exp(0.5i * StepSize* PConf_copy)
-    #pragma omp parallel for
-    for (int n = 0; n < Ntot; n++) {
+    for (int n = 0; n < mpi::maxSize; n++) {
         //mu = 0
         PConf_copy.mu0[n] += StepSize * Forces.mu0[n];
         GConf_copy.Conf.mu0[n] *= exp(0.5 * inumber * StepSize * PConf_copy.mu0[n]);
@@ -100,29 +94,31 @@ void HMC::Leapfrog(const spinor& phi){
 }
 
 double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
-    double action = 0;
+    double local_action = 0.0;
+    double action;
     GConfig.Compute_Plaquette01();
     //Gauge contribution
-    #pragma omp parallel for
-	for (int n = 0; n < Ntot; n++) {
-        action += beta * std::real(1.0-GConfig.Plaquette01[n]);
+	for (int n = 0; n < mpi::maxSize; n++) {
+        local_action += beta * std::real(1.0-GConfig.Plaquette01[n]);
 	}
+    MPI_Allreduce(&local_action, &action, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     //Fermions contribution
     //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
     conjugate_gradient(GConfig.Conf, phi,TEMP, m0);
-	action += std::real( dot( TEMP, phi)); 
+    action += std::real( dot( TEMP, phi)); 
     return action;
 }
 
 double HMC::Hamiltonian(GaugeConf& GConfig, const re_field& Pi,const spinor& phi) {
-    double H = 0;
+    double local_H = 0;
     //Momentum contribution
-    #pragma omp parallel for
-    for (int n = 0; n < Ntot; n++) {
-        H += 0.5 * Pi.mu0[n] * Pi.mu0[n];
-		H += 0.5 * Pi.mu1[n] * Pi.mu1[n];
+    for (int n = 0; n < mpi::maxSize; n++) {
+        local_H += 0.5 * Pi.mu0[n] * Pi.mu0[n];
+		local_H += 0.5 * Pi.mu1[n] * Pi.mu1[n];
         
     }
+    double H;
+    MPI_Allreduce(&local_H, &H, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     //Action contribution
     H += Action(GConfig,phi);
 
@@ -137,11 +133,16 @@ void HMC::HMC_Update() {
     //spinor chi = RandomChi();
     RandomCHI();
 
-    spinor phi;
+    spinor phi(mpi::maxSize);
     D_phi(GConf.Conf, chi,phi, m0);
     Leapfrog(phi); //Evolve [Pi] and [U] 
     double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
-    double r = rand_range(0, 1);
+    double r;
+
+    if (mpi::rank == 0)
+        r = rand_range(0, 1); 
+    MPI_Bcast(&r, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
+
     if (r <= exp(-deltaH)) {
         //Accept the new configuration
         GConf = GConf_copy;
@@ -167,14 +168,15 @@ void HMC::HMC_algorithm(){
 	GConf.initialization(); //Initialize the gauge configuration randomly
     for(int i = 0; i < Ntherm; i++) {HMC_Update();} //Thermalization
     therm = true; //Set the flag to true
-    std::cout << "Thermalization done" <<std::endl;
+    if (mpi::rank == 0)
+        std::cout << "Thermalization done" <<std::endl;
     for(int i = 0; i < Nmeas; i++) {
         HMC_Update();
         SpVector[i] = GConf.MeasureSp_HMC(); //Plaquettes are computed when the action is called
         gAction[i] = GConf.Compute_gaugeAction(beta); //Gauge action
 		if (saveconf == 1) {
 			std::ostringstream NameData;
-                NameData << "2D_U1_Ns" << Nx << "_Nt" << Nt
+            NameData << "2D_U1_Ns" << Nx << "_Nt" << Nt
                 << "_b" << format(beta)
                 << "_m" << format(m0)
                 << "_" << i << ".ctxt";

@@ -8,13 +8,6 @@
 
 extern c_double I_number; //imaginary number
 
-/*
-	Modulo operation
-*/
-inline int mod(int a, int b) {
-	int r = a % b;
-	return r < 0 ? r + b : r;
-}
 
 /*
 	Periodic boundary conditions used for the link variables U_mu(n).

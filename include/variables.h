@@ -131,8 +131,15 @@ extern spinor TEMP;
 //Buffers for MPI communication
 extern spinor TopRow;
 extern spinor BottomRow;
-extern spinor TopRowReceive;
-extern spinor BottomRowReceive;
+
+/*
+	Modulo operation
+*/
+inline int mod(int a, int b) {
+	int r = a % b;
+	return r < 0 ? r + b : r;
+}
+
 
 
 

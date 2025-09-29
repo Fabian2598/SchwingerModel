@@ -252,25 +252,70 @@ void D_D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi,const doubl
 //2* Re ( left^dag \partial D / \partial omega(z) right )
 re_field phi_dag_partialD_phi(const spinor& U, const spinor& left,const spinor& right){
 	using namespace LV;
-	re_field Dphi; 
+	using namespace mpi;
+	re_field Dphi(mpi::maxSize); 
+	MPI_Status status;
 
-	//#pragma omp parallel for
-	for (int n = 0; n < Ntot; n++) {
-		//mu = 0
-		Dphi.mu0[n] = std::imag(
-		U.mu0[n] * SignR[2*n] * ( std::conj(left.mu0[n] - left.mu1[n]) ) * (right.mu0[RightPB[2*n]] - right.mu1[RightPB[2*n]])
-		- std::conj(U.mu0[n]) * SignR[2*n] * ( std::conj(left.mu0[RightPB[2*n]] + left.mu1[RightPB[2*n]]) ) * (right.mu0[n] + right.mu1[n])
+	if (size == 1){
+		for (int n = 0; n < maxSize; n++) {
+			//n = x * Nt + t
+			//mu = 0
+			Dphi.mu0[n] = std::imag(
+			U.mu0[n] * SignR[2*n] * ( std::conj(left.mu0[n] - left.mu1[n]) ) * (right.mu0[RightPB[2*n]] - right.mu1[RightPB[2*n]])
+			- std::conj(U.mu0[n]) * SignR[2*n] * ( std::conj(left.mu0[RightPB[2*n]] + left.mu1[RightPB[2*n]]) ) * (right.mu0[n] + right.mu1[n])
+			);
+			//mu = 1
+			Dphi.mu1[n] = std::imag(
+			U.mu1[n] * SignR[2*n+1] * ( std::conj(left.mu0[n]) - I_number*std::conj(left.mu1[n]) ) * (right.mu0[RightPB[2*n+1]] + I_number * right.mu1[RightPB[2*n+1]])
+			+ std::conj(U.mu1[n]) * SignR[2*n+1] * ( std::conj(left.mu0[RightPB[2*n+1]]) + I_number*std::conj(left.mu1[RightPB[2*n+1]]) ) 
+			* (-right.mu0[n] + I_number * right.mu1[n])
+			);
+		}
+	}
+
+	else{
+		//Update mu0 component (does not need communication)
+		for (int n = 0; n < maxSize; n++) {
+			Dphi.mu0[n] = std::imag(
+				U.mu0[n] * SignR[2*n] * ( std::conj(left.mu0[n] - left.mu1[n]) ) * (right.mu0[RightPB[2*n]] - right.mu1[RightPB[2*n]])
+				- std::conj(U.mu0[n]) * SignR[2*n] * ( std::conj(left.mu0[RightPB[2*n]] + left.mu1[RightPB[2*n]]) ) * (right.mu0[n] + right.mu1[n])
+			);
+		}	
+	
+
+	for(int n = 0; n < Nt; n++){
+		TopRow.mu0[n] = right.mu0[n] + I_number * right.mu1[n];
+		TopRow.mu1[n] = std::conj(left.mu0[n]) + I_number*std::conj(left.mu1[n]); 
+	}
+
+	MPI_Send(TopRow.mu0, Nt, MPI_DOUBLE_COMPLEX, mod(rank-1,size), 0, MPI_COMM_WORLD);
+	MPI_Send(TopRow.mu1, Nt, MPI_DOUBLE_COMPLEX, mod(rank-1,size), 1, MPI_COMM_WORLD);
+
+	MPI_Recv(TopRow.mu0, Nt, MPI_DOUBLE_COMPLEX, mod(rank+1,size), 0, MPI_COMM_WORLD, &status);
+	MPI_Recv(TopRow.mu1, Nt, MPI_DOUBLE_COMPLEX, mod(rank+1,size), 1, MPI_COMM_WORLD, &status);
+	
+
+
+	//Interior points and first row: no communication needed here
+	for (int n = 0; n < maxSize-Nt; n++) {
+		Dphi.mu1[n] = std::imag(
+			U.mu1[n] * SignR[2*n+1] * ( std::conj(left.mu0[n]) - I_number*std::conj(left.mu1[n]) ) * (right.mu0[RightPB[2*n+1]] + I_number * right.mu1[RightPB[2*n+1]])
+			+ std::conj(U.mu1[n]) * SignR[2*n+1] * ( std::conj(left.mu0[RightPB[2*n+1]]) + I_number*std::conj(left.mu1[RightPB[2*n+1]]) ) 
+			* (-right.mu0[n] + I_number * right.mu1[n])
 		);
+	}	
 
+	//Last row: Receives first row from rank+1
+	for(int n = maxSize-Nt; n<maxSize; n++){
 		//mu = 1
 		Dphi.mu1[n] = std::imag(
-		U.mu1[n] * SignR[2*n+1] * ( std::conj(left.mu0[n]) - I_number*std::conj(left.mu1[n]) ) * (right.mu0[RightPB[2*n+1]] + I_number * right.mu1[RightPB[2*n+1]])
-		+ std::conj(U.mu1[n]) * SignR[2*n+1] * ( std::conj(left.mu0[RightPB[2*n+1]]) + I_number*std::conj(left.mu1[RightPB[2*n+1]]) ) 
-				* (-right.mu0[n] + I_number * right.mu1[n])
+			U.mu1[n] * SignR[2*n+1] * ( std::conj(left.mu0[n]) - I_number*std::conj(left.mu1[n]) ) * TopRow.mu0[n-(maxSize-Nt)]
+			+ std::conj(U.mu1[n]) * SignR[2*n+1] * TopRow.mu1[n-(maxSize-Nt)] 
+			* (-right.mu0[n] + I_number * right.mu1[n])
 		);
-
 	}
+
+	} //end else (size>1)
 
 	return Dphi;
  }
-

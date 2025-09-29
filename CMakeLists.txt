@@ -11,11 +11,11 @@ set(SOURCES
     src/gauge_conf.cpp          #Gauge configuration (computes staples, plaquettes and gauge action)
     src/dirac_operator.cpp      #Implementation of D, D^+ and 2* Re ( left^+ d D / d omega(z) right )
     src/conjugate_gradient.cpp  #Conjugate gradient and Bi-cgstab
-    #src/hmc.cpp                 #Hybrid Monte Carlo
+    src/hmc.cpp                 #Hybrid Monte Carlo
 )
 
-set(NS "16")   #Lattice dimension x
-set(NT "16")   #Lattice dimension t
+set(NS "64")   #Lattice dimension x
+set(NT "64")   #Lattice dimension t
 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 

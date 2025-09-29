@@ -75,7 +75,7 @@ public:
 		WARNING: Some references define the staple as the conjugate of the term I just wrote above. 
 		PERIODIC BOUNDARIES MUST BE PRECOMPUTED FIRST
 	*/
-	//void Compute_Staple();
+	void Compute_Staple();
 
 	/*
 		Compute the plaquette
@@ -83,21 +83,21 @@ public:
 		with m = 0, nu = 1
 		PERIODIC BOUNDARIES MUST BE PRECOMPUTED FIRST
 	*/
-	//void Compute_Plaquette01(); 
+	void Compute_Plaquette01(); 
 
 	/*
 		Measures average plaquette real value
 		Sp = < U_01(x) >
 		Plaquettes have to be measured before
 	*/
-	//double MeasureSp_HMC();
+	double MeasureSp_HMC();
 
 	/*
 		Gauge action
 		S_G = beta * sum_x (1 - U_01(x))
 		Plaquettes have to be measured before
 	*/
-	//double Compute_gaugeAction(const double& beta); //Computes the gauge action
+	double Compute_gaugeAction(const double& beta); //Computes the gauge action
 
 	//Reads a gauge configuration from a file
 	void read_conf(const std::string& name);
@@ -108,7 +108,7 @@ public:
 /*
 	Save Gauge configuration
 */
-//void SaveConf(const GaugeConf& GConf, const std::string& Name); 
+void SaveConf(const GaugeConf& GConf, const std::string& Name); 
 
 
 
