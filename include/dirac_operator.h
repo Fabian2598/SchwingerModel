@@ -11,7 +11,7 @@ extern c_double I_number; //imaginary number
 
 /*
 	Periodic boundary conditions used for the link variables U_mu(n).
-	This function builds the arrays x_1_t1, x1_t_1, RightPB and LeftPB, which
+	This function builds th#include "omp.h"e arrays x_1_t1, x1_t_1, RightPB and LeftPB, which
 	store the neighbor coordinates for the periodic boundary conditions.
 	This prevents recalculation every time we call the operator D.
 	The function is only called once at the beginning of the program.

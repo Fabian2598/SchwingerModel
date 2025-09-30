@@ -30,11 +30,11 @@ target_include_directories("SM_${NS}x${NT}"
 target_compile_options("SM_${NS}x${NT}" PRIVATE
 			-O3
             #-g #For profiling
-			#-fopenmp
+			-fopenmp
 )
 
-#find_package(OpenMP REQUIRED)
-#target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
+find_package(OpenMP REQUIRED)
+target_link_libraries("SM_${NS}x${NT}" PUBLIC OpenMP::OpenMP_CXX)
 
 find_package(MPI REQUIRED)
 target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)

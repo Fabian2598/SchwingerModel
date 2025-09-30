@@ -4,6 +4,7 @@
 #include <complex>
 #include <iostream>
 #include "mpi.h"
+#include "omp.h"
 
 /*
     dot product between two spinors of the form psi[ntot][2]

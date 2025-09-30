@@ -26,8 +26,8 @@ void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 	using namespace mpi;
 	MPI_Status status;
 
-	if (size == 1){
-
+	if (size == 1){	
+		#pragma omp parallel for
 		for (int n = 0; n < maxSize; n++) {
 			//n = x * Nt + t
 			Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] - 0.5 * ( 
@@ -136,6 +136,7 @@ void D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi,const double&
 	
 
 	if (size == 1){
+		#pragma omp parallel for
 		for (int n = 0; n < Ntot; n++) {
 			//n = x * Nt + t
 			Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] -0.5 * ( 
@@ -257,6 +258,7 @@ re_field phi_dag_partialD_phi(const spinor& U, const spinor& left,const spinor& 
 	MPI_Status status;
 
 	if (size == 1){
+		#pragma omp parallel for
 		for (int n = 0; n < maxSize; n++) {
 			//n = x * Nt + t
 			//mu = 0

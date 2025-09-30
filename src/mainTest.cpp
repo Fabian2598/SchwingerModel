@@ -59,7 +59,33 @@ int main(int argc, char **argv) {
         rhs.mu1[n] = 1;//RandomU1(); //spin down
     }
   
-    SaveConf(GConf, "Supergeishconf.txt");
+    SaveConf(GConf, "binaryConf");
+    
+    GaugeConf GConfBinary = GaugeConf();
+    GConfBinary.readBinary("binaryConf");
+
+    
+    for(int i = 0; i < mpi::size; i++) {
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (i == mpi::rank) {
+            //printf("Rank %d\n", mpi::rank);
+            for(int n = 0; n < mpi::maxSize; n++) {
+                if (std::abs( GConfBinary.Conf.mu0[n] - GConf.Conf.mu0[n]) > 1e-10 || 
+                std::abs( GConfBinary.Conf.mu1[n] - GConf.Conf.mu1[n]) > 1e-10){
+                    std::cout << "Confs not equal" << std::endl;
+                    return 1;
+                }
+            }
+        std::cout << "All good in rank " << mpi::rank << std::endl;
+        }
+    }
+
+    /*
+    if (const char* env_p = std::getenv("OMP_NUM_THREADS"))
+        std::cout << "OMP_NUM_THREADS: " << env_p << std::endl;
+    else
+        std::cout << "OMP_NUM_THREADS is not set." << std::endl;
+    */
 
     /*
     double startT, endT;

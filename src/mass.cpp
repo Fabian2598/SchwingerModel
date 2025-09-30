@@ -5,12 +5,13 @@
 #include <fstream>
 #include "gauge_conf.h"
 #include "conjugate_gradient.h"
+#include "mpi.h"
 
 /*
     Measure the pion correlator
 */
 
-std::vector<c_matrix> Confs; //Confs[conf][coordinate][spin]
+spinor Confs(mpi::maxSize);
 
 int nconf; //This could be an input parameter from terminal
 double m0, beta; //Mass and coupling constant

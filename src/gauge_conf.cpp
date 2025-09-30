@@ -47,11 +47,13 @@ void GaugeConf::Compute_Plaquette01() {
         }
     }
     else{
+
         for(int n = 0; n<LV::Nt; n++){
             TopRow.mu0[n] = Conf.mu0[n];
         }
         MPI_Send(TopRow.mu0, LV::Nt, MPI_DOUBLE_COMPLEX, mod(mpi::rank-1,mpi::size), 0, MPI_COMM_WORLD);
 	    MPI_Recv(TopRow.mu0, LV::Nt, MPI_DOUBLE_COMPLEX, mod(mpi::rank+1,mpi::size), 0, MPI_COMM_WORLD, &status);
+        
         for (int n = 0; n<mpi::maxSize-LV::Nt; n++){
             Plaquette01[n] = Conf.mu0[n] * Conf.mu1[RightPB[2*n]] * std::conj(Conf.mu0[RightPB[2*n+1]]) * std::conj(Conf.mu1[n]);
         }
@@ -216,7 +218,7 @@ void GaugeConf::Compute_Staple() {
 
 /*
 Save Gauge configuration
-*/ 
+*/   
 
 void SaveConf(const GaugeConf& GConf, const std::string& Name) {
     using namespace LV;
@@ -234,8 +236,8 @@ void SaveConf(const GaugeConf& GConf, const std::string& Name) {
             GlobalConf.mu1, counts, displs, MPI_DOUBLE_COMPLEX,
             0, MPI_COMM_WORLD);
     if (mpi::rank == 0){
-        //std::ofstream Datfile(Name,std::ios::binarys);
-        std::ofstream Datfile(Name);
+        std::ofstream Datfile(Name,std::ios::binary);
+        //std::ofstream Datfile(Name);
         if (!Datfile.is_open()) {
             std::cerr << "Error opening file: " << Name << std::endl;
             return;
@@ -247,20 +249,22 @@ void SaveConf(const GaugeConf& GConf, const std::string& Name) {
                 const double& re = std::real(mu == 0 ? GlobalConf.mu0[n] : GlobalConf.mu1[n]);
                 const double& im = std::imag(mu == 0 ? GlobalConf.mu0[n] : GlobalConf.mu1[n]);
                 
+                /*
                 Datfile << x
                         << std::setw(10) << t
                         << std::setw(10) << mu
                         << std::setw(30) << std::setprecision(17) << std::scientific << re
                         << std::setw(30) << std::setprecision(17) << std::scientific << im
                         << "\n";
+                */
                 
-                /*
+                
                 Datfile.write(reinterpret_cast<const char*>(&x), sizeof(int));
                 Datfile.write(reinterpret_cast<const char*>(&t), sizeof(int));
                 Datfile.write(reinterpret_cast<const char*>(&mu), sizeof(int));
                 Datfile.write(reinterpret_cast<const char*>(&re), sizeof(double));
                 Datfile.write(reinterpret_cast<const char*>(&im), sizeof(double));
-                */
+                
             }
         }
         }
@@ -275,6 +279,7 @@ double GaugeConf::MeasureSp_HMC() {
 	//Plaquettes have to be computed during the HMC update
     double local_Sp = 0.0;
     //reduction over all lattice points and spin components
+    #pragma omp parallel for reduction(+:local_Sp)
     for (int n = 0; n < mpi::maxSize; n++) {
         local_Sp += std::real(Plaquette01[n]);
     }
@@ -287,6 +292,7 @@ double GaugeConf::MeasureSp_HMC() {
 
 double GaugeConf::Compute_gaugeAction(const double& beta) {
 	double local_action = 0.0;
+    #pragma omp parallel for reduction(+:local_action)
 	for (int n = 0; n < mpi::maxSize; n++) {
         local_action += beta * std::real(1.0-Plaquette01[n]);
 	}
@@ -327,4 +333,48 @@ void GaugeConf::read_conf(const std::string& name){
     MPI_Scatterv(GlobalConf.mu1, counts, displs, MPI_DOUBLE_COMPLEX,
                  Conf.mu1, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
 
+}
+
+
+void GaugeConf::readBinary(const std::string& name){
+    using namespace LV;
+    std::ifstream infile(name, std::ios::binary);
+    if (!infile) {
+        std::cerr << "File " << name << " not found " << std::endl;
+        exit(1);
+    }
+    spinor GlobalConf(LV::Ntot); //Temporary variable to store the full configuration
+    int counts[mpi::size], displs[mpi::size];
+    for(int i = 0; i < mpi::size; i++) {
+        counts[i] = (i != mpi::size-1) ?  (LV::Nx/mpi::size) * LV::Nt :  (LV::Nx/mpi::size) * LV::Nt + (LV::Nx%mpi::size)*LV::Nt;
+        displs[i] = i * (LV::Nx/mpi::size) * LV::Nt;
+    }
+
+    if (mpi::rank == 0){
+        for (int x = 0; x < Nx; x++) {
+        for (int t = 0; t < Nt; t++) {
+            int n = x * Nx + t;
+            for (int mu = 0; mu < 2; mu++) {
+                int x_read, t_read, mu_read;
+                double re, im;
+                infile.read(reinterpret_cast<char*>(&x_read), sizeof(int));
+                infile.read(reinterpret_cast<char*>(&t_read), sizeof(int));
+                infile.read(reinterpret_cast<char*>(&mu_read), sizeof(int));
+                infile.read(reinterpret_cast<char*>(&re), sizeof(double));
+                infile.read(reinterpret_cast<char*>(&im), sizeof(double));
+                if (mu_read == 0)
+                    GlobalConf.mu0[n] = c_double(re, im);
+                else
+                    GlobalConf.mu1[n] = c_double(re, im);
+            }
+        }
+        }
+        infile.close();
+        std::cout << "Binary conf read from " << name << std::endl;     
+    }
+
+    MPI_Scatterv(GlobalConf.mu0, counts, displs, MPI_DOUBLE_COMPLEX,
+                 Conf.mu0, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+    MPI_Scatterv(GlobalConf.mu1, counts, displs, MPI_DOUBLE_COMPLEX,
+                 Conf.mu1, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
 }

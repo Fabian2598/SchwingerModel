@@ -103,6 +103,7 @@ int main(int argc, char **argv) {
             ", Integration step = " << trajectory_length/MD_steps << std::endl;
             std::cout << "* CG max iterations = " << CG::max_iter << ", CG tolerance = " << CG::tol << std::endl;
             std::cout << "* Number of MPI ranks = " << mpi::size << std::endl;
+            std::cout << "* OMP_NUM_THREADS = " << std::getenv("OMP_NUM_THREADS") << std::endl;
             std::cout << "**********************************************************************" << std::endl;
         }
         

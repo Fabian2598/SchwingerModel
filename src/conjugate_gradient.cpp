@@ -15,6 +15,7 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
 
 	x = phi;
     D_D_dagger_phi(U, x, Ad, m0); //DD^dagger*x
+    #pragma omp parallel for
     for(int n = 0; n<maxSize; n++){
         r.mu0[n] = phi.mu0[n] - Ad.mu0[n];
         r.mu1[n] = phi.mu1[n] - Ad.mu1[n];
@@ -31,14 +32,11 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
         D_D_dagger_phi(U, d,Ad, m0); //DD^dagger*d 
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
 
-        //x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i
-        for(int n = 0; n<maxSize; n++){ 
+        for(int n = 0; n<maxSize; n++){
+        //x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i 
             x.mu0[n] += alpha*d.mu0[n];
             x.mu1[n] += alpha*d.mu1[n];
-        }
-        
         //r = r - alpha * Ad; //r_{i+1} = r_i - alpha*Ad_i
-        for(int n = 0; n<maxSize; n++){
             r.mu0[n] -= alpha*Ad.mu0[n];
             r.mu1[n] -= alpha*Ad.mu1[n];
         }
@@ -76,19 +74,17 @@ spinor bi_cgstab(const spinor& U, const spinor& phi, const spinor& x0, const dou
     int k = 0; //Iteration number
     double err;
 
-    
-    //D_D_dagger_phi(U, phi, m0); //DD^dagger  
-    spinor r;//r[coordinate][spin] residual
-    spinor r_tilde; //r[coordinate][spin] residual
-    spinor d; //search direction
-    spinor s;
-    spinor t;
-    spinor Ad; //D*d
-    spinor x;//solution
+    spinor r(mpi::maxSize);//r[coordinate][spin] residual
+    spinor r_tilde(mpi::maxSize); //r[coordinate][spin] residual
+    spinor d(mpi::maxSize);; //search direction
+    spinor s(mpi::maxSize);;
+    spinor t(mpi::maxSize);;
+    spinor Ad(mpi::maxSize);; //D*d
+    spinor x(mpi::maxSize);;//solution
     c_double alpha, beta, rho_i, omega, rho_i_2;
     x = x0; //initial solution
     D_phi(U, x, TEMP, m0);
-    for(int n = 0; n < LV::Ntot; n++) {
+    for(int n = 0; n < mpi::maxSize; n++) {
         r.mu0[n] = phi.mu0[n] - TEMP.mu0[n]; //r = b - A*x
         r.mu1[n] = phi.mu1[n] - TEMP.mu1[n];
     }
@@ -102,7 +98,7 @@ spinor bi_cgstab(const spinor& U, const spinor& phi, const spinor& x0, const dou
         else {
             beta = alpha * rho_i / (omega * rho_i_2); //beta_{i-1} = alpha_{i-1} * rho_{i-1} / (omega_{i-1} * rho_{i-2})
             //d = r + beta * (d - omega * Ad); //d_i = r_{i-1} + beta_{i-1} * (d_{i-1} - omega_{i-1} * Ad_{i-1})
-            for(int n = 0; n < LV::Ntot; n++) {
+            for(int n = 0; n < mpi::maxSize; n++) {
                 d.mu0[n] = r.mu0[n] + beta * (d.mu0[n] - omega * Ad.mu0[n]); //d_i = r_{i-1} + beta_{i-1} * (d_{i-1} - omega_{i-1} * Ad_{i-1})
                 d.mu1[n] = r.mu1[n] + beta * (d.mu1[n] - omega * Ad.mu1[n]);
             }
@@ -110,13 +106,13 @@ spinor bi_cgstab(const spinor& U, const spinor& phi, const spinor& x0, const dou
         D_phi(U, d, Ad,m0);  //A d_i 
         alpha = rho_i / dot(Ad, r_tilde); //alpha_i = rho_{i-1} / (Ad_i, r_tilde)
         //s = r - alpha * Ad; //s = r_{i-1} - alpha_i * Ad_i
-        for(int n = 0; n < LV::Ntot; n++) {
+        for(int n = 0; n < mpi::maxSize; n++) {
             s.mu0[n] = r.mu0[n] - alpha * Ad.mu0[n]; //s_i = r_{i-1} - alpha_i * Ad_i
             s.mu1[n] = r.mu1[n] - alpha * Ad.mu1[n];
         }
         err = sqrt(std::real(dot(s, s)));
         if (err < tol * norm_phi) {
-            for(int n = 0; n < LV::Ntot; n++) {
+            for(int n = 0; n <mpi::maxSize; n++) {
                 x.mu0[n] = x.mu0[n] + alpha * d.mu0[n];
                 x.mu1[n] = x.mu1[n] + alpha * d.mu1[n];
             }
@@ -127,13 +123,13 @@ spinor bi_cgstab(const spinor& U, const spinor& phi, const spinor& x0, const dou
         }
         D_phi(U, s,t, m0);   //A s
         omega = dot(s, t) / dot(t, t); //omega_i = t^dagg . s / t^dagg . t
-        for(int n = 0; n < LV::Ntot; n++) {
+        for(int n = 0; n < mpi::maxSize; n++) {
             r.mu0[n] = s.mu0[n] - omega * t.mu0[n]; //r_i = s - omega_i * t
             r.mu1[n] = s.mu1[n] - omega * t.mu1[n];
     
         }
 
-         for(int n = 0; n < LV::Ntot; n++) {
+         for(int n = 0; n < mpi::maxSize; n++) {
             x.mu0[n] = x.mu0[n] + alpha * d.mu0[n] + omega * s.mu0[n]; //x_i = x_{i-1} + alpha_i * d_i + omega_i * s_i
             x.mu1[n] = x.mu1[n] + alpha * d.mu1[n] + omega * s.mu1[n];
         }
