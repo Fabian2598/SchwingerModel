@@ -47,3 +47,10 @@ target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
 #cmake -G "MinGW Makefiles" -DCMAKE_CXX_COMPILER="C:/msys64/ucrt64/bin/g++.exe" -DCMAKE_C_COMPILER="C:/msys64/ucrt64/bin/gcc.exe" ../
 #dir/s/b *.txt > confs.txt
 
+#My workstation has 12 physical cores. MPI ranks * OMP threads 
+#should not exceed that number
+#export OMP_NUM_THREADS=2
+#export OMP_PROC_BIND=close
+#export OMP_PLACES=cores
+
+#mpirun --bind-to core --map-by core -np 4 ./SM_64x64

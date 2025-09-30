@@ -106,6 +106,7 @@ int main(int argc, char **argv) {
             std::cout << "* OMP_NUM_THREADS = " << std::getenv("OMP_NUM_THREADS") << std::endl;
             std::cout << "**********************************************************************" << std::endl;
         }
+        //std::cout << "Rank " << mpi::rank << " using " << omp_get_max_threads() << " OpenMP threads." << std::endl;
         
 
         HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, LV::Nx, LV::Nt, m0,saveconf);   
