@@ -60,7 +60,7 @@ void HMC::Leapfrog(const spinor& phi){
     c_double inumber(0.0, 1.0); //imaginary number
 	GConf_copy = GConf; //Copy of the gauge configuration
     //Conf_copy = Conf*exp(0.5i * StepSize * PConf_copy)
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for (int n = 0; n < Ntot; n++) {
         GConf_copy.Conf.mu0[n] = GConf_copy.Conf.mu0[n] * exp(0.5 * inumber * StepSize * PConf_copy.mu0[n]);
         GConf_copy.Conf.mu1[n] = GConf_copy.Conf.mu1[n] * exp(0.5 * inumber * StepSize * PConf_copy.mu1[n]);   
@@ -71,7 +71,7 @@ void HMC::Leapfrog(const spinor& phi){
     for (int step = 1; step < MD_steps - 1; step++) {
         //PConf_copy += StepSize*force
         //Conf_copy *= exp(i * StepSize * PConf_copy)
-        #pragma omp parallel for
+        //#pragma omp parallel for
         for (int n = 0; n < Ntot; n++) {
             //mu = 0
             PConf_copy.mu0[n] += StepSize *  Forces.mu0[n];
@@ -86,7 +86,7 @@ void HMC::Leapfrog(const spinor& phi){
 
     //PConf_copy += StepSize*force
     //Conf_copy = Conf*exp(0.5i * StepSize* PConf_copy)
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for (int n = 0; n < Ntot; n++) {
         //mu = 0
         PConf_copy.mu0[n] += StepSize * Forces.mu0[n];

@@ -14,6 +14,7 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
 
 	x = phi;
     D_D_dagger_phi(U, x, Ad, m0); //DD^dagger*x
+    #pragma omp parallel for
     for(int n = 0; n<LV::Ntot; n++){
         r.mu0[n] = phi.mu0[n] - Ad.mu0[n];
         r.mu1[n] = phi.mu1[n] - Ad.mu1[n];
@@ -28,17 +29,18 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
         D_D_dagger_phi(U, d,Ad, m0); //DD^dagger*d 
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
 
-        //x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i
+        #pragma omp parallel for
         for(int n = 0; n<LV::Ntot; n++){ 
+        //x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i
             x.mu0[n] += alpha*d.mu0[n];
             x.mu1[n] += alpha*d.mu1[n];
-        }
-        
         //r = r - alpha * Ad; //r_{i+1} = r_i - alpha*Ad_i
-        for(int n = 0; n<LV::Ntot; n++){
             r.mu0[n] -= alpha*Ad.mu0[n];
             r.mu1[n] -= alpha*Ad.mu1[n];
         }
+        
+        
+       
         
         err_sqr = std::real(dot(r, r)); //err_sqr = (r_{i+1},r_{i+1})
 		err = sqrt(err_sqr); // err = sqrt(err_sqr)
@@ -50,6 +52,7 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
         beta = err_sqr / r_norm2; //beta = (r_{i+1},r_{i+1})/(r_i,r_i)
 
         //d = r + beta * d; //d_{i+1} = r_{i+1} + beta*d_i 
+        #pragma omp parallel for
         for(int n = 0; n<LV::Ntot; n++){
             d.mu0[n] *= beta; 
             d.mu1[n] *= beta;
