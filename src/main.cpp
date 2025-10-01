@@ -29,11 +29,14 @@ int main(int argc, char **argv) {
 
     if (mpi::rank == 0){
          //---Input data---//
+         m0_min = -0.1884, m0_max = -0.1884, Nm0 = 1, MD_steps = 10, trajectory_length = 1;
+beta = 2, Ntherm = 10, Nmeas = 10, Nsteps = 0, saveconf = 1;     
         std::cout << "  -----------------------------" << std::endl;
         std::cout << "|  Two-flavor Schwinger model   |" << std::endl;
         std::cout << "| Hybrid Monte Carlo simulation |" << std::endl;
         std::cout << "  -----------------------------" << std::endl;
         std::cout << "Nx " << LV::Nx << " Nt " << LV::Nt << std::endl;
+        /*
         std::cout << "m0 min: ";
         std::cin >> m0_min;
         std::cout << "m0 max: ";
@@ -55,6 +58,7 @@ int main(int argc, char **argv) {
         std::cout << "Save configurations yes/no (1 or 0): ";
         std::cin >> saveconf;
         std::cout << " " << std::endl;
+        */
     }
    
     MPI_Bcast(&m0_min, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
@@ -113,12 +117,15 @@ int main(int argc, char **argv) {
         double begin = MPI_Wtime();
         hmc.HMC_algorithm();
         double end = MPI_Wtime();
-        std::cout << "Average plaquette value / volume: Ep = " << hmc.getEp() << " dEp = " << hmc.getdEp() << std::endl;
-        std::cout << "Average gauge action / volume: gS = " << hmc.getgS() << " dgS = " << hmc.getdgS() << std::endl;
-        std::cout << "Acceptance rate: " << hmc.getacceptance_rate() << std::endl;
-        double elapsed_secs = end - begin;
 
-        if (mpi::rank == 0){
+         if (mpi::rank == 0){
+            std::cout << "Average plaquette value / volume: Ep = " << hmc.getEp() << " dEp = " << hmc.getdEp() << std::endl;
+            std::cout << "Average gauge action / volume: gS = " << hmc.getgS() << " dgS = " << hmc.getdgS() << std::endl;
+            std::cout << "Acceptance rate: " << hmc.getacceptance_rate() << std::endl;
+            double elapsed_secs = end - begin;
+
+            std::cout << "Time = " << elapsed_secs << " s" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
             Datfile << std::format("{:<30.17g}\n", m0);
             Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getEp(), hmc.getdEp());
             Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getgS(), hmc.getdgS());
@@ -126,8 +133,6 @@ int main(int argc, char **argv) {
             Datfile << std::format("{:<30.17g}", elapsed_secs);
         }
             
-        std::cout << "Time = " << elapsed_secs << " s" << std::endl;
-        std::cout << "-------------------------------" << std::endl;
 
     }
     if (mpi::rank == 0) Datfile.close();
