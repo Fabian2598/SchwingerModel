@@ -61,7 +61,19 @@ void read_confs(const int& nconf,std::vector<std::string>& filePaths){
     }
 
 }
-    
+
+void read_bin_confs(const int& nconf,std::vector<std::string>& filePaths){
+    int x, t, mu;
+    double re, im;
+    GaugeConf GConf(LV::Nx,LV::Nt);
+    for(int conf=0; conf<nconf; conf++){
+        GConf.readBinary(filePaths[conf]);
+        Confs[conf] = GConf.Conf;
+    }
+
+}
+
+
 void write(const std::vector<double>& data,const std::vector<double>& error, const std::string& Name){
     std::ofstream Datfile;
     Datfile.open(Name);
@@ -122,7 +134,8 @@ int main(){
     CorrMat.resize(LV::Nt, std::vector<double>(nconf, 0)); // Resize CorrMat
 
     std::cout << "Reading configurations...";
-    read_confs(nconf,filePaths); //Read configurations and store them in Confs
+    //read_confs(nconf,filePaths);
+    read_bin_confs(nconf,filePaths); //Read configurations and store them in Confs
     std::cout << " Done!" << std::endl;
     //--------Compute c(nt) for the pion--------//
     for(int conf = 0; conf<nconf; conf++){

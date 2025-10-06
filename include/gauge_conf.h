@@ -91,6 +91,8 @@ public:
 		Plaquettes have to be measured before
 	*/
 	double Compute_gaugeAction(const double& beta); //Computes the gauge action
+
+	void readBinary(const std::string& name);
 private:
 	int Nx, Nt, Ntot;
 };
