@@ -117,7 +117,7 @@ spinor bi_cgstab(const spinor& U, const spinor& phi, const spinor& x0, const dou
                 x.mu1[n] = x.mu1[n] + alpha * d.mu1[n];
             }
             if (print_message == true) {
-                //std::cout << "Bi-CG-stab for D converged in " << k+1 << " iterations" << " Error " << err << std::endl;
+                std::cout << "Bi-CG-stab for D converged in " << k+1 << " iterations" << " Error " << err << std::endl;
             }
             return x;
         }

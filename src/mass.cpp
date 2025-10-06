@@ -47,7 +47,7 @@ int main(int argc, char **argv){
     // Input parameters
     //beta = 1.0; m0=0.1; nconf=1000; listFilePath = "confs.txt"; 
     // dir/s/b *.txt > confs.txt
-    beta = 2, m0 = 0.016129032258064502, nconf = 1000; listFilePath = "confFiles.txt";
+    beta = 4, m0 = 0.016129032258064502, nconf = 1000; listFilePath = "confFiles.txt";
     /*if (rank == 0){
         std::cout << "beta: ";
         std::cin >> beta;
@@ -83,8 +83,7 @@ int main(int argc, char **argv){
     GaugeConf GConf;
     std::cout << "Reading configurations...";
     for(int conf=0; conf<nconf; conf++){
-        //GConf.readBinary(filePaths[conf])
-        GConf.read_conf(filePaths[conf]);
+        GConf.readBinary(filePaths[conf]);
         Confs[conf] = GConf.Conf;
     }
     std::cout << " Done!" << std::endl;
@@ -102,19 +101,26 @@ int main(int argc, char **argv){
     spinor Dcol1(mpi::maxSize);
     spinor Dcol2(mpi::maxSize);
     spinor x0(mpi::maxSize);
+    for(int n = 0; n<mpi::maxSize; n++){
+        x0.mu0[n] = 1;
+        x0.mu1[n] = 1;
+    }
 
     if (mpi::rank == 0){
         source1.mu0[0] = 1;
         source2.mu1[0] = 1;
     }
     int x_width = (mpi::rank != mpi::size-1) ? (LV::Nx/mpi::size) : (LV::Nx/mpi::size) + (LV::Nx%mpi::size);
-
-    /*
+    //bi_cgstab(Confs[0], source1, x0, m0, max_iter, 1e-10, true);
+    
     //--------Compute c(nt) for the pion--------//
+    
     for(int conf = 0; conf<nconf; conf++){
-        if (conf % 100 == 0) { std::cout << "--------Computing c(nt) for conf " << conf << "--------" << std::endl;} 
+        if (conf % 100 == 0 && mpi::rank==0) { std::cout << "--------Computing c(nt) for conf " << conf << "--------" << std::endl;} 
         Dcol1 = bi_cgstab(Confs[conf], source1, x0, m0, max_iter, 1e-10, false); //D^-1 source = D^-1((nx,nt),0)
         Dcol2 = bi_cgstab(Confs[conf], source2, x0, m0, max_iter, 1e-10, false); //D^-1 source = D^-1((nx,nt),1)   
+    
+        
         for(int t=0; t<LV::Nt; t++){
             CorrMat_loc[t*nconf+conf] = 0;
             for(int x=0; x<x_width; x++){
@@ -127,8 +133,8 @@ int main(int argc, char **argv){
             CorrMat_loc[t*nconf+conf] *= 1.0/std::sqrt(LV::Nx); //Average over spatial coordinates
         }            
     }
-
-    MPI_Allreduce(&CorrMat_loc, &CorrMat, LV::Nt*nconf, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    
+    MPI_Allreduce(CorrMat_loc, CorrMat, LV::Nt*nconf, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     
         
     //Write c(nt) and its error into a file
@@ -149,7 +155,7 @@ int main(int argc, char **argv){
         Name << "2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << beta << "_m" << format(m0) << "_" << "corr" << ".txt";
         write(Corr, dCorr, Name.str());
     }
-    */
+    
     
     delete[] CorrMat;
     delete[] CorrMat_loc;

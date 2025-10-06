@@ -370,7 +370,7 @@ void GaugeConf::readBinary(const std::string& name){
         }
         }
         infile.close();
-        std::cout << "Binary conf read from " << name << std::endl;     
+        //std::cout << "Binary conf read from " << name << std::endl;     
     }
 
     MPI_Scatterv(GlobalConf.mu0, counts, displs, MPI_DOUBLE_COMPLEX,

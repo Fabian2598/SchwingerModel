@@ -79,6 +79,12 @@ int main(int argc, char **argv) {
     conjugate_gradient(GConf.Conf, rhs, sol,m0);
     endT = MPI_Wtime();
     printf("[rank %d] time elapsed during CG implementation: %.4fs.\n", mpi::rank, endT - startT);
+
+    spinor x0(mpi::maxSize);
+    startT = MPI_Wtime();
+    bi_cgstab(GConf.Conf, rhs, x0, m0, CG::max_iter, CG::tol, true);
+    endT = MPI_Wtime();
+    printf("[rank %d] time elapsed during BiCGstab implementation: %.4fs.\n", mpi::rank, endT - startT);
     
 
     
