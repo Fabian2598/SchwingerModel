@@ -45,10 +45,11 @@ int main(int argc, char **argv) {
     periodic_boundary(); //Compute right and left periodic boundary
     
 	GaugeConf GConf = GaugeConf();  //Gauge configuration
-    GConf.initialization(); //Random initialization of the gauge configuration 
+    //GConf.initialization(); //Random initialization of the gauge configuration 
 
     std::ostringstream NameData;
     NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
+    //NameData << "/wsgjsc/home/nietocastellanos1/Downloads/" << "2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
     format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
     GConf.read_conf(NameData.str());
  
@@ -59,26 +60,11 @@ int main(int argc, char **argv) {
         rhs.mu1[n] = 1;//RandomU1(); //spin down
     }
   
-    SaveConf(GConf, "binaryConf");
+    //SaveConf(GConf, "binaryConf");
     
-    GaugeConf GConfBinary = GaugeConf();
-    GConfBinary.readBinary("binaryConf");
+    //GaugeConf GConfBinary = GaugeConf();
+    //GConf.readBinary(NameData.str());
 
-    
-    for(int i = 0; i < mpi::size; i++) {
-        MPI_Barrier(MPI_COMM_WORLD);
-        if (i == mpi::rank) {
-            //printf("Rank %d\n", mpi::rank);
-            for(int n = 0; n < mpi::maxSize; n++) {
-                if (std::abs( GConfBinary.Conf.mu0[n] - GConf.Conf.mu0[n]) > 1e-10 || 
-                std::abs( GConfBinary.Conf.mu1[n] - GConf.Conf.mu1[n]) > 1e-10){
-                    std::cout << "Confs not equal" << std::endl;
-                    return 1;
-                }
-            }
-        std::cout << "All good in rank " << mpi::rank << std::endl;
-        }
-    }
 
     /*
     if (const char* env_p = std::getenv("OMP_NUM_THREADS"))
@@ -87,13 +73,13 @@ int main(int argc, char **argv) {
         std::cout << "OMP_NUM_THREADS is not set." << std::endl;
     */
 
-    /*
+    
     double startT, endT;
     startT = MPI_Wtime();
     conjugate_gradient(GConf.Conf, rhs, sol,m0);
     endT = MPI_Wtime();
     printf("[rank %d] time elapsed during CG implementation: %.4fs.\n", mpi::rank, endT - startT);
-    */
+    
 
     
     /*

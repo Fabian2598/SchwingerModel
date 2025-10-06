@@ -29,8 +29,8 @@ int main(int argc, char **argv) {
 
     if (mpi::rank == 0){
          //---Input data---//
-         m0_min = -0.1884, m0_max = -0.1884, Nm0 = 1, MD_steps = 10, trajectory_length = 1;
-beta = 2, Ntherm = 10, Nmeas = 10, Nsteps = 0, saveconf = 1;     
+         m0_min = -0.1884, m0_max = -0.1884, Nm0 = 1, MD_steps = 8, trajectory_length = 0.1;
+beta = 2, Ntherm = 10, Nmeas = 100, Nsteps = 0, saveconf = 1;     
         std::cout << "  -----------------------------" << std::endl;
         std::cout << "|  Two-flavor Schwinger model   |" << std::endl;
         std::cout << "| Hybrid Monte Carlo simulation |" << std::endl;
