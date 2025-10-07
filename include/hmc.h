@@ -29,12 +29,13 @@ public:
 	double getdEp() { return dEp; }
 	double getgS() { return gS; }
 	double getdgS() { return dgS; }
-	double getacceptance_rate() { return acceptance_rate/((Nmeas+Nsteps*Nmeas)*1.0); }
+	double getacceptance_rate(int conf_number) { return acceptance_rate/((conf_number)*1.0); }
 
 private:
 	int Nx, Nt, Ntot;
 	int MD_steps, Ntherm, Nmeas, Nsteps;
 	int saveconf;
+	int conf_i;
 	double trajectory_length;
 	double beta;
 	double m0;

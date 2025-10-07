@@ -29,14 +29,11 @@ int main(int argc, char **argv) {
 
     if (mpi::rank == 0){
          //---Input data---//
-         m0_min = -0.1884, m0_max = -0.1884, Nm0 = 1, MD_steps = 8, trajectory_length = 0.1;
-beta = 2, Ntherm = 10, Nmeas = 100, Nsteps = 0, saveconf = 1;     
         std::cout << "  -----------------------------" << std::endl;
         std::cout << "|  Two-flavor Schwinger model   |" << std::endl;
         std::cout << "| Hybrid Monte Carlo simulation |" << std::endl;
         std::cout << "  -----------------------------" << std::endl;
         std::cout << "Nx " << LV::Nx << " Nt " << LV::Nt << std::endl;
-        /*
         std::cout << "m0 min: ";
         std::cin >> m0_min;
         std::cout << "m0 max: ";
@@ -58,7 +55,7 @@ beta = 2, Ntherm = 10, Nmeas = 100, Nsteps = 0, saveconf = 1;
         std::cout << "Save configurations yes/no (1 or 0): ";
         std::cin >> saveconf;
         std::cout << " " << std::endl;
-        */
+        
     }
    
     MPI_Bcast(&m0_min, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
@@ -121,7 +118,7 @@ beta = 2, Ntherm = 10, Nmeas = 100, Nsteps = 0, saveconf = 1;
          if (mpi::rank == 0){
             std::cout << "Average plaquette value / volume: Ep = " << hmc.getEp() << " dEp = " << hmc.getdEp() << std::endl;
             std::cout << "Average gauge action / volume: gS = " << hmc.getgS() << " dgS = " << hmc.getdgS() << std::endl;
-            std::cout << "Acceptance rate: " << hmc.getacceptance_rate() << std::endl;
+            std::cout << "Acceptance rate: " << hmc.getacceptance_rate(Nmeas+Nsteps*Nmeas) << std::endl;
             double elapsed_secs = end - begin;
 
             std::cout << "Time = " << elapsed_secs << " s" << std::endl;
@@ -129,7 +126,7 @@ beta = 2, Ntherm = 10, Nmeas = 100, Nsteps = 0, saveconf = 1;
             Datfile << std::format("{:<30.17g}\n", m0);
             Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getEp(), hmc.getdEp());
             Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getgS(), hmc.getdgS());
-            Datfile << std::format("{:<30.17g}\n", hmc.getacceptance_rate());
+            Datfile << std::format("{:<30.17g}\n", hmc.getacceptance_rate(Nmeas+Nsteps*Nmeas));
             Datfile << std::format("{:<30.17g}", elapsed_secs);
         }
             

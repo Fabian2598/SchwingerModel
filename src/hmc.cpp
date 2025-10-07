@@ -156,10 +156,12 @@ void HMC::HMC_Update() {
         //Accept the new configuration
         GConf = GConf_copy;
         if (therm == true) {
-            acceptance_rate += 1.0;
+            acceptance_rate += 1.0;    
         }
     }
     //Else configuration is not modified.
+    if (therm == true && mpi::rank==0)
+        std::cout << "Conf number " << conf_i << " acceptance rate " << getacceptance_rate(conf_i) << std::endl;
 }
 
 //Formats decimal numbers
@@ -178,8 +180,10 @@ void HMC::HMC_algorithm(){
     for(int i = 0; i < Ntherm; i++) {HMC_Update();} //Thermalization
     therm = true; //Set the flag to true
     if (mpi::rank == 0)
-        std::cout << "Thermalization done" <<std::endl;
+        std::cout << "Thermalization done" <<std::endl; 
+    conf_i = 0;
     for(int i = 0; i < Nmeas; i++) {
+        conf_i += 1;
         HMC_Update();
         SpVector[i] = GConf.MeasureSp_HMC(); //Plaquettes are computed when the action is called
         gAction[i] = GConf.Compute_gaugeAction(beta); //Gauge action
@@ -191,7 +195,7 @@ void HMC::HMC_algorithm(){
                 << "_" << i << ".ctxt";
             SaveConf(GConf, NameData.str());
 		}
-		for (int j = 0; j < Nsteps; j++) { HMC_Update(); } //Decorrelation
+		for (int j = 0; j < Nsteps; j++) { conf_i+=1; HMC_Update(); } //Decorrelation
     }
     Ep = mean(SpVector) / (Ntot * 1.0); dEp = Jackknife_error(SpVector, 20) / (Ntot * 1.0); //Average Plaquette Value
     gS = mean(gAction) / (Ntot * 1.0); dgS = Jackknife_error(gAction, 20) / (Ntot * 1.0);
