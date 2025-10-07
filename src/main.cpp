@@ -52,12 +52,7 @@ int main() {
     periodic_boundary(); //Compute right and left periodic boundary
     
 	GaugeConf GConf = GaugeConf(LV::Nx, LV::Nt);  //Gauge configuration
-    /*spinor phi(LV::Ntot, c_vector(2, 0)); //Fermion field
-    for(int n = 0; n < LV::Ntot; n++) {
-        phi[n][0] = RandomU1(); //spin up
-        phi[n][1] = RandomU1(); //spin down
-    }
-    */
+
     if (Nm0 == 1) {
         Masses = { m0_min };
     }
