@@ -2,7 +2,7 @@
 
 c_double I_number(0, 1); //imaginary number
 /*
- *                t                  Stripes parallelization
+ *                t                  Strips parallelization
  *   0  +-------------------+  Nt   +-------------------+
  *      |                   |       |       rank 0      |
  *      |                   |       |-------------------|

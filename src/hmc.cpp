@@ -160,8 +160,8 @@ void HMC::HMC_Update() {
         }
     }
     //Else configuration is not modified.
-    if (therm == true && mpi::rank==0)
-        std::cout << "Conf number " << conf_i << " acceptance rate " << getacceptance_rate(conf_i) << std::endl;
+    //if (therm == true && mpi::rank==0)
+        //std::cout << "Conf number " << conf_i << " acceptance rate " << getacceptance_rate(conf_i) << std::endl;
 }
 
 //Formats decimal numbers

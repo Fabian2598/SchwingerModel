@@ -1,7 +1,7 @@
 #include "gauge_conf.h"
 
 /*
- *                t                  Stripes parallelization
+ *                t                  Strips parallelization
  *   0  +-------------------+  Nt   +-------------------+
  *      |                   |       |       rank 0      |
  *      |                   |       |-------------------|
