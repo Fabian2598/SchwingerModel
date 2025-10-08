@@ -177,7 +177,11 @@ void HMC::HMC_algorithm(){
     std::vector<double> SpVector(Nmeas);
     std::vector<double> gAction(Nmeas);
 	GConf.initialization(); //Initialize the gauge configuration randomly
-    for(int i = 0; i < Ntherm; i++) {HMC_Update();} //Thermalization
+    for(int i = 0; i < Ntherm; i++) {
+        HMC_Update();
+        if (i%100 == 0 && mpi::rank == 0)
+            std::cout << "Conf " << i << " out of " << Ntherm << " for thermalization" << std::endl;
+    } //Thermalization
     therm = true; //Set the flag to true
     if (mpi::rank == 0)
         std::cout << "Thermalization done" <<std::endl; 
