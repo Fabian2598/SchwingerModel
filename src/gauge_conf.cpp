@@ -72,6 +72,7 @@ void GaugeConf::Compute_Staple() {
     //mu = 0 time direction, mu = 1 space direction
     int x1, x_1, t1, t_1;
     if (size == 1){
+        #pragma omp parallel for
         for (int n = 0; n < LV::Ntot; n++) {
             //These coordinates could change depending on the conventions 
 		    x1 = RightPB[2*n+1];  //Coords[modulo(x + 1, Ns) ,t]
