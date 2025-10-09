@@ -11,6 +11,7 @@ namespace mpi{
     extern int rank;
     extern int size; 
     extern int maxSize;
+    extern int width;
 }
 
 

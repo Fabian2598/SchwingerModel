@@ -5,13 +5,14 @@ double pi=3.14159265359;
 /*
 	Vectorized lattice coords.*/
 int Coords(const int& x, const int& t){
-	return x*LV::Nt + t;
+	return x*mpi::width + t;
 }
 
 namespace mpi{
     int rank = 0;
     int size = 1; 
     int maxSize = LV::Ntot; //Default value, will be updated in main
+    int width = LV::Nx;
 }
 
 namespace CG{

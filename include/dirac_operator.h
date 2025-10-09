@@ -26,22 +26,27 @@ inline void periodic_boundary() {
 	std::vector<std::vector<int>>hat_mu(2, std::vector<int>(2, 0));
 	hat_mu[0] = { 1, 0 }; //hat_t
 	hat_mu[1] = { 0, 1 }; //hat_x
-	int x, t;
-	int x_width = (mpi::rank != mpi::size-1) ? (Nx/mpi::size) : (Nx/mpi::size) + (Nx%mpi::size);
-	if (mpi::size == 1) x_width = Nx;
-	for (int n = 0; n < mpi::maxSize; n++){
-		//n = x * Nt + t;
-		x = n / Nt; t = n % Nt;
-		x_1_t1[n] = Coords(mod(x - 1, x_width),mod(t + 1, Nt));
-		x1_t_1[n] = Coords(mod(x + 1, x_width),mod(t - 1, Nt)); 
+	int x, t, n;
+	for(x = 0; x<mpi::width; x++){
+	for(t = 0; t<mpi::width; t++){
+		n = x * mpi::width + t;
+		x_1_t1[n] = Coords(mod(x - 1, mpi::width),mod(t + 1, mpi::width));
+		x1_t_1[n] = Coords(mod(x + 1, mpi::width),mod(t - 1, mpi::width)); 
 		for (int mu = 0; mu < 2; mu++) {
-			RightPB[2*n+mu] = Coords(mod(x + hat_mu[mu][1], x_width),mod(t + hat_mu[mu][0], Nt)); 
-			LeftPB[2*n+mu] = Coords(mod(x - hat_mu[mu][1], x_width),mod(t - hat_mu[mu][0], Nt));
-			SignR[2*n+mu] = (mu == 0 && t == Nt - 1) ? -1 : 1; //sign for the right boundary in time
-			SignL[2*n+mu] = (mu == 0 && t == 0) ? -1 : 1; //sign for the left boundary in time				
+			RightPB[2*n+mu] = Coords(mod(x + hat_mu[mu][1], mpi::width),mod(t + hat_mu[mu][0], mpi::width)); 
+			LeftPB[2*n+mu] = Coords(mod(x - hat_mu[mu][1], mpi::width),mod(t - hat_mu[mu][0], mpi::width));
+
+			SignR[2*n+mu] = 1; //sign for the right boundary in time
+			SignL[2*n+mu] = 1;
+			if ((mpi::rank+1) % (mpi::size/2) == 0){
+				SignR[2*n+mu] = (mu == 0 && t == mpi::width - 1) ? -1 : 1; //sign for the right boundary in time
+			} 
+			if (mpi::rank % (mpi::size/2) == 0){
+				SignL[2*n+mu] = (mu == 0 && t == 0) ? -1 : 1; //sign for the left boundary in time	
+			}
 		}
 	}
-		
+	}	
 }
 
 

@@ -10,9 +10,9 @@ int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
-
-    mpi::maxSize = (mpi::rank != mpi::size-1) ? LV::Nx/mpi::size * LV::Nt :  LV::Nx/mpi::size * LV::Nt + (LV::Nx%mpi::size)*LV::Nt;
-    if (mpi::size == 1) mpi::maxSize = LV::Ntot;
+    
+    mpi::width = LV::Nx/(mpi::size/2);
+    mpi::maxSize = mpi::width * mpi::width;
     
     allocate_lattice_arrays();
     srand(mpi::rank*time(0));
