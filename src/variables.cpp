@@ -5,7 +5,7 @@ double pi=3.14159265359;
 /*
 	Vectorized lattice coords.*/
 int Coords(const int& x, const int& t){
-	return x*mpi::width + t;
+	return x*mpi::width_t + t;
 }
 
 namespace mpi{
@@ -13,6 +13,16 @@ namespace mpi{
     int size = 1; 
     int maxSize = LV::Ntot; //Default value, will be updated in main
     int width = LV::Nx;
+    int ranks_x = 1;
+    int ranks_t = 0;
+    int width_x = LV::Nx;
+    int width_t = LV::Nt;
+    int rank2d = 0; //linearize rank
+    int coords[2] = {0,0}; //rank coords
+    int top = 0; 
+    int bot = 0; 
+    int right = 0; 
+    int left = 0;
 }
 
 namespace CG{
@@ -34,7 +44,7 @@ void allocate_lattice_arrays() {
     SignL   = new c_double[maxSize * 2];
     SignR   = new c_double[maxSize * 2];
     x_1_t1  = new int[maxSize];
-    x1_t_1  = new int[maxSize];
+    x1_t_1  = new int[maxSize]; 
 }
 
 void free_lattice_arrays() {
@@ -46,11 +56,13 @@ void free_lattice_arrays() {
     delete[] x1_t_1;
 }
 
+
 //Memory preallocation I need to give them the right dimension mpi::maxSize, but I only know it in main after MPI_Init ...
 spinor DTEMP;
 spinor TEMP; 
 
-
-//Buffers for MPI communication
-spinor TopRow(LV::Nt);
+spinor TopRow(LV::Nt); //Should be width_t
 spinor BottomRow(LV::Nt);
+spinor RightCol(LV::Nx);
+spinor LeftCol(LV::Nx); //Shoul be width_x
+//Buffers for MPI communication

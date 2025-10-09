@@ -23,25 +23,26 @@ extern c_double I_number; //imaginary number
 */
 inline void periodic_boundary() {
 	using namespace LV; //Lattice parameters namespace
+	using namespace mpi;
 	std::vector<std::vector<int>>hat_mu(2, std::vector<int>(2, 0));
 	hat_mu[0] = { 1, 0 }; //hat_t
 	hat_mu[1] = { 0, 1 }; //hat_x
 	int x, t, n;
-	for(x = 0; x<mpi::width; x++){
-	for(t = 0; t<mpi::width; t++){
-		n = x * mpi::width + t;
-		x_1_t1[n] = Coords(mod(x - 1, mpi::width),mod(t + 1, mpi::width));
-		x1_t_1[n] = Coords(mod(x + 1, mpi::width),mod(t - 1, mpi::width)); 
+	for(x = 0; x<width_x; x++){
+	for(t = 0; t<width_t; t++){
+		n = x * width_t + t;
+		x_1_t1[n] = Coords(mod(x - 1, width_x),mod(t + 1, width_t));
+		x1_t_1[n] = Coords(mod(x + 1, width_x),mod(t - 1, width_t)); 
 		for (int mu = 0; mu < 2; mu++) {
-			RightPB[2*n+mu] = Coords(mod(x + hat_mu[mu][1], mpi::width),mod(t + hat_mu[mu][0], mpi::width)); 
-			LeftPB[2*n+mu] = Coords(mod(x - hat_mu[mu][1], mpi::width),mod(t - hat_mu[mu][0], mpi::width));
+			RightPB[2*n+mu] = Coords(mod(x + hat_mu[mu][1], width_x),mod(t + hat_mu[mu][0], width_t)); 
+			LeftPB[2*n+mu] = Coords(mod(x - hat_mu[mu][1], width_x),mod(t - hat_mu[mu][0], width_t));
 
 			SignR[2*n+mu] = 1; //sign for the right boundary in time
 			SignL[2*n+mu] = 1;
-			if ((mpi::rank+1) % (mpi::size/2) == 0){
-				SignR[2*n+mu] = (mu == 0 && t == mpi::width - 1) ? -1 : 1; //sign for the right boundary in time
+			if ((rank+1) % ranks_t == 0){
+				SignR[2*n+mu] = (mu == 0 && t == width_t - 1) ? -1 : 1; //sign for the right boundary in time
 			} 
-			if (mpi::rank % (mpi::size/2) == 0){
+			if (rank % ranks_t == 0){
 				SignL[2*n+mu] = (mu == 0 && t == 0) ? -1 : 1; //sign for the left boundary in time	
 			}
 		}

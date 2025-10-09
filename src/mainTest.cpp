@@ -15,35 +15,122 @@ static std::string format(const double& number) {
     return str;
 }
 
+void RankErrorMessage(){
+    if (mpi::ranks_t * mpi::ranks_x != mpi::size){
+        std::cout << "ranks_t * ranks_x != total number of ranks" << std::endl;
+        exit(1);
+    }
+    if (LV::Nx % mpi::ranks_x!= 0 ||LV::Nt % mpi::ranks_t != 0){
+        std::cout << "Nx (Nt) is not exactly divisible by rank_x (rank_t)" << std::endl;
+        exit(1);
+    }
+    mpi::width_x = LV::Nx/mpi::ranks_x;
+    mpi::width_t = LV::Nt/mpi::ranks_t;
+    mpi::maxSize = mpi::width_t * mpi::width_x;
+    if (mpi::rank == 0){
+        std::cout << "width_x " << mpi::width_x << std::endl;
+        std::cout << "width_t " << mpi::width_t << std::endl;
+    }
+}
+ 
+void buildCartesianTopology(){
+    //if (mpi::rank == 0){
+    //    std::cout << "ranks_x " << mpi::ranks_x << "  ranks_t  " << mpi::ranks_t << std::endl;
+    //}
+    
+    int periods[2] = {true, true}; // Make both dimensions periodic
+    int reorder = true; // Let MPI assign arbitrary ranks if it deems it necessary
+    int dims[2] = {mpi::ranks_x,mpi::ranks_t};
+    // Create a communicator given the 2D torus topology.
+    MPI_Comm new_communicator;
+    MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, reorder, &new_communicator);
+ 
+    // My rank in the new communicator
+    MPI_Comm_rank(new_communicator, &mpi::rank2d);
+ 
+    // Get my coordinates in the new communicatormpi::
+    MPI_Cart_coords(new_communicator, mpi::rank2d, 2, mpi::coords);
+
+    //Does this coincide with the ranks from the new communicator?
+    mpi::top = mod(coords[0]-1,mpi::ranks_x) * mpi::ranks_t + coords[1]; //rank above
+	mpi::bot = mod(coords[0]+1,mpi::ranks_x) * mpi::ranks_t + coords[1]; //rank below
+	mpi::right = coords[0] * mpi::ranks_t + mod(coords[1]+1,mpi::ranks_t); //rank to the right
+	mpi::left = coords[0] * mpi::ranks_t + mod(coords[1]-1,mpi::ranks_t); //rank to the left
+ 
+    // Print my location in the 2D torus.
+    //printf("[Original Comm %d][MPI process %d] I am located at (%d, %d).\n",mpi::rank ,mpi::rank2d, mpi::coords[0],mpi::coords[1]);
+}
+
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
 
-    mpi::maxSize = (mpi::rank != mpi::size-1) ? LV::Nx/mpi::size * LV::Nt :  LV::Nx/mpi::size * LV::Nt + (LV::Nx%mpi::size)*LV::Nt;
-    if (mpi::size == 1) mpi::maxSize = LV::Ntot;
-    std::cout << "MPI size: " << mpi::size << " Rank: " << mpi::rank << " maxSize: " << mpi::maxSize << std::endl;
+    mpi::ranks_x = 2;
+    mpi::ranks_t = 4;
+    RankErrorMessage();
+
     allocate_lattice_arrays();
+    srand(mpi::rank*1);
 
-    
-
-    srand(mpi::rank*19);
-
-    double beta = 2; 
-    double m0 = -0.18840579710144945;
-    int nconf=0;
-    if (LV::Nx == 64)
-        nconf = 0;
-    else if (LV::Nx == 128)
-        nconf = 3;
-    else if (LV::Nx == 256)
-        nconf = 20;  
-
-    CG::max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
-    CG::tol = 1e-10; //Tolerance for convergence
-    
     periodic_boundary(); //Compute right and left periodic boundary
     
+    using namespace mpi;
+    /*
+    if (rank == 0){
+    std::cout << "BottomRow" << std::endl;
+    for(int n = maxSize-width_t; n < maxSize; n++){
+		std::cout << n << " ";
+	}
+    std::cout << std::endl;
+    for(int n = maxSize-width_t; n < maxSize; n++){
+		std::cout << n - (maxSize-width_t) << " ";
+	}
+    std::cout << "----------------------------------" << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "TopRow" << std::endl;
+	for(int n = 0; n < width_t; n++){
+		std::cout << n << " ";
+	}
+    std::cout << std::endl;
+    for(int n = 0; n < width_t; n++){
+		std::cout << n << " ";
+	}
+    std::cout << "----------------------------------" << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "RightCol" << std::endl;
+	for(int n = width_t - 1; n<maxSize; n+=width_t){
+		std::cout << n << " ";
+	}
+    std::cout << std::endl;
+    for(int n = width_t - 1; n<maxSize; n+=width_t){
+		std::cout << n/width_t << " ";
+	}
+    std::cout << "----------------------------------" << std::endl;
+    std::cout << std::endl;
+
+
+    std::cout << "LeftCol" << std::endl;
+	for(int n = 0; n<maxSize; n+=width_t ){
+		std::cout << n << " ";
+	}
+    std::cout << std::endl;
+    for(int n = 0; n<maxSize; n+=width_t ){
+		std::cout << n/width_t << " ";
+	}
+    std::cout << std::endl;
+
+
+    }
+    */
+    buildCartesianTopology();
+   
+
+
+
+    /*
 	GaugeConf GConf = GaugeConf();  //Gauge configuration
     //GConf.initialization(); //Random initialization of the gauge configuration 
 
@@ -65,15 +152,6 @@ int main(int argc, char **argv) {
     //GaugeConf GConfBinary = GaugeConf();
     //GConf.readBinary(NameData.str());
 
-
-    /*
-    if (const char* env_p = std::getenv("OMP_NUM_THREADS"))
-        std::cout << "OMP_NUM_THREADS: " << env_p << std::endl;
-    else
-        std::cout << "OMP_NUM_THREADS is not set." << std::endl;
-    */
-
-    
     double startT, endT;
     startT = MPI_Wtime();
     conjugate_gradient(GConf.Conf, rhs, sol,m0);
@@ -85,38 +163,7 @@ int main(int argc, char **argv) {
     bi_cgstab(GConf.Conf, rhs, x0, m0, CG::max_iter, CG::tol, true);
     endT = MPI_Wtime();
     printf("[rank %d] time elapsed during BiCGstab implementation: %.4fs.\n", mpi::rank, endT - startT);
-    
-
-    
-    /*
-    for(int i = 0; i < mpi::size; i++) {
-        MPI_Barrier(MPI_COMM_WORLD);
-        if (i == mpi::rank) {
-            //printf("Rank %d\n", mpi::rank);
-            for(int n = 0; n < mpi::maxSize; n++) {
-                //std::cout << "Rank " << mpi::rank << " sol.mu0[" << n << "] = " << sol.mu0[n] << std::endl;
-                //std::cout << "Rank " << mpi::rank << " sol.mu1[" << n << "] = " << sol.mu1[n] << std::endl;
-                std::cout << re.mu0[n] << std::endl;
-                std::cout << re.mu1[n] << std::endl;
-            }
-        }
-    }
     */
-
-    
-    
-    
-    
-
-    
-    
-        
-    
-        
-        
-        
-    
-
 
     //Free coordinate arrays
     free_lattice_arrays();

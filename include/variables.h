@@ -11,7 +11,16 @@ namespace mpi{
     extern int rank;
     extern int size; 
     extern int maxSize;
-    extern int width;
+    extern int ranks_x;
+    extern int ranks_t;
+    extern int width_x;
+    extern int width_t;
+    extern int rank2d; //Rank id in the 2D communicator
+    extern int coords[2];
+    extern int top; 
+    extern int bot; 
+    extern int right; 
+    extern int left;
 }
 
 
@@ -132,6 +141,9 @@ extern spinor TEMP;
 //Buffers for MPI communication
 extern spinor TopRow;
 extern spinor BottomRow;
+extern spinor RightCol;
+extern spinor LeftCol; //Shoul be width_x
+
 
 /*
 	Modulo operation

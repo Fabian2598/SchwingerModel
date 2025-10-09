@@ -5,16 +5,25 @@
 #include "hmc.h"
 #include <format>
 
+void RankErrorMessage(){
+    if (mpi::ranks_t * mpi::ranks_x != mpi::size){
+        std::cout << "ranks_t * ranks_x != total number of ranks" << std::endl;
+        exit(1);
+    }
+    if (LV::Nx % mpi::ranks_x!= 0 ||LV::Nt % mpi::ranks_t != 0){
+        std::cout << "Nx (Nt) is not exactly divisible by rank_x (rank_t)" << std::endl;
+        exit(1);
+    }
+    mpi::width_x = LV::Nx/mpi::ranks_x;
+    mpi::width_t = LV::Nt/mpi::ranks_t;
+    mpi::maxSize = mpi::width_t * mpi::width_x;
+}
 
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
-    
-    mpi::width = LV::Nx/(mpi::size/2);
-    mpi::maxSize = mpi::width * mpi::width;
-    
-    allocate_lattice_arrays();
+        
     srand(mpi::rank*time(0));
     
     int Ntherm, Nmeas, Nsteps, Nm0; //Simulation parameters
@@ -23,10 +32,10 @@ int main(int argc, char **argv) {
     int MD_steps;
     double m0_min, m0_max; //bare mass
 	int saveconf = 0; //Save configurations
-
+    
     CG::max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
     CG::tol = 1e-10; //Tolerance for convergence
-
+    //To call the sequential program one has to choose ranks_x = ranks_t = 1
     if (mpi::rank == 0){
          //---Input data---//
         std::cout << "  -----------------------------" << std::endl;
@@ -34,6 +43,11 @@ int main(int argc, char **argv) {
         std::cout << "| Hybrid Monte Carlo simulation |" << std::endl;
         std::cout << "  -----------------------------" << std::endl;
         std::cout << "Nx " << LV::Nx << " Nt " << LV::Nt << std::endl;
+        std::cout << "ranks_x: ";
+        std::cin >> mpi::ranks_x;
+        std::cout << "ranks_t: ";
+        std::cin >> mpi::ranks_t;
+        RankErrorMessage();
         std::cout << "m0 min: ";
         std::cin >> m0_min;
         std::cout << "m0 max: ";
@@ -55,9 +69,9 @@ int main(int argc, char **argv) {
         std::cout << "Save configurations yes/no (1 or 0): ";
         std::cin >> saveconf;
         std::cout << " " << std::endl;
-        
     }
-   
+    
+    allocate_lattice_arrays();
     MPI_Bcast(&m0_min, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
     MPI_Bcast(&m0_max, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
     MPI_Bcast(&Nm0, 1, MPI_INT,  0, MPI_COMM_WORLD);
@@ -104,7 +118,6 @@ int main(int argc, char **argv) {
             ", Integration step = " << trajectory_length/MD_steps << std::endl;
             std::cout << "* CG max iterations = " << CG::max_iter << ", CG tolerance = " << CG::tol << std::endl;
             std::cout << "* Number of MPI ranks = " << mpi::size << std::endl;
-            std::cout << "* OMP_NUM_THREADS = " << std::getenv("OMP_NUM_THREADS") << std::endl;
             std::cout << "**********************************************************************" << std::endl;
         }
         //std::cout << "Rank " << mpi::rank << " using " << omp_get_max_threads() << " OpenMP threads." << std::endl;
