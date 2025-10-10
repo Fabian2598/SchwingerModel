@@ -22,3 +22,4 @@ gmres.ipynb
 test.cpp
 M0Test.cpp
 DiracMatrixOld.cpp
+testCG
