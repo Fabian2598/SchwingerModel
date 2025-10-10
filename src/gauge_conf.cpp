@@ -307,20 +307,37 @@ void GaugeConf::read_conf(const std::string& name){
         std::cerr << "File " << name << " not found " << std::endl;
         exit(1);
     }
+    //Create a new data type for the blocks corresponding to each rank
+    MPI_Datatype sub_block_type;
+    //int MPI_Type_vector(int block_count, int block_length, int stride, MPI_Datatype old_datatype, MPI_Datatype* new_datatype);
+    MPI_Type_vector(mpi::width_x, mpi::width_t, LV::Nt, MPI_DOUBLE_COMPLEX, &sub_block_type);
+    MPI_Type_commit(&sub_block_type);
+
+    //Resize the data type to use scatterV properly
+    int extent = mpi::width_t;
+    MPI_Datatype sub_block_resized;
+    MPI_Type_create_resized(sub_block_type, 0, extent * sizeof(std::complex<double>), &sub_block_resized);
+    MPI_Type_commit(&sub_block_resized);
+
     spinor GlobalConf(LV::Ntot); //Temporary variable to store the full configuration
-    int counts[mpi::size], displs[mpi::size];
-    for(int i = 0; i < mpi::size; i++) {
-        counts[i] = (i != mpi::size-1) ?  (LV::Nx/mpi::size) * LV::Nt :  (LV::Nx/mpi::size) * LV::Nt + (LV::Nx%mpi::size)*LV::Nt;
-        displs[i] = i * (LV::Nx/mpi::size) * LV::Nt;
+
+    int counts[mpi::size];
+    int displs[mpi::size];
+    int offset;
+    for(int i = 0; i < mpi::size; i++){
+        counts[i] = 1;
+        offset = (i/mpi::ranks_t);
+        displs[i] = (i < mpi::ranks_t) ? i : (i-mpi::ranks_t*offset) + offset * mpi::ranks_t * mpi::width_x; 
     }
-    if (mpi::rank == 0){
+
+    if (mpi::rank2d == 0){
         int x, t, mu;
         double re, im; 
         while (infile >> x >> t >> mu >> re >> im) {
             if (mu == 0)
-                GlobalConf.mu0[x*LV::Nt+t] = c_double(re, im); 
+                GlobalConf.mu0[x*LV::Nt+t] = c_double(re, im); //x*LV::Nt+t;
             else
-                GlobalConf.mu1[x*LV::Nt+t] = c_double(re, im); 
+                GlobalConf.mu1[x*LV::Nt+t] = c_double(re, im); //x*LV::Nt+t;
         }
         infile.close();
         std::cout << "Conf read from " << name << std::endl;    
@@ -328,23 +345,23 @@ void GaugeConf::read_conf(const std::string& name){
         
     }
 
+    MPI_Scatterv(GlobalConf.mu0, counts, displs, sub_block_resized,
+                 Conf.mu0, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, mpi::cart_comm);
 
+    MPI_Scatterv(GlobalConf.mu1, counts, displs, sub_block_resized,
+                 Conf.mu1, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, mpi::cart_comm);
 
-    MPI_Scatterv(GlobalConf.mu0, counts, displs, MPI_DOUBLE_COMPLEX,
-                 Conf.mu0, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
-    MPI_Scatterv(GlobalConf.mu1, counts, displs, MPI_DOUBLE_COMPLEX,
-                 Conf.mu1, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
 
 }
 
 
 void GaugeConf::readBinary(const std::string& name){
     using namespace LV;
-    //std::ifstream infile(name, std::ios::binary);
-    //if (!infile) {
-    //    std::cerr << "File " << name << " not found " << std::endl;
-    //    exit(1);
-    //}
+    std::ifstream infile(name, std::ios::binary);
+    if (!infile) {
+       std::cerr << "File " << name << " not found " << std::endl;
+        exit(1);
+    }
 
     //Create the datatype
     /*  
@@ -357,49 +374,59 @@ void GaugeConf::readBinary(const std::string& name){
             |             |
             ---------------
     */
+   //Create a new data type for the blocks corresponding to each rank
     MPI_Datatype sub_block_type;
     //int MPI_Type_vector(int block_count, int block_length, int stride, MPI_Datatype old_datatype, MPI_Datatype* new_datatype);
     MPI_Type_vector(mpi::width_x, mpi::width_t, LV::Nt, MPI_DOUBLE_COMPLEX, &sub_block_type);
     MPI_Type_commit(&sub_block_type);
 
-    int low_bound = 0;
-    int up_bound = mpi::width_t;
+    //Resize the data type to use scatterV properly
+    int extent = mpi::width_t;
     MPI_Datatype sub_block_resized;
-    MPI_Type_create_resized(sub_block_type, low_bound * sizeof(MPI_DOUBLE_COMPLEX), sizeof(MPI_DOUBLE_COMPLEX), &sub_block_resized);
+    MPI_Type_create_resized(sub_block_type, 0, extent * sizeof(std::complex<double>), &sub_block_resized);
     MPI_Type_commit(&sub_block_resized);
 
     spinor GlobalConf(LV::Ntot); //Temporary variable to store the full configuration
 
+    int counts[mpi::size];
+    int displs[mpi::size];
+    int offset;
+    for(int i = 0; i < mpi::size; i++){
+        counts[i] = 1;
+        offset = (i/mpi::ranks_t);
+        displs[i] = (i < mpi::ranks_t) ? i : (i-mpi::ranks_t*offset) + offset * mpi::ranks_t * mpi::width_x; 
+    }
+
+    //In case I forget, check this presentation: https://engineering.purdue.edu/~smidkiff/KKU/files/MPI2.pdf
     if (mpi::rank2d == 0){
         for (int x = 0; x < Nx; x++) {
         for (int t = 0; t < Nt; t++) {
-            int n = x * Nx + t;
+            int n = x * Nt + t;
             for (int mu = 0; mu < 2; mu++) {
-                //int x_read, t_read, mu_read;
-                //double re, im;
-                //infile.read(reinterpret_cast<char*>(&x_read), sizeof(int));
-                //infile.read(reinterpret_cast<char*>(&t_read), sizeof(int));
-                ///nfile.read(reinterpret_cast<char*>(&mu_read), sizeof(int));
-                //infile.read(reinterpret_cast<char*>(&re), sizeof(double));
-                //infile.read(reinterpret_cast<char*>(&im), sizeof(double));
+                int x_read, t_read, mu_read;
+                double re, im;
+                infile.read(reinterpret_cast<char*>(&x_read), sizeof(int));
+                infile.read(reinterpret_cast<char*>(&t_read), sizeof(int));
+                infile.read(reinterpret_cast<char*>(&mu_read), sizeof(int));
+                infile.read(reinterpret_cast<char*>(&re), sizeof(double));
+                infile.read(reinterpret_cast<char*>(&im), sizeof(double));
                 if (mu == 0)
-                    GlobalConf.mu0[n] = n;//c_double(re, im);
+                    GlobalConf.mu0[n] = c_double(re, im); //n --> for testing
                 else
-                    GlobalConf.mu1[n] = n;//c_double(re, im);
+                    GlobalConf.mu1[n] = c_double(re, im);
             }
         }
         }
-        //infile.close();
+        infile.close();
         //std::cout << "Binary conf read from " << name << std::endl;     
     }
 
-    MPI_Scatter(GlobalConf.mu0, 1, sub_block_resized,
+    MPI_Scatterv(GlobalConf.mu0, counts, displs, sub_block_resized,
                  Conf.mu0, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, mpi::cart_comm);
 
-    //MPI_Scatterv(GlobalConf.mu0, counts, displs, MPI_DOUBLE_COMPLEX,
-    //             Conf.mu0, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, mpi::cart_comm);
-    //MPI_Scatterv(GlobalConf.mu1, counts, displs, MPI_DOUBLE_COMPLEX,
-    //             Conf.mu1, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, mpi::cart_comm);
+    MPI_Scatterv(GlobalConf.mu1, counts, displs, sub_block_resized,
+                 Conf.mu1, mpi::maxSize, MPI_DOUBLE_COMPLEX, 0, mpi::cart_comm);
+
 
 
 

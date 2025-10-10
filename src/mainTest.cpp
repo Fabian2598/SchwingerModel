@@ -28,10 +28,10 @@ void RankErrorMessage(){
     mpi::width_x = LV::Nx/mpi::ranks_x;
     mpi::width_t = LV::Nt/mpi::ranks_t;
     mpi::maxSize = mpi::width_t * mpi::width_x;
-    if (mpi::rank == 0){
-        std::cout << "width_x " << mpi::width_x << std::endl;
-        std::cout << "width_t " << mpi::width_t << std::endl;
-    }
+    //if (mpi::rank == 0){
+    //    std::cout << "width_x " << mpi::width_x << std::endl;
+    //    std::cout << "width_t " << mpi::width_t << std::endl;
+    //}
 }
  
 /*
@@ -72,8 +72,8 @@ void buildCartesianTopology(){
     //MPI_Cart_rank(mpi::cart_comm, coords_query, &rank_q);
     //printf("[Rank %d] coords (%d, %d)",rank_q,coords_query[0],coords_query[1]);
     
-    //printf("[MPI process %d] I am located at (%d, %d). Top %d bot %d right %d left %d \n",
-     //      mpi::rank2d, mpi::coords[0], mpi::coords[1], mpi::top, mpi::bot, mpi::right, mpi::left);
+    printf("[MPI process %d] I am located at (%d, %d). Top %d bot %d right %d left %d \n",
+           mpi::rank2d, mpi::coords[0], mpi::coords[1], mpi::top, mpi::bot, mpi::right, mpi::left);
 }
 
 
@@ -82,8 +82,9 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
     srand(mpi::rank*1);
-    mpi::ranks_x = 2;
-    mpi::ranks_t = 4;
+
+    mpi::ranks_x = 1;
+    mpi::ranks_t = 1;
     RankErrorMessage();
     buildCartesianTopology();
     allocate_lattice_arrays();
@@ -91,25 +92,42 @@ int main(int argc, char **argv) {
    
 
     
-    double m0 = -0.0079681300000000004;
+    double m0 = -0.18840579710144945;
     int nconf = 0;
-    double beta = 4;
+    double beta = 2;
 	GaugeConf GConf = GaugeConf();  //Gauge configuration
     std::ostringstream NameData;
-    NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-007/NewConfs/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
+    NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
     format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
-    GConf.readBinary(NameData.str());
+    GConf.read_conf(NameData.str());
 
+    spinor phi(mpi::maxSize), Dphi(mpi::maxSize);
+    for(int n = 0; n <mpi::maxSize; n++) {
+        phi.mu0[n] = 1; //RandomU1(); //spin up
+        phi.mu1[n] = 1; //RandomU1(); //spin down
+    }
+    D_phi(GConf.Conf, phi, Dphi, m0);
+
+    c_double dot_product = dot(Dphi,Dphi);
+    if (mpi::rank2d == 0){
+        std::cout << "ranks x " << mpi::ranks_x << "   ranks_t " << mpi::ranks_t << std::endl;
+        std::cout << "<Dphi,Dphi> = " << dot_product << std::endl;
+    }
+
+    /*
     for(int i = 0; i < mpi::size; i++) {
         MPI_Barrier(mpi::cart_comm);
         if (i == mpi::rank2d) {
             std::cout << "rank " << mpi::rank2d << std::endl;
             for(int n = 0; n<mpi::maxSize; n++){
                 std::cout << GConf.Conf.mu0[n] << " ";
+                if ((n+1) % mpi::width_t == 0 )
+                    std::cout << std::endl;
             }
             std::cout << std::endl;
         }
     }
+    */
 
     /*
     for(int i = 0; i < mpi::size; i++) {
@@ -125,6 +143,7 @@ int main(int argc, char **argv) {
         }
     }
     */
+    
     
 
  /*
