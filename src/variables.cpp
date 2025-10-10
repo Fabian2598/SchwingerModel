@@ -23,6 +23,7 @@ namespace mpi{
     int bot = 0; 
     int right = 0; 
     int left = 0;
+    MPI_Comm cart_comm;
 }
 
 namespace CG{

@@ -3,6 +3,7 @@
 #include "config.h"
 #include <vector>
 #include <complex>
+#include "mpi.h"
 
 extern double pi;
 typedef std::complex<double> c_double;
@@ -21,6 +22,7 @@ namespace mpi{
     extern int bot; 
     extern int right; 
     extern int left;
+    extern MPI_Comm cart_comm;
 }
 
 

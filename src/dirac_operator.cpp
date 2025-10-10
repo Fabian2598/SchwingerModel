@@ -63,11 +63,6 @@ void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 		LeftCol.mu0[n/width_t] = phi.mu0[n] - phi.mu1[n];
 		LeftCol.mu1[n/width_t] = -phi.mu0[n] + phi.mu1[n];
 	}
-	int top, bot, right, left;
-	top = mod(coords[0]-1,ranks_x) * ranks_t + coords[1]; //rank above
-	bot = mod(coords[0]+1,ranks_x) * ranks_t + coords[1]; //rank below
-	right = coords[0] * ranks_t + mod(coords[1]+1,ranks_t); //rank to the right
-	left = coords[0] * ranks_t + mod(coords[1]-1,ranks_t); //rank to the left
 
 	MPI_Send(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, top, 0, MPI_COMM_WORLD);
 	MPI_Send(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, top, 1, MPI_COMM_WORLD);
@@ -115,7 +110,7 @@ void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 	}
 		
 	
-	//First row: Receives last row from rank-1
+	//First row: Receives last row from top
 	for(int n = 0; n<width_t; n++){
 		Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] - 0.5 * ( 
 				U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] - phi.mu1[RightPB[2*n]])
@@ -132,7 +127,7 @@ void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 		);		
 	}
 
-	//Last row: Receives first row from rank+1
+	//Last row: Receives first row from bot
 	for(int n = maxSize-width_t; n<maxSize; n++){
 		Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] - 0.5 * ( 
 			U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] - phi.mu1[RightPB[2*n]])
@@ -149,7 +144,7 @@ void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 		);	
 	}
 
-	//Right column: receives left column 
+	//Right column: receives left column from right
 	for(int n = width_t - 1; n<maxSize; n+=width_t){
 		Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] - 0.5 * ( 
 			U.mu0[n] * SignR[2*n] * LeftCol.mu0[n/width_t]
@@ -165,7 +160,7 @@ void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 		+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (I_number*phi.mu0[LeftPB[2*n+1]] + phi.mu1[LeftPB[2*n+1]])
 		);	
 	}
-	//Left column: receives right column
+	//Left column: receives right column from left
 	for(int n = 0; n<maxSize; n+=width_t ){
 		Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] - 0.5 * ( 
 			U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] - phi.mu1[RightPB[2*n]])

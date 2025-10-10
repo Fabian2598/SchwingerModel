@@ -16,6 +16,7 @@ static std::string format(const double& number) {
 }
 
 void RankErrorMessage(){
+    //Check that number of ranks on the x and t direction match the number of total ranks called.
     if (mpi::ranks_t * mpi::ranks_x != mpi::size){
         std::cout << "ranks_t * ranks_x != total number of ranks" << std::endl;
         exit(1);
@@ -33,125 +34,112 @@ void RankErrorMessage(){
     }
 }
  
+/*
+ *                t                    2D parallelization
+ *   0  +-------------------+  Nt   +-----------------------+
+ *      |                   |       |                       |
+ *      |                   |       |          top          |
+ *      |                   |       |           |           |
+ *   x  |                   |       |--left--rank2d--right--|
+ *      |                   |       |           |           |
+ *      |                   |       |          bot          |
+ *      |                   |       |                       |
+ *   Nx +-------------------+ Nt    +-----------------------+
+ *                Nx
+*/
 void buildCartesianTopology(){
     //if (mpi::rank == 0){
     //    std::cout << "ranks_x " << mpi::ranks_x << "  ranks_t  " << mpi::ranks_t << std::endl;
     //}
-    
-    int periods[2] = {true, true}; // Make both dimensions periodic
-    int reorder = true; // Let MPI assign arbitrary ranks if it deems it necessary
-    int dims[2] = {mpi::ranks_x,mpi::ranks_t};
-    // Create a communicator given the 2D torus topology.
-    MPI_Comm new_communicator;
-    MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, reorder, &new_communicator);
- 
-    // My rank in the new communicator
-    MPI_Comm_rank(new_communicator, &mpi::rank2d);
- 
-    // Get my coordinates in the new communicatormpi::
-    MPI_Cart_coords(new_communicator, mpi::rank2d, 2, mpi::coords);
+    int dims[2] = {mpi::ranks_x, mpi::ranks_t};
+    int periods[2] = {1, 1}; // periodic in both dims
+    int reorder = 1;         // allow rank reordering
+    MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, reorder, &mpi::cart_comm);
 
-    //Does this coincide with the ranks from the new communicator?
-    mpi::top = mod(coords[0]-1,mpi::ranks_x) * mpi::ranks_t + coords[1]; //rank above
-	mpi::bot = mod(coords[0]+1,mpi::ranks_x) * mpi::ranks_t + coords[1]; //rank below
-	mpi::right = coords[0] * mpi::ranks_t + mod(coords[1]+1,mpi::ranks_t); //rank to the right
-	mpi::left = coords[0] * mpi::ranks_t + mod(coords[1]-1,mpi::ranks_t); //rank to the left
- 
-    // Print my location in the 2D torus.
-    //printf("[Original Comm %d][MPI process %d] I am located at (%d, %d).\n",mpi::rank ,mpi::rank2d, mpi::coords[0],mpi::coords[1]);
+    //rank in the Cartesian communicator and its coordinates
+    MPI_Comm_rank(mpi::cart_comm, &mpi::rank2d);
+    MPI_Cart_coords(mpi::cart_comm, mpi::rank2d, 2, mpi::coords); // mpi::coords[0]=x coord, [1]=t coord
+    
+    //MPI_Cart_shift(cart_comm, Direction, Displacement, - direction,  +direction);
+    //Along t direction
+    MPI_Cart_shift(mpi::cart_comm, 1, 1, &mpi::left, &mpi::right);
+    //Along x direction
+    MPI_Cart_shift(mpi::cart_comm, 0, 1, &mpi::top , &mpi::bot);
+
+    //In case I want to know the rank2d of a particular set of coordinates.
+    //int coords_query[2] = {0, 3};
+    //int rank_q;
+    //MPI_Cart_rank(mpi::cart_comm, coords_query, &rank_q);
+    //printf("[Rank %d] coords (%d, %d)",rank_q,coords_query[0],coords_query[1]);
+    
+    //printf("[MPI process %d] I am located at (%d, %d). Top %d bot %d right %d left %d \n",
+     //      mpi::rank2d, mpi::coords[0], mpi::coords[1], mpi::top, mpi::bot, mpi::right, mpi::left);
 }
+
 
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
-
+    srand(mpi::rank*1);
     mpi::ranks_x = 2;
     mpi::ranks_t = 4;
     RankErrorMessage();
-
-    allocate_lattice_arrays();
-    srand(mpi::rank*1);
-
-    periodic_boundary(); //Compute right and left periodic boundary
-    
-    using namespace mpi;
-    /*
-    if (rank == 0){
-    std::cout << "BottomRow" << std::endl;
-    for(int n = maxSize-width_t; n < maxSize; n++){
-		std::cout << n << " ";
-	}
-    std::cout << std::endl;
-    for(int n = maxSize-width_t; n < maxSize; n++){
-		std::cout << n - (maxSize-width_t) << " ";
-	}
-    std::cout << "----------------------------------" << std::endl;
-    std::cout << std::endl;
-
-    std::cout << "TopRow" << std::endl;
-	for(int n = 0; n < width_t; n++){
-		std::cout << n << " ";
-	}
-    std::cout << std::endl;
-    for(int n = 0; n < width_t; n++){
-		std::cout << n << " ";
-	}
-    std::cout << "----------------------------------" << std::endl;
-    std::cout << std::endl;
-
-    std::cout << "RightCol" << std::endl;
-	for(int n = width_t - 1; n<maxSize; n+=width_t){
-		std::cout << n << " ";
-	}
-    std::cout << std::endl;
-    for(int n = width_t - 1; n<maxSize; n+=width_t){
-		std::cout << n/width_t << " ";
-	}
-    std::cout << "----------------------------------" << std::endl;
-    std::cout << std::endl;
-
-
-    std::cout << "LeftCol" << std::endl;
-	for(int n = 0; n<maxSize; n+=width_t ){
-		std::cout << n << " ";
-	}
-    std::cout << std::endl;
-    for(int n = 0; n<maxSize; n+=width_t ){
-		std::cout << n/width_t << " ";
-	}
-    std::cout << std::endl;
-
-
-    }
-    */
     buildCartesianTopology();
+    allocate_lattice_arrays();
+    periodic_boundary(); //Compute right and left periodic boundary
    
 
+    
+    double m0 = -0.0079681300000000004;
+    int nconf = 0;
+    double beta = 4;
+	GaugeConf GConf = GaugeConf();  //Gauge configuration
+    std::ostringstream NameData;
+    NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-007/NewConfs/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
+    format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
+    GConf.readBinary(NameData.str());
 
+    for(int i = 0; i < mpi::size; i++) {
+        MPI_Barrier(mpi::cart_comm);
+        if (i == mpi::rank2d) {
+            std::cout << "rank " << mpi::rank2d << std::endl;
+            for(int n = 0; n<mpi::maxSize; n++){
+                std::cout << GConf.Conf.mu0[n] << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
 
     /*
-	GaugeConf GConf = GaugeConf();  //Gauge configuration
-    //GConf.initialization(); //Random initialization of the gauge configuration 
+    for(int i = 0; i < mpi::size; i++) {
+        MPI_Barrier(mpi::cart_comm);
+        if (i == mpi::rank2d) {
+            //printf("Rank %d\n", mpi::rank);
+            for(int n = 0; n < mpi::maxSize; n++) {
+                //std::cout << "Rank " << mpi::rank << " sol.mu0[" << n << "] = " << sol.mu0[n] << std::endl;
+                //std::cout << "Rank " << mpi::rank << " sol.mu1[" << n << "] = " << sol.mu1[n] << std::endl;
+                std::cout << GConf.Conf.mu0[n] << std::endl;
+                std::cout << GConf.Conf.mu1[n] << std::endl;
+            }
+        }
+    }
+    */
+    
 
-    std::ostringstream NameData;
-    NameData << "../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
-    //NameData << "/wsgjsc/home/nietocastellanos1/Downloads/" << "2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
-    format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
-    GConf.read_conf(NameData.str());
- 
+ /*
     spinor sol(mpi::maxSize), rhs(mpi::maxSize);
 
     for(int n = 0; n <mpi::maxSize; n++) {
         rhs.mu0[n] = 1;//RandomU1(); //spin up
         rhs.mu1[n] = 1;//RandomU1(); //spin down
     }
-  
+*/
     //SaveConf(GConf, "binaryConf");
     
     //GaugeConf GConfBinary = GaugeConf();
     //GConf.readBinary(NameData.str());
-
+/*
     double startT, endT;
     startT = MPI_Wtime();
     conjugate_gradient(GConf.Conf, rhs, sol,m0);
