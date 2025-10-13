@@ -12,9 +12,8 @@ namespace mpi{
     int rank = 0;
     int size = 1; 
     int maxSize = LV::Ntot; //Default value, will be updated in main
-    int width = LV::Nx;
     int ranks_x = 1;
-    int ranks_t = 0;
+    int ranks_t = 1;
     int width_x = LV::Nx;
     int width_t = LV::Nt;
     int rank2d = 0; //linearize rank
@@ -27,7 +26,7 @@ namespace mpi{
 }
 
 namespace CG{
-	int max_iter = 1000; //Maximum number of iterations for the conjugate gradient method
+	int max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
 	double tol = 1e-10; //Tolerance for convergence
 }
 

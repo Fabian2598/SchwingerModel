@@ -79,6 +79,13 @@ struct spinor {
         delete[] mu0;
         delete[] mu1;
     }
+
+    inline void clearBuffer(){
+        for(int n = 0; n<size; n++){
+            mu0[n] = 0;
+            mu1[n] = 0;
+        }
+    }
 };
 
 struct re_field {

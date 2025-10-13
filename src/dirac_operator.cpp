@@ -20,12 +20,12 @@ c_double I_number(0, 1); //imaginary number
  * n = x * Nt + t = (x,t) coordinates
  * 
  */
-
+//Eqs (34) os the documentation
 void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 	using namespace LV;
 	using namespace mpi;
 	MPI_Status status;
-	if (size == 1){	
+	if (mpi::size == 1){	
 		for (int n = 0; n < maxSize; n++) {
 			//n = x * Nt + t
 			Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] - 0.5 * ( 
@@ -63,31 +63,30 @@ void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 		LeftCol.mu1[n/width_t] = -phi.mu0[n] + phi.mu1[n];
 	}
 
-	MPI_Send(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, top, 0, MPI_COMM_WORLD);
-	MPI_Send(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, top, 1, MPI_COMM_WORLD);
+	MPI_Send(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, top, 0, cart_comm);
+	MPI_Send(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, top, 1, cart_comm);
 
-	MPI_Recv(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, bot, 0, MPI_COMM_WORLD, &status);
-	MPI_Recv(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, bot, 1, MPI_COMM_WORLD, &status);
+	MPI_Recv(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, bot, 0, cart_comm, &status);
+	MPI_Recv(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, bot, 1, cart_comm, &status);
 	
-	MPI_Send(BottomRow.mu0, width_t, MPI_DOUBLE_COMPLEX, bot, 2, MPI_COMM_WORLD);
-	MPI_Send(BottomRow.mu1, width_t, MPI_DOUBLE_COMPLEX, bot, 3, MPI_COMM_WORLD);
+	MPI_Send(BottomRow.mu0, width_t, MPI_DOUBLE_COMPLEX, bot, 2, cart_comm);
+	MPI_Send(BottomRow.mu1, width_t, MPI_DOUBLE_COMPLEX, bot, 3, cart_comm);
 		
-	MPI_Recv(BottomRow.mu0, width_t, MPI_DOUBLE_COMPLEX, top, 2, MPI_COMM_WORLD, &status);
-	MPI_Recv(BottomRow.mu1, width_t, MPI_DOUBLE_COMPLEX, top, 3, MPI_COMM_WORLD, &status);
+	MPI_Recv(BottomRow.mu0, width_t, MPI_DOUBLE_COMPLEX, top, 2, cart_comm, &status);
+	MPI_Recv(BottomRow.mu1, width_t, MPI_DOUBLE_COMPLEX, top, 3, cart_comm, &status);
 
-	MPI_Send(RightCol.mu0, width_x, MPI_DOUBLE_COMPLEX, right, 5, MPI_COMM_WORLD);
-	MPI_Send(RightCol.mu1, width_x, MPI_DOUBLE_COMPLEX, right, 6, MPI_COMM_WORLD);
+	MPI_Send(RightCol.mu0, width_x, MPI_DOUBLE_COMPLEX, right, 5, cart_comm);
+	MPI_Send(RightCol.mu1, width_x, MPI_DOUBLE_COMPLEX, right, 6, cart_comm);
 
-	MPI_Recv(RightCol.mu0, width_x, MPI_DOUBLE_COMPLEX, left, 5, MPI_COMM_WORLD, &status);
-	MPI_Recv(RightCol.mu1, width_x, MPI_DOUBLE_COMPLEX, left, 6, MPI_COMM_WORLD, &status);
+	MPI_Recv(RightCol.mu0, width_x, MPI_DOUBLE_COMPLEX, left, 5, cart_comm, &status);
+	MPI_Recv(RightCol.mu1, width_x, MPI_DOUBLE_COMPLEX, left, 6, cart_comm, &status);
 
-	MPI_Send(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, left, 7, MPI_COMM_WORLD);
-	MPI_Send(LeftCol.mu1, width_x, MPI_DOUBLE_COMPLEX, left, 8, MPI_COMM_WORLD);
+	MPI_Send(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, left, 7, cart_comm);
+	MPI_Send(LeftCol.mu1, width_x, MPI_DOUBLE_COMPLEX, left, 8, cart_comm);
 
-	MPI_Recv(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, right, 7, MPI_COMM_WORLD, &status);
-	MPI_Recv(LeftCol.mu1, width_x, MPI_DOUBLE_COMPLEX, right, 8, MPI_COMM_WORLD, &status);
+	MPI_Recv(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, right, 7, cart_comm, &status);
+	MPI_Recv(LeftCol.mu1, width_x, MPI_DOUBLE_COMPLEX, right, 8, cart_comm, &status);
 
-	
 	//Update interior points (no communication needed here)
 	for (int x = 1; x<width_x-1; x++) {
 	for(int t = 1; t<width_t-1; t++){
@@ -232,7 +231,7 @@ void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 	);
 
 	Dphi.mu1[n] = (m0 + 2) * phi.mu1[n] - 0.5 * ( 
-			U.mu0[n] * SignR[2*n] * LeftCol.mu0[n/width_t]
+			U.mu0[n] * SignR[2*n] * LeftCol.mu1[n/width_t]
 		+   U.mu1[n] * SignR[2*n+1] * TopRow.mu1[n-(maxSize-width_t)]
 		+   std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (phi.mu0[LeftPB[2*n]] + phi.mu1[LeftPB[2*n]])
 		+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (I_number*phi.mu0[LeftPB[2*n+1]] + phi.mu1[LeftPB[2*n+1]])
@@ -244,6 +243,7 @@ void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 
 }
 
+//Eqs (35) (36) of the documentation
 void D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi,const double& m0) {
 	using namespace LV;
 	using namespace mpi;
@@ -271,48 +271,50 @@ void D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi,const double&
 	else{
 
 	for(int n = maxSize-width_t; n < maxSize; n++){
-		BottomRow.mu0[n - (maxSize-Nt)] = std::conj(U.mu1[n]) * (phi.mu0[n] + I_number * phi.mu1[n]);
-		BottomRow.mu1[n - (maxSize-Nt)] = std::conj(U.mu1[n]) * (-I_number*phi.mu0[n] + phi.mu1[n]);
+		BottomRow.mu0[n - (maxSize-width_t)] = std::conj(U.mu1[n]) * (phi.mu0[n] + I_number * phi.mu1[n]);
+		BottomRow.mu1[n - (maxSize-width_t)] = std::conj(U.mu1[n]) * (-I_number*phi.mu0[n] + phi.mu1[n]);
 	}
 	for(int n = 0; n < width_t; n++){
 		TopRow.mu0[n] = (phi.mu0[n] - I_number * phi.mu1[n]);
 		TopRow.mu1[n] = (I_number*phi.mu0[n] + phi.mu1[n]);
 	}
 	for(int n = width_t - 1; n<maxSize; n+=width_t){
-		RightCol.mu0[n/width_t] = std::conj(U.mu0[n]) * (phi.mu0[n] + phi.mu1[n]);
-		RightCol.mu1[n/width_t] = std::conj(U.mu0[n]) * (phi.mu0[n] + phi.mu1[n]);
+		RightCol.mu0[n/width_t] = std::conj(U.mu0[n]) * (phi.mu0[n] - phi.mu1[n]);
+		RightCol.mu1[n/width_t] = std::conj(U.mu0[n]) * (-phi.mu0[n] + phi.mu1[n]); 
 	}
 	for(int n = 0; n<maxSize; n+=width_t ){
-		LeftCol.mu0[n/width_t] = phi.mu0[n] - phi.mu1[n];
-		LeftCol.mu1[n/width_t] = -phi.mu0[n] + phi.mu1[n];
+		LeftCol.mu0[n/width_t] = phi.mu0[n] + phi.mu1[n];
+		LeftCol.mu1[n/width_t] = phi.mu0[n] + phi.mu1[n];
 	}
 
-	MPI_Send(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, top, 0, MPI_COMM_WORLD);
-	MPI_Send(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, top, 1, MPI_COMM_WORLD);
+	MPI_Send(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, top, 0, cart_comm);
+	MPI_Send(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, top, 1, cart_comm);
 
-	MPI_Recv(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, bot, 0, MPI_COMM_WORLD, &status);
-	MPI_Recv(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, bot, 1, MPI_COMM_WORLD, &status);
+	MPI_Recv(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, bot, 0, cart_comm, &status);
+	MPI_Recv(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, bot, 1, cart_comm, &status);
 	
-	MPI_Send(BottomRow.mu0, width_t, MPI_DOUBLE_COMPLEX, bot, 2, MPI_COMM_WORLD);
-	MPI_Send(BottomRow.mu1, width_t, MPI_DOUBLE_COMPLEX, bot, 3, MPI_COMM_WORLD);
+	MPI_Send(BottomRow.mu0, width_t, MPI_DOUBLE_COMPLEX, bot, 2, cart_comm);
+	MPI_Send(BottomRow.mu1, width_t, MPI_DOUBLE_COMPLEX, bot, 3, cart_comm);
 		
-	MPI_Recv(BottomRow.mu0, width_t, MPI_DOUBLE_COMPLEX, top, 2, MPI_COMM_WORLD, &status);
-	MPI_Recv(BottomRow.mu1, width_t, MPI_DOUBLE_COMPLEX, top, 3, MPI_COMM_WORLD, &status);
+	MPI_Recv(BottomRow.mu0, width_t, MPI_DOUBLE_COMPLEX, top, 2, cart_comm, &status);
+	MPI_Recv(BottomRow.mu1, width_t, MPI_DOUBLE_COMPLEX, top, 3, cart_comm, &status);
 
-	MPI_Send(RightCol.mu0, width_x, MPI_DOUBLE_COMPLEX, right, 5, MPI_COMM_WORLD);
-	MPI_Send(RightCol.mu1, width_x, MPI_DOUBLE_COMPLEX, right, 6, MPI_COMM_WORLD);
+	MPI_Send(RightCol.mu0, width_x, MPI_DOUBLE_COMPLEX, right, 5, cart_comm);
+	MPI_Send(RightCol.mu1, width_x, MPI_DOUBLE_COMPLEX, right, 6, cart_comm);
 
-	MPI_Recv(RightCol.mu0, width_x, MPI_DOUBLE_COMPLEX, left, 5, MPI_COMM_WORLD, &status);
-	MPI_Recv(RightCol.mu1, width_x, MPI_DOUBLE_COMPLEX, left, 6, MPI_COMM_WORLD, &status);
+	MPI_Recv(RightCol.mu0, width_x, MPI_DOUBLE_COMPLEX, left, 5, cart_comm, &status);
+	MPI_Recv(RightCol.mu1, width_x, MPI_DOUBLE_COMPLEX, left, 6, cart_comm, &status);
 
-	MPI_Send(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, left, 7, MPI_COMM_WORLD);
-	MPI_Send(LeftCol.mu1, width_x, MPI_DOUBLE_COMPLEX, left, 8, MPI_COMM_WORLD);
+	MPI_Send(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, left, 7, cart_comm);
+	MPI_Send(LeftCol.mu1, width_x, MPI_DOUBLE_COMPLEX, left, 8, cart_comm);
 
-	MPI_Recv(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, right, 7, MPI_COMM_WORLD, &status);
-	MPI_Recv(LeftCol.mu1, width_x, MPI_DOUBLE_COMPLEX, right, 8, MPI_COMM_WORLD, &status);
+	MPI_Recv(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, right, 7, cart_comm, &status);
+	MPI_Recv(LeftCol.mu1, width_x, MPI_DOUBLE_COMPLEX, right, 8, cart_comm, &status);
 
 	//Update interior points (no communication needed here)
-	for (int n = Nt; n < maxSize-Nt; n++) {
+	for(int x = 1; x<width_x-1; x++) {
+	for(int t = 1; t<width_t-1; t++){
+		int n = x * width_t + t;
 		Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] -0.5 * ( 
 				std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (phi.mu0[LeftPB[2*n]] - phi.mu1[LeftPB[2*n]])
 			+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (phi.mu0[LeftPB[2*n+1]] + I_number * phi.mu1[LeftPB[2*n+1]])
@@ -320,50 +322,148 @@ void D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi,const double&
 			+	U.mu1[n] * SignR[2*n+1] * (phi.mu0[RightPB[2*n+1]] - I_number * phi.mu1[RightPB[2*n+1]])
 		);
 
-			Dphi.mu1[n] = (m0 + 2) * phi.mu1[n] -0.5 * ( 
+		Dphi.mu1[n] = (m0 + 2) * phi.mu1[n] - 0.5 * ( 
 				std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (-phi.mu0[LeftPB[2*n]] + phi.mu1[LeftPB[2*n]])
 			+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (-I_number*phi.mu0[LeftPB[2*n+1]] + phi.mu1[LeftPB[2*n+1]])
 			+   U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] + phi.mu1[RightPB[2*n]])
 			+   U.mu1[n] * SignR[2*n+1] * (I_number*phi.mu0[RightPB[2*n+1]] + phi.mu1[RightPB[2*n+1]])
 		);
 	}
-		
+	}
+
 	
-	//First row: Receives last row from rank-1
-	for(int n = 0; n<Nt; n++){
+	//First row: Receives last row from top
+	for(int n = 1; n<width_t-1; n++){
 		Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] -0.5 * ( 
 				std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (phi.mu0[LeftPB[2*n]] - phi.mu1[LeftPB[2*n]])
-			+   BottomRow.mu0[n]
+			+   SignL[2*n+1] * BottomRow.mu0[n]
 			+   U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] + phi.mu1[RightPB[2*n]])
 			+	U.mu1[n] * SignR[2*n+1] * (phi.mu0[RightPB[2*n+1]] - I_number * phi.mu1[RightPB[2*n+1]])
 		);
 
 		Dphi.mu1[n] = (m0 + 2) * phi.mu1[n] -0.5 * ( 
 				std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (-phi.mu0[LeftPB[2*n]] + phi.mu1[LeftPB[2*n]])
-			+   BottomRow.mu1[n]
+			+   SignL[2*n+1] * BottomRow.mu1[n]
 			+   U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] + phi.mu1[RightPB[2*n]])
 			+   U.mu1[n] * SignR[2*n+1] * (I_number*phi.mu0[RightPB[2*n+1]] + phi.mu1[RightPB[2*n+1]])
 		);
 	}
 
-	//Last row: Receives first row from rank+1
-	for(int n = maxSize-Nt; n<maxSize; n++){
+	//Last row: Receives first row from bot
+	for(int n = maxSize-width_t+1; n<maxSize-1; n++){
 		Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] -0.5 * ( 
 				std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (phi.mu0[LeftPB[2*n]] - phi.mu1[LeftPB[2*n]])
 			+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (phi.mu0[LeftPB[2*n+1]] + I_number * phi.mu1[LeftPB[2*n+1]])
 			+   U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] + phi.mu1[RightPB[2*n]])
-			+	U.mu1[n] * TopRow.mu0[n - (maxSize-Nt)]
+			+	U.mu1[n] * TopRow.mu0[n - (maxSize-width_t)]
 		);
 
 		Dphi.mu1[n] = (m0 + 2) * phi.mu1[n] -0.5 * ( 
 				std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (-phi.mu0[LeftPB[2*n]] + phi.mu1[LeftPB[2*n]])
 			+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (-I_number*phi.mu0[LeftPB[2*n+1]] + phi.mu1[LeftPB[2*n+1]])
 			+   U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] + phi.mu1[RightPB[2*n]])
-			+   U.mu1[n] * TopRow.mu1[n - (maxSize-Nt)]
+			+   U.mu1[n] * TopRow.mu1[n - (maxSize-width_t)]
 		);
 		
 	}
 
+	//Right column: receives left column from right
+	for(int n = 2*width_t - 1 ; n<maxSize-width_t; n+=width_t){
+		Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] -0.5 * ( 
+				std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (phi.mu0[LeftPB[2*n]] - phi.mu1[LeftPB[2*n]])
+			+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (phi.mu0[LeftPB[2*n+1]] + I_number * phi.mu1[LeftPB[2*n+1]])
+			+   U.mu0[n] * SignR[2*n] * LeftCol.mu0[n/width_t]
+			+	U.mu1[n] * SignR[2*n+1] * (phi.mu0[RightPB[2*n+1]] - I_number * phi.mu1[RightPB[2*n+1]])
+		);
+
+		Dphi.mu1[n] = (m0 + 2) * phi.mu1[n] - 0.5 * ( 
+				std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (-phi.mu0[LeftPB[2*n]] + phi.mu1[LeftPB[2*n]])
+			+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (-I_number*phi.mu0[LeftPB[2*n+1]] + phi.mu1[LeftPB[2*n+1]])
+			+   U.mu0[n] * SignR[2*n] *  LeftCol.mu1[n/width_t]
+			+   U.mu1[n] * SignR[2*n+1] * (I_number*phi.mu0[RightPB[2*n+1]] + phi.mu1[RightPB[2*n+1]])
+		);
+	}
+
+	//Left column: receives right column from left
+	for(int n = width_t; n<maxSize-width_t; n+=width_t ){
+		Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] -0.5 * ( 
+				SignL[2*n] * RightCol.mu0[n/width_t]
+			+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (phi.mu0[LeftPB[2*n+1]] + I_number * phi.mu1[LeftPB[2*n+1]])
+			+   U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] + phi.mu1[RightPB[2*n]])
+			+	U.mu1[n] * SignR[2*n+1] * (phi.mu0[RightPB[2*n+1]] - I_number * phi.mu1[RightPB[2*n+1]])
+		);
+
+		Dphi.mu1[n] = (m0 + 2) * phi.mu1[n] - 0.5 * ( 
+				SignL[2*n] * RightCol.mu1[n/width_t]
+			+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (-I_number*phi.mu0[LeftPB[2*n+1]] + phi.mu1[LeftPB[2*n+1]])
+			+   U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] + phi.mu1[RightPB[2*n]])
+			+   U.mu1[n] * SignR[2*n+1] * (I_number*phi.mu0[RightPB[2*n+1]] + phi.mu1[RightPB[2*n+1]])
+		);
+	}
+
+	//Top-left corner
+	int n = 0;
+	Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] -0.5 * ( 
+				SignL[2*n] * RightCol.mu0[n/width_t]
+			+   SignL[2*n+1] * BottomRow.mu0[n]
+			+   U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] + phi.mu1[RightPB[2*n]])
+			+	U.mu1[n] * SignR[2*n+1] * (phi.mu0[RightPB[2*n+1]] - I_number * phi.mu1[RightPB[2*n+1]])
+	);
+
+	Dphi.mu1[n] = (m0 + 2) * phi.mu1[n] - 0.5 * ( 
+				SignL[2*n] * RightCol.mu1[n/width_t]
+			+   SignL[2*n+1] * BottomRow.mu1[n]
+			+   U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] + phi.mu1[RightPB[2*n]])
+			+   U.mu1[n] * SignR[2*n+1] * (I_number*phi.mu0[RightPB[2*n+1]] + phi.mu1[RightPB[2*n+1]])
+	);
+
+	//Top-right corner
+	n = width_t - 1;	
+	Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] -0.5 * ( 
+			std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (phi.mu0[LeftPB[2*n]] - phi.mu1[LeftPB[2*n]])
+			+   SignL[2*n+1] * BottomRow.mu0[n]
+			+   U.mu0[n] * SignR[2*n] * LeftCol.mu0[n/width_t]
+			+	U.mu1[n] * SignR[2*n+1] * (phi.mu0[RightPB[2*n+1]] - I_number * phi.mu1[RightPB[2*n+1]])
+	);
+
+	Dphi.mu1[n] = (m0 + 2) * phi.mu1[n] - 0.5 * ( 
+			std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (-phi.mu0[LeftPB[2*n]] + phi.mu1[LeftPB[2*n]])
+			+   SignL[2*n+1] * BottomRow.mu1[n]
+			+   U.mu0[n] * SignR[2*n] * LeftCol.mu1[n/width_t]
+			+   U.mu1[n] * SignR[2*n+1] * (I_number*phi.mu0[RightPB[2*n+1]] + phi.mu1[RightPB[2*n+1]])
+	);
+
+	//Bottom-left corner
+	n = maxSize-width_t;
+	Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] -0.5 * ( 
+			SignL[2*n] * RightCol.mu0[n/width_t]
+		+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (phi.mu0[LeftPB[2*n+1]] + I_number * phi.mu1[LeftPB[2*n+1]])
+		+   U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] + phi.mu1[RightPB[2*n]])
+		+	U.mu1[n] * TopRow.mu0[n - (maxSize-width_t)]
+	);
+
+	Dphi.mu1[n] = (m0 + 2) * phi.mu1[n] - 0.5 * ( 
+			SignL[2*n] * RightCol.mu1[n/width_t]
+		+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (-I_number*phi.mu0[LeftPB[2*n+1]] + phi.mu1[LeftPB[2*n+1]])
+		+   U.mu0[n] * SignR[2*n] * (phi.mu0[RightPB[2*n]] + phi.mu1[RightPB[2*n]])
+		+	U.mu1[n] * TopRow.mu1[n - (maxSize-width_t)]
+	);
+
+	//Bottom-right corner 
+	n = maxSize - 1;
+	Dphi.mu0[n] = (m0 + 2) * phi.mu0[n] -0.5 * ( 
+			std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (phi.mu0[LeftPB[2*n]] - phi.mu1[LeftPB[2*n]])
+		+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (phi.mu0[LeftPB[2*n+1]] + I_number * phi.mu1[LeftPB[2*n+1]])
+		+   U.mu0[n] * SignR[2*n] * LeftCol.mu0[n/width_t]
+		+	U.mu1[n] * TopRow.mu0[n - (maxSize-width_t)]
+	);
+
+	Dphi.mu1[n] = (m0 + 2) * phi.mu1[n] - 0.5 * ( 
+			std::conj(U.mu0[LeftPB[2*n]]) * SignL[2*n] * (-phi.mu0[LeftPB[2*n]] + phi.mu1[LeftPB[2*n]])
+		+   std::conj(U.mu1[LeftPB[2*n+1]]) * SignL[2*n+1] * (-I_number*phi.mu0[LeftPB[2*n+1]] + phi.mu1[LeftPB[2*n+1]])
+		+   U.mu0[n] * SignR[2*n] * LeftCol.mu1[n/width_t]
+		+   U.mu1[n] * TopRow.mu1[n - (maxSize-width_t)]
+	);
 
 	} //end else
 
@@ -382,6 +482,7 @@ void D_D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi,const doubl
 
 
 //2* Re ( left^dag \partial D / \partial omega(z) right )
+//Eqs (37) and (38) of the documentation
 re_field phi_dag_partialD_phi(const spinor& U, const spinor& left,const spinor& right){
 	using namespace LV;
 	using namespace mpi;
@@ -389,7 +490,6 @@ re_field phi_dag_partialD_phi(const spinor& U, const spinor& left,const spinor& 
 	MPI_Status status;
 
 	if (size == 1){
-		#pragma omp parallel for
 		for (int n = 0; n < maxSize; n++) {
 			//n = x * Nt + t
 			//mu = 0
@@ -407,43 +507,69 @@ re_field phi_dag_partialD_phi(const spinor& U, const spinor& left,const spinor& 
 	}
 
 	else{
-		//Update mu0 component (does not need communication)
-		for (int n = 0; n < maxSize; n++) {
-			Dphi.mu0[n] = std::imag(
-				U.mu0[n] * SignR[2*n] * ( std::conj(left.mu0[n] - left.mu1[n]) ) * (right.mu0[RightPB[2*n]] - right.mu1[RightPB[2*n]])
-				- std::conj(U.mu0[n]) * SignR[2*n] * ( std::conj(left.mu0[RightPB[2*n]] + left.mu1[RightPB[2*n]]) ) * (right.mu0[n] + right.mu1[n])
-			);
-		}	
-	
 
-	for(int n = 0; n < Nt; n++){
+	for(int n = 0; n < width_t; n++){
 		TopRow.mu0[n] = right.mu0[n] + I_number * right.mu1[n];
 		TopRow.mu1[n] = std::conj(left.mu0[n]) + I_number*std::conj(left.mu1[n]); 
 	}
+	for(int n = 0; n<maxSize; n+=width_t) {
+		LeftCol.mu0[n/width_t] = right.mu0[n] - right.mu1[n];
+		LeftCol.mu1[n/width_t] = std::conj(left.mu0[n]) + std::conj(left.mu1[n]); 
+	}
 
-	MPI_Send(TopRow.mu0, Nt, MPI_DOUBLE_COMPLEX, mod(rank-1,size), 0, MPI_COMM_WORLD);
-	MPI_Send(TopRow.mu1, Nt, MPI_DOUBLE_COMPLEX, mod(rank-1,size), 1, MPI_COMM_WORLD);
+	MPI_Send(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, top, 0, cart_comm);
+	MPI_Send(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, top, 1, cart_comm);
 
-	MPI_Recv(TopRow.mu0, Nt, MPI_DOUBLE_COMPLEX, mod(rank+1,size), 0, MPI_COMM_WORLD, &status);
-	MPI_Recv(TopRow.mu1, Nt, MPI_DOUBLE_COMPLEX, mod(rank+1,size), 1, MPI_COMM_WORLD, &status);
+	MPI_Recv(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, bot, 0, cart_comm, &status);
+	MPI_Recv(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, bot, 1, cart_comm, &status);
+
+	MPI_Send(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, mpi::left, 2, cart_comm);
+	MPI_Send(LeftCol.mu1, width_x, MPI_DOUBLE_COMPLEX, mpi::left, 3, cart_comm);
+
+	MPI_Recv(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, mpi::right, 2, cart_comm, &status);
+	MPI_Recv(LeftCol.mu1, width_x, MPI_DOUBLE_COMPLEX, mpi::right, 3, cart_comm, &status);
+
+
+	//-------Update mu0 component--------// 
+	//All points except for last column
+	for(int x = 0; x<width_x; x++){
+	for(int t = 0; t<width_t-1; t++){
+		int n = x * width_t + t;
+		Dphi.mu0[n] = std::imag(
+			U.mu0[n] * SignR[2*n] * ( std::conj(left.mu0[n] - left.mu1[n]) ) * (right.mu0[RightPB[2*n]] - right.mu1[RightPB[2*n]])
+			- std::conj(U.mu0[n]) * SignR[2*n] * ( std::conj(left.mu0[RightPB[2*n]] + left.mu1[RightPB[2*n]]) ) * (right.mu0[n] + right.mu1[n])
+		);
+	}
+	}
+		
+	//Last column
+	for(int n = width_t - 1; n<maxSize; n+=width_t){
+		Dphi.mu0[n] = std::imag(
+			U.mu0[n] * SignR[2*n] * ( std::conj(left.mu0[n] - left.mu1[n]) ) * LeftCol.mu0[n/width_t]
+			- std::conj(U.mu0[n]) * SignR[2*n] * LeftCol.mu1[n/width_t] * (right.mu0[n] + right.mu1[n])
+		);
+	}
 	
 
 
-	//Interior points and first row: no communication needed here
-	for (int n = 0; n < maxSize-Nt; n++) {
+	//-------Update mu1 component--------//
+	//All points except for last row
+	for(int x = 0; x<width_x-1; x++){
+	for(int t = 0; t<width_t; t++){
+		int n = x * width_t + t;
 		Dphi.mu1[n] = std::imag(
 			U.mu1[n] * SignR[2*n+1] * ( std::conj(left.mu0[n]) - I_number*std::conj(left.mu1[n]) ) * (right.mu0[RightPB[2*n+1]] + I_number * right.mu1[RightPB[2*n+1]])
 			+ std::conj(U.mu1[n]) * SignR[2*n+1] * ( std::conj(left.mu0[RightPB[2*n+1]]) + I_number*std::conj(left.mu1[RightPB[2*n+1]]) ) 
 			* (-right.mu0[n] + I_number * right.mu1[n])
 		);
 	}	
-
-	//Last row: Receives first row from rank+1
-	for(int n = maxSize-Nt; n<maxSize; n++){
+	}
+	//Last row
+	for(int n = maxSize-width_t; n<maxSize; n++){
 		//mu = 1
 		Dphi.mu1[n] = std::imag(
-			U.mu1[n] * SignR[2*n+1] * ( std::conj(left.mu0[n]) - I_number*std::conj(left.mu1[n]) ) * TopRow.mu0[n-(maxSize-Nt)]
-			+ std::conj(U.mu1[n]) * SignR[2*n+1] * TopRow.mu1[n-(maxSize-Nt)] 
+			U.mu1[n] * SignR[2*n+1] * ( std::conj(left.mu0[n]) - I_number*std::conj(left.mu1[n]) ) * TopRow.mu0[n-(maxSize-width_t)]
+			+ std::conj(U.mu1[n]) * SignR[2*n+1] * TopRow.mu1[n-(maxSize-width_t)] 
 			* (-right.mu0[n] + I_number * right.mu1[n])
 		);
 	}

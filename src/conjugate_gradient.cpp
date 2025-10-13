@@ -32,10 +32,10 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
         D_D_dagger_phi(U, d,Ad, m0); //DD^dagger*d 
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
         for(int n = 0; n<maxSize; n++){
-        //x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i 
+            //x = x + alpha * d; //x_{i+1} = x_i + alpha*d_i 
             x.mu0[n] += alpha*d.mu0[n];
             x.mu1[n] += alpha*d.mu1[n];
-        //r = r - alpha * Ad; //r_{i+1} = r_i - alpha*Ad_i
+            //r = r - alpha * Ad; //r_{i+1} = r_i - alpha*Ad_i
             r.mu0[n] -= alpha*Ad.mu0[n];
             r.mu1[n] -= alpha*Ad.mu1[n];
         }
@@ -43,14 +43,14 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
         err_sqr = std::real(dot(r, r)); //err_sqr = (r_{i+1},r_{i+1})
 		err = sqrt(err_sqr); // err = sqrt(err_sqr)
         if (err < CG::tol*phi_norm2) {
-            //if (mpi::rank == 0)
-            //    std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
+            if (mpi::rank == 0)
+                std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
             return 1;
         }
 
         beta = err_sqr / r_norm2; //beta = (r_{i+1},r_{i+1})/(r_i,r_i)
 
-        //d = r + beta * d; //d_{i+1} = r_{i+1} + beta*d_i 
+        //d_{i+1} = r_{i+1} + beta*d_i 
         for(int n = 0; n<maxSize; n++){
             d.mu0[n] *= beta; 
             d.mu1[n] *= beta;

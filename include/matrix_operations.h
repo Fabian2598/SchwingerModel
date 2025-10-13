@@ -4,7 +4,6 @@
 #include <complex>
 #include <iostream>
 #include "mpi.h"
-#include "omp.h"
 
 /*
     dot product between two spinors of the form psi[ntot][2]
@@ -19,7 +18,7 @@ inline c_double dot(const spinor& x, const spinor& y) {
         local_z += x.mu1[n] * std::conj(y.mu1[n]);
     }
     c_double z;
-    MPI_Allreduce(&local_z, &z, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&local_z, &z, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, mpi::cart_comm);
     return z;
 }
 
