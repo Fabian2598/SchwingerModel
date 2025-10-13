@@ -7,7 +7,7 @@
 #include <iostream>
 #include <string>
 #include "mpi.h"
-#include "omp.h"
+
 
 /*
 Generate a random U(1) variable

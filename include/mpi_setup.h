@@ -1,0 +1,97 @@
+#ifndef MPI_SETUP_H
+#define MPI_SETUP_H
+#include "variables.h"
+
+//Check that number of ranks on the x and t direction match the number of total ranks called.
+inline void assignWidth(){
+    if (mpi::ranks_t * mpi::ranks_x != mpi::size){
+        std::cout << "ranks_t * ranks_x != total number of ranks" << std::endl;
+        std::cout << mpi::ranks_t * mpi::ranks_x << " != " << mpi::size << std::endl;
+        exit(1);
+    }
+    //We do this to enforce an equal workload on each rank
+    if (LV::Nx % mpi::ranks_x!= 0 ||LV::Nt % mpi::ranks_t != 0){
+        std::cout << "Nx (Nt) is not exactly divisible by rank_x (rank_t)" << std::endl;
+        exit(1);
+    }
+    mpi::width_x = LV::Nx/mpi::ranks_x;
+    mpi::width_t = LV::Nt/mpi::ranks_t;
+    mpi::maxSize = mpi::width_t * mpi::width_x;
+    //if (mpi::rank == 0){
+    //    std::cout << "width_x " << mpi::width_x << std::endl;
+    //    std::cout << "width_t " << mpi::width_t << std::endl;
+    //}
+}
+ 
+/*
+ * Two-dimensional cartesian topology
+ *                t                    2D parallelization
+ *   0  +-------------------+  Nt   +-----------------------+
+ *      |                   |       |                       |
+ *      |                   |       |          top          |
+ *      |                   |       |           |           |
+ *   x  |                   |       |--left--rank2d--right--|
+ *      |                   |       |           |           |
+ *      |                   |       |          bot          |
+ *      |                   |       |                       |
+ *   Nx +-------------------+ Nt    +-----------------------+
+ *                Nx
+*/
+inline void buildCartesianTopology(){
+    int dims[2] = {mpi::ranks_x, mpi::ranks_t};
+    int periods[2] = {1, 1}; // periodic in both dims
+    int reorder = 1;         // allow rank reordering
+    MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, reorder, &mpi::cart_comm);
+
+    //rank in the Cartesian communicator and its coordinates
+    MPI_Comm_rank(mpi::cart_comm, &mpi::rank2d);
+    MPI_Cart_coords(mpi::cart_comm, mpi::rank2d, 2, mpi::coords); // mpi::coords[0]=x coord, [1]=t coord
+    
+    //MPI_Cart_shift(cart_comm, Direction, Displacement, - direction,  +direction);
+    //Along t direction
+    MPI_Cart_shift(mpi::cart_comm, 1, 1, &mpi::left, &mpi::right);
+    //Along x direction
+    MPI_Cart_shift(mpi::cart_comm, 0, 1, &mpi::top , &mpi::bot);
+
+    //In case I want to know the rank2d of a particular set of coordinates.
+    //int coords_query[2] = {0, 3};
+    //int rank_q;
+    //MPI_Cart_rank(mpi::cart_comm, coords_query, &rank_q);
+    //printf("[Rank %d] coords (%d, %d)",rank_q,coords_query[0],coords_query[1]);
+    
+    //printf("[MPI process %d] I am located at (%d, %d). Top %d bot %d right %d left %d \n",
+    //       mpi::rank2d, mpi::coords[0], mpi::coords[1], mpi::top, mpi::bot, mpi::right, mpi::left);
+}
+
+inline void defineDataTypes(){
+    //Create a new data type for the blocks corresponding to each rank
+     //Create the datatype
+    /*  
+    *              width_t
+    *          ---------------     
+    *          |             |
+    *          |             |
+    * width_x  |             |
+    *          |             |
+    *          |             |
+    *          ---------------
+    */
+    //int MPI_Type_vector(int block_count, int block_length, int stride, MPI_Datatype old_datatype, MPI_Datatype* new_datatype);
+    MPI_Type_vector(mpi::width_x, mpi::width_t, LV::Nt, MPI_DOUBLE_COMPLEX, &sub_block_type);
+    MPI_Type_commit(&sub_block_type);
+
+    //Resize the data type to use scatterV properly
+    int extent = mpi::width_t;
+    MPI_Type_create_resized(sub_block_type, 0, extent * sizeof(std::complex<double>), &sub_block_resized);
+    MPI_Type_commit(&sub_block_resized);
+
+}
+
+inline void initializeMPI(){
+    assignWidth();
+    buildCartesianTopology();
+    defineDataTypes();
+}
+
+
+#endif

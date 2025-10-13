@@ -20,7 +20,7 @@ c_double I_number(0, 1); //imaginary number
  * n = x * Nt + t = (x,t) coordinates
  * 
  */
-//Eqs (34) os the documentation
+//Eqs (34) of the documentation
 void D_phi(const spinor& U, const spinor& phi, spinor &Dphi, const double& m0) {
 	using namespace LV;
 	using namespace mpi;

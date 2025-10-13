@@ -2,7 +2,6 @@
 #define DIRAC_OPERATOR_INCLUDED
 #include <complex>
 #include "gauge_conf.h"
-#include "matrix_operations.h"
 #include "mpi.h"
 
 

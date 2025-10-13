@@ -48,18 +48,38 @@ void GaugeConf::Compute_Plaquette01() {
     }
     else{
 
-        for(int n = 0; n<LV::Nt; n++){
+        for(int n = 0; n<mpi::width_t; n++)
             TopRow.mu0[n] = Conf.mu0[n];
-        }
-        MPI_Send(TopRow.mu0, LV::Nt, MPI_DOUBLE_COMPLEX, mod(mpi::rank-1,mpi::size), 0, MPI_COMM_WORLD);
-	    MPI_Recv(TopRow.mu0, LV::Nt, MPI_DOUBLE_COMPLEX, mod(mpi::rank+1,mpi::size), 0, MPI_COMM_WORLD, &status);
+
+        for(int n = 0; n < mpi::maxSize; n+=mpi::width_t)
+            LeftCol.mu0[n/mpi::width_t] = Conf.mu1[n];
         
-        for (int n = 0; n<mpi::maxSize-LV::Nt; n++){
+        MPI_Send(TopRow.mu0, mpi::width_t, MPI_DOUBLE_COMPLEX, mpi::top, 0, mpi::cart_comm);
+	    MPI_Recv(TopRow.mu0, mpi::width_t, MPI_DOUBLE_COMPLEX, mpi::bot, 0, mpi::cart_comm, &status);
+
+        MPI_Send(LeftCol.mu0, mpi::width_x, MPI_DOUBLE_COMPLEX, mpi::left, 1, mpi::cart_comm);
+	    MPI_Recv(LeftCol.mu0, mpi::width_x, MPI_DOUBLE_COMPLEX, mpi::right, 1, mpi::cart_comm, &status);
+        
+        //Interior points (without last row and right column)
+        for(int x = 0; x < mpi::width_x-1; x++){
+        for(int t = 0; t < mpi::width_t-1;t++){
+            int n = x * mpi::width_t + t;
             Plaquette01[n] = Conf.mu0[n] * Conf.mu1[RightPB[2*n]] * std::conj(Conf.mu0[RightPB[2*n+1]]) * std::conj(Conf.mu1[n]);
         }
-        for(int n = mpi::maxSize-LV::Nt; n<mpi::maxSize; n++){
-            Plaquette01[n] = Conf.mu0[n] * Conf.mu1[RightPB[2*n]] * std::conj(TopRow.mu0[n-(mpi::maxSize-LV::Nt)]) * std::conj(Conf.mu1[n]);
-        }		
+        }
+     
+        //last row 
+        for(int n = mpi::maxSize-mpi::width_t; n<mpi::maxSize; n++){
+            Plaquette01[n] = Conf.mu0[n] * Conf.mu1[RightPB[2*n]] * std::conj(TopRow.mu0[n-(mpi::maxSize-mpi::width_t)]) * std::conj(Conf.mu1[n]);
+        }
+        //right column
+        for(int n = mpi::width_t-1; n<mpi::maxSize; n+=mpi::width_t){
+            Plaquette01[n] = Conf.mu0[n] * LeftCol.mu1[n/mpi::width_t] * std::conj(Conf.mu0[RightPB[2*n+1]]) * std::conj(Conf.mu1[n]);
+        }
+        //Bottom-right corner
+        int n = mpi::maxSize-1;
+        Plaquette01[n] = Conf.mu0[n] * LeftCol.mu1[n/mpi::width_t]  * std::conj(TopRow.mu0[n-(mpi::maxSize-mpi::width_t)]) * std::conj(Conf.mu1[n]);
+
     }
 }
 
@@ -222,19 +242,6 @@ Save Gauge configuration
 
 void SaveConf(const GaugeConf& GConf, const std::string& Name) {
     using namespace LV;
-
-    //Create a new data type for the blocks corresponding to each rank
-    MPI_Datatype sub_block_type;
-    //int MPI_Type_vector(int block_count, int block_length, int stride, MPI_Datatype old_datatype, MPI_Datatype* new_datatype);
-    MPI_Type_vector(mpi::width_x, mpi::width_t, LV::Nt, MPI_DOUBLE_COMPLEX, &sub_block_type);
-    MPI_Type_commit(&sub_block_type);
-
-    //Resize the data type to use scatterV properly
-    int extent = mpi::width_t;
-    MPI_Datatype sub_block_resized;
-    MPI_Type_create_resized(sub_block_type, 0, extent * sizeof(std::complex<double>), &sub_block_resized);
-    MPI_Type_commit(&sub_block_resized);
-
     int counts[mpi::size];
     int displs[mpi::size];
     int offset;
@@ -314,20 +321,8 @@ void GaugeConf::read_conf(const std::string& name){
         std::cerr << "File " << name << " not found " << std::endl;
         exit(1);
     }
-    //Create a new data type for the blocks corresponding to each rank
-    MPI_Datatype sub_block_type;
-    //int MPI_Type_vector(int block_count, int block_length, int stride, MPI_Datatype old_datatype, MPI_Datatype* new_datatype);
-    MPI_Type_vector(mpi::width_x, mpi::width_t, LV::Nt, MPI_DOUBLE_COMPLEX, &sub_block_type);
-    MPI_Type_commit(&sub_block_type);
-
-    //Resize the data type to use scatterV properly
-    int extent = mpi::width_t;
-    MPI_Datatype sub_block_resized;
-    MPI_Type_create_resized(sub_block_type, 0, extent * sizeof(std::complex<double>), &sub_block_resized);
-    MPI_Type_commit(&sub_block_resized);
-
+   
     spinor GlobalConf(LV::Ntot); //Temporary variable to store the full configuration
-
     int counts[mpi::size];
     int displs[mpi::size];
     int offset;
@@ -369,30 +364,6 @@ void GaugeConf::readBinary(const std::string& name){
        std::cerr << "File " << name << " not found " << std::endl;
         exit(1);
     }
-
-    //Create the datatype
-    /*  
-                width_t
-            ---------------     
-            |             |
-            |             |
-   width_x  |             |
-            |             |
-            |             |
-            ---------------
-    */
-   //Create a new data type for the blocks corresponding to each rank
-    MPI_Datatype sub_block_type;
-    //int MPI_Type_vector(int block_count, int block_length, int stride, MPI_Datatype old_datatype, MPI_Datatype* new_datatype);
-    MPI_Type_vector(mpi::width_x, mpi::width_t, LV::Nt, MPI_DOUBLE_COMPLEX, &sub_block_type);
-    MPI_Type_commit(&sub_block_type);
-
-    //Resize the data type to use scatterV properly
-    int extent = mpi::width_t;
-    MPI_Datatype sub_block_resized;
-    MPI_Type_create_resized(sub_block_type, 0, extent * sizeof(std::complex<double>), &sub_block_resized);
-    MPI_Type_commit(&sub_block_resized);
-
     spinor GlobalConf(LV::Ntot); //Temporary variable to store the full configuration
 
     int counts[mpi::size];

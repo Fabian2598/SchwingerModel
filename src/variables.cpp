@@ -2,6 +2,9 @@
 
 double pi=3.14159265359;
 
+MPI_Datatype sub_block_type;
+MPI_Datatype sub_block_resized;
+
 /*
 	Vectorized lattice coords.*/
 int Coords(const int& x, const int& t){
