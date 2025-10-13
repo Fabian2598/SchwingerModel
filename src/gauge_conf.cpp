@@ -223,18 +223,35 @@ Save Gauge configuration
 void SaveConf(const GaugeConf& GConf, const std::string& Name) {
     using namespace LV;
 
-    spinor GlobalConf(LV::Ntot); //Temporary variable to store the full configuration
-    int counts[mpi::size], displs[mpi::size];
-    for(int i = 0; i < mpi::size; i++) {
-        counts[i] = (i != mpi::size-1) ?  (LV::Nx/mpi::size) * LV::Nt :  (LV::Nx/mpi::size) * LV::Nt + (LV::Nx%mpi::size)*LV::Nt;
-        displs[i] = i * (LV::Nx/mpi::size) * LV::Nt;
+    //Create a new data type for the blocks corresponding to each rank
+    MPI_Datatype sub_block_type;
+    //int MPI_Type_vector(int block_count, int block_length, int stride, MPI_Datatype old_datatype, MPI_Datatype* new_datatype);
+    MPI_Type_vector(mpi::width_x, mpi::width_t, LV::Nt, MPI_DOUBLE_COMPLEX, &sub_block_type);
+    MPI_Type_commit(&sub_block_type);
+
+    //Resize the data type to use scatterV properly
+    int extent = mpi::width_t;
+    MPI_Datatype sub_block_resized;
+    MPI_Type_create_resized(sub_block_type, 0, extent * sizeof(std::complex<double>), &sub_block_resized);
+    MPI_Type_commit(&sub_block_resized);
+
+    int counts[mpi::size];
+    int displs[mpi::size];
+    int offset;
+    for(int i = 0; i < mpi::size; i++){
+        counts[i] = 1;
+        offset = (i/mpi::ranks_t);
+        displs[i] = (i < mpi::ranks_t) ? i : (i-mpi::ranks_t*offset) + offset * mpi::ranks_t * mpi::width_x; 
     }
+
+    spinor GlobalConf(LV::Ntot); //Temporary variable to store the full configuration
     MPI_Gatherv(GConf.Conf.mu0, mpi::maxSize, MPI_DOUBLE_COMPLEX,
-            GlobalConf.mu0, counts, displs, MPI_DOUBLE_COMPLEX,
-            0, MPI_COMM_WORLD);
+            GlobalConf.mu0, counts, displs, sub_block_resized,
+            0, mpi::cart_comm);
     MPI_Gatherv(GConf.Conf.mu1, mpi::maxSize, MPI_DOUBLE_COMPLEX,
-            GlobalConf.mu1, counts, displs, MPI_DOUBLE_COMPLEX,
-            0, MPI_COMM_WORLD);
+            GlobalConf.mu1, counts, displs, sub_block_resized,
+            0, mpi::cart_comm);
+
     if (mpi::rank == 0){
         std::ofstream Datfile(Name,std::ios::binary);
         //std::ofstream Datfile(Name);
@@ -248,17 +265,7 @@ void SaveConf(const GaugeConf& GConf, const std::string& Name) {
             for (int mu = 0; mu < 2; mu++) {
                 const double& re = std::real(mu == 0 ? GlobalConf.mu0[n] : GlobalConf.mu1[n]);
                 const double& im = std::imag(mu == 0 ? GlobalConf.mu0[n] : GlobalConf.mu1[n]);
-                
-                /*
-                Datfile << x
-                        << std::setw(10) << t
-                        << std::setw(10) << mu
-                        << std::setw(30) << std::setprecision(17) << std::scientific << re
-                        << std::setw(30) << std::setprecision(17) << std::scientific << im
-                        << "\n";
-                */
-                
-                
+                                
                 Datfile.write(reinterpret_cast<const char*>(&x), sizeof(int));
                 Datfile.write(reinterpret_cast<const char*>(&t), sizeof(int));
                 Datfile.write(reinterpret_cast<const char*>(&mu), sizeof(int));

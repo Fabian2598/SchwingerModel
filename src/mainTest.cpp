@@ -83,8 +83,8 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
     srand(mpi::rank*1);
 
-    mpi::ranks_x = 1;
-    mpi::ranks_t = 1;
+    mpi::ranks_x = 2;
+    mpi::ranks_t = 2;
     RankErrorMessage();
     buildCartesianTopology();
     allocate_lattice_arrays();
@@ -102,17 +102,59 @@ int main(int argc, char **argv) {
     GConf.read_conf(NameData.str());
 
     spinor phi(mpi::maxSize), Dphi(mpi::maxSize);
+    spinor Dphi_check(LV::Ntot); //For checking the result on rank 0
     for(int n = 0; n <mpi::maxSize; n++) {
         phi.mu0[n] = 1; //RandomU1(); //spin up
         phi.mu1[n] = 1; //RandomU1(); //spin down
     }
-    D_phi(GConf.Conf, phi, Dphi, m0);
+    D_dagger_phi(GConf.Conf, phi, Dphi, m0);
+
+
+    //Create a new data type for the blocks corresponding to each rank
+    MPI_Datatype sub_block_type;
+    //int MPI_Type_vector(int block_count, int block_length, int stride, MPI_Datatype old_datatype, MPI_Datatype* new_datatype);
+    MPI_Type_vector(mpi::width_x, mpi::width_t, LV::Nt, MPI_DOUBLE_COMPLEX, &sub_block_type);
+    MPI_Type_commit(&sub_block_type);
+
+    //Resize the data type to use scatterV properly
+    int extent = mpi::width_t;
+    MPI_Datatype sub_block_resized;
+    MPI_Type_create_resized(sub_block_type, 0, extent * sizeof(std::complex<double>), &sub_block_resized);
+    MPI_Type_commit(&sub_block_resized);
+
+    int counts[mpi::size];
+    int displs[mpi::size];
+    int offset;
+    for(int i = 0; i < mpi::size; i++){
+        counts[i] = 1;
+        offset = (i/mpi::ranks_t);
+        displs[i] = (i < mpi::ranks_t) ? i : (i-mpi::ranks_t*offset) + offset * mpi::ranks_t * mpi::width_x; 
+    }
+    
+    MPI_Gatherv(Dphi.mu0, mpi::maxSize, MPI_DOUBLE_COMPLEX,
+            Dphi_check.mu0, counts, displs, sub_block_resized,
+            0, mpi::cart_comm);
+
+    MPI_Gatherv(Dphi.mu1, mpi::maxSize, MPI_DOUBLE_COMPLEX,
+            Dphi_check.mu1, counts, displs, sub_block_resized,
+            0, mpi::cart_comm);
+    
+
+    if (mpi::rank2d == 0) {
+        std::cout << "Reconstructed Dphi on rank 0" << std::endl;
+        for(int n = 0; n<LV::Ntot; n++){
+            std::cout << Dphi_check.mu0[n] << "\n";
+        }
+        std::cout << std::endl;
+    }
+
 
     c_double dot_product = dot(Dphi,Dphi);
     if (mpi::rank2d == 0){
         std::cout << "ranks x " << mpi::ranks_x << "   ranks_t " << mpi::ranks_t << std::endl;
         std::cout << "<Dphi,Dphi> = " << dot_product << std::endl;
     }
+
 
     /*
     for(int i = 0; i < mpi::size; i++) {
@@ -127,20 +169,15 @@ int main(int argc, char **argv) {
             std::cout << std::endl;
         }
     }
-    */
-
-    /*
-    for(int i = 0; i < mpi::size; i++) {
-        MPI_Barrier(mpi::cart_comm);
-        if (i == mpi::rank2d) {
-            //printf("Rank %d\n", mpi::rank);
-            for(int n = 0; n < mpi::maxSize; n++) {
-                //std::cout << "Rank " << mpi::rank << " sol.mu0[" << n << "] = " << sol.mu0[n] << std::endl;
-                //std::cout << "Rank " << mpi::rank << " sol.mu1[" << n << "] = " << sol.mu1[n] << std::endl;
-                std::cout << GConf.Conf.mu0[n] << std::endl;
-                std::cout << GConf.Conf.mu1[n] << std::endl;
-            }
+    
+    if (mpi::rank2d == 0) {
+        std::cout << "Reconstructed GlobalConf on rank 0" << std::endl;
+        for(int n = 0; n<LV::Ntot; n++){
+            std::cout << GlobalConf.mu0[n] << " ";
+            if ((n+1) % LV::Nt == 0 )
+                std::cout << std::endl;
         }
+        std::cout << std::endl;
     }
     */
     
