@@ -17,8 +17,6 @@ static std::string format(const double& number) {
 }
 
 
-
-
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
@@ -48,19 +46,19 @@ int main(int argc, char **argv) {
     GConf.read_conf(NameData.str());
     GConf.Compute_Staple();
 
-    /*
+    
     c_double local_staple = 0.0;
 	for (int n = 0; n < mpi::maxSize; n++) {
-        local_staple += GConf.Staples.mu0[n];
+        local_staple += GConf.Staples.mu1[n];
 	}
     c_double staple;
     MPI_Allreduce(&local_staple, &staple, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, mpi::cart_comm);
 
     if (mpi::rank2d == 0) 
         std::cout << "Staple sum " << staple << std::endl; 
-    */ 
+     
 
-    
+    /*
     spinor Staple(LV::Ntot);    
     int counts[mpi::size];
     int displs[mpi::size];
@@ -82,7 +80,7 @@ int main(int argc, char **argv) {
         }
         std::cout << std::endl;
     }
-    
+   */ 
     
 
     /*
@@ -112,14 +110,14 @@ int main(int argc, char **argv) {
     
     
 
- /*
+ 
     spinor sol(mpi::maxSize), rhs(mpi::maxSize);
 
     for(int n = 0; n <mpi::maxSize; n++) {
         rhs.mu0[n] = 1;//RandomU1(); //spin up
         rhs.mu1[n] = 1;//RandomU1(); //spin down
     }
-*/
+
 
 
     //SaveConf(GConf, "binaryConf");
@@ -127,13 +125,13 @@ int main(int argc, char **argv) {
     //GaugeConf GConfBinary = GaugeConf();
     //GConf.readBinary(NameData.str());
 
-/*    
+    
     double startT, endT;
     startT = MPI_Wtime();
     conjugate_gradient(GConf.Conf, rhs, sol,m0);
     endT = MPI_Wtime();
     printf("[rank %d] time elapsed during CG implementation: %.4fs.\n", mpi::rank, endT - startT);
-*/
+
     
     /*
     spinor x0(mpi::maxSize);

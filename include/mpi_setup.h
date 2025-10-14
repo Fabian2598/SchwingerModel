@@ -53,7 +53,7 @@ inline void buildCartesianTopology(){
     //Along x direction
     MPI_Cart_shift(mpi::cart_comm, 0, 1, &mpi::top , &mpi::bot);
 
-    //Diagonal ranks
+    //Diagonal ranks (needed for the staples)
     int coords_bot_left[2] = {mod(mpi::coords[0]+1,mpi::ranks_x), mod(mpi::coords[1]-1,mpi::ranks_t)}; //bot-left
     MPI_Cart_rank(mpi::cart_comm, coords_bot_left, &mpi::bot_left);
 

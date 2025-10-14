@@ -9,7 +9,6 @@
 	static std::default_random_engine generator(rd());
 	std::normal_distribution<double> distribution(0.0, 1.0); //mu, std
 
-	#pragma omp parallel for
 	for (int n = 0; n < mpi::maxSize; n++) {
 		PConf.mu0[n] = distribution(generator);
 		PConf.mu1[n] = distribution(generator);
@@ -23,7 +22,6 @@ void HMC::RandomCHI() {
 	static std::default_random_engine generator(rd());
 	std::normal_distribution<double> distribution(0.0, 1/sqrt(2)); //mu, standard deviation
 
-    #pragma omp parallel for
 	for (int n = 0; n < mpi::maxSize; n++) {
 		chi.mu0[n] = 1.0 * distribution(generator) + I_number * distribution(generator);
 		chi.mu1[n] = 1.0 * distribution(generator) + I_number * distribution(generator);
@@ -35,7 +33,6 @@ void HMC::RandomCHI() {
 void HMC::Force_G(GaugeConf& GConfig) {
     GConfig.Compute_Staple(); //Computes staples
 
-    #pragma omp parallel for
 	for (int n = 0; n < mpi::maxSize; n++) {
 		Forces.mu0[n] += -beta * std::imag(GConfig.Conf.mu0[n] * std::conj(GConfig.Staples.mu0[n]));
         Forces.mu1[n] += -beta * std::imag(GConfig.Conf.mu1[n] * std::conj(GConfig.Staples.mu1[n]));
@@ -60,7 +57,6 @@ void HMC::Leapfrog(const spinor& phi){
     c_double inumber(0.0, 1.0); //imaginary number
 	GConf_copy = GConf; //Copy of the gauge configuration
     //Conf_copy = Conf*exp(0.5i * StepSize * PConf_copy)
-    #pragma omp parallel for
     for (int n = 0; n < mpi::maxSize; n++) {
         GConf_copy.Conf.mu0[n] = GConf_copy.Conf.mu0[n] * exp(0.5 * inumber * StepSize * PConf_copy.mu0[n]);
         GConf_copy.Conf.mu1[n] = GConf_copy.Conf.mu1[n] * exp(0.5 * inumber * StepSize * PConf_copy.mu1[n]);   
@@ -71,7 +67,6 @@ void HMC::Leapfrog(const spinor& phi){
     for (int step = 1; step < MD_steps - 1; step++) {
         //PConf_copy += StepSize*force
         //Conf_copy *= exp(i * StepSize * PConf_copy)
-        #pragma omp parallel for
         for (int n = 0; n < mpi::maxSize; n++) {
             //mu = 0
             PConf_copy.mu0[n] += StepSize *  Forces.mu0[n];
@@ -86,7 +81,6 @@ void HMC::Leapfrog(const spinor& phi){
 
     //PConf_copy += StepSize*force
     //Conf_copy = Conf*exp(0.5i * StepSize* PConf_copy)
-    #pragma omp parallel for
     for (int n = 0; n < mpi::maxSize; n++) {
         //mu = 0
         PConf_copy.mu0[n] += StepSize * Forces.mu0[n];
@@ -104,11 +98,10 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     double action;
     GConfig.Compute_Plaquette01();
     //Gauge contribution
-    #pragma omp parallel for reduction(+:local_action)
 	for (int n = 0; n < mpi::maxSize; n++) {
         local_action += beta * std::real(1.0-GConfig.Plaquette01[n]);
 	}
-    MPI_Allreduce(&local_action, &action, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&local_action, &action, 1, MPI_DOUBLE, MPI_SUM, mpi::cart_comm);
     //Fermions contribution
     //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
     conjugate_gradient(GConfig.Conf, phi,TEMP, m0);
@@ -119,14 +112,13 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
 double HMC::Hamiltonian(GaugeConf& GConfig, const re_field& Pi,const spinor& phi) {
     double local_H = 0;
     //Momentum contribution
-    #pragma omp parallel for reduction(+:local_H)
     for (int n = 0; n < mpi::maxSize; n++) {
         local_H += 0.5 * Pi.mu0[n] * Pi.mu0[n];
 		local_H += 0.5 * Pi.mu1[n] * Pi.mu1[n];
         
     }
     double H;
-    MPI_Allreduce(&local_H, &H, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&local_H, &H, 1, MPI_DOUBLE, MPI_SUM, mpi::cart_comm);
     //Action contribution
     H += Action(GConfig,phi);
 
@@ -146,11 +138,12 @@ void HMC::HMC_Update() {
     Leapfrog(phi); //Evolve [Pi] and [U] 
     double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
     double r;
-
+    
+    //Same random number for all ranks
     if (mpi::rank == 0)
         r = rand_range(0, 1); 
 
-    MPI_Bcast(&r, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
+    MPI_Bcast(&r, 1, MPI_DOUBLE,  0, mpi::cart_comm);
 
     if (r <= exp(-deltaH)) {
         //Accept the new configuration

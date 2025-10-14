@@ -9,14 +9,26 @@ extern c_double I_number; //imaginary number
 
 
 /*
+                 		t                    
+    0  +------------------------------------+  Nt   
+       |                                    |
+       |          LeftPB[2*n+1]    		    |
+       |                   				    |
+    x  | LeftPB[2*n+0]  n  RightPB[2*n+0]   |   
+       |                       			    |
+       |          RightPB[2*n+1]        	|
+       |                          			|
+    Nx +------------------------------------+ Nt  
+
+
 	Periodic boundary conditions used for the link variables U_mu(n).
-	This function builds th#include "omp.h"e arrays x_1_t1, x1_t_1, RightPB and LeftPB, which
+	This function builds the arrays x_1_t1, x1_t_1, RightPB and LeftPB, which
 	store the neighbor coordinates for the periodic boundary conditions.
 	This prevents recalculation every time we call the operator D.
 	The function is only called once at the beginning of the program.
 
-	right periodic boundary x+hat{mu}
-	left periodic boundary x-hat{mu}
+	right periodic boundary n+hat{mu}
+	left periodic boundary n-hat{mu}
 	hat_mu[0] = { 1, 0 } --> hat_t
 	hat_mu[1] = { 0, 1 } --> hat_x
 */

@@ -2,22 +2,11 @@
 #include <ctime>
 #include <fstream>
 #include <string>
+#include <chrono>
+#include "mpi_setup.h"
 #include "hmc.h"
 #include <format>
 
-void RankErrorMessage(){
-    if (mpi::ranks_t * mpi::ranks_x != mpi::size){
-        std::cout << "ranks_t * ranks_x != total number of ranks" << std::endl;
-        exit(1);
-    }
-    if (LV::Nx % mpi::ranks_x!= 0 ||LV::Nt % mpi::ranks_t != 0){
-        std::cout << "Nx (Nt) is not exactly divisible by rank_x (rank_t)" << std::endl;
-        exit(1);
-    }
-    mpi::width_x = LV::Nx/mpi::ranks_x;
-    mpi::width_t = LV::Nt/mpi::ranks_t;
-    mpi::maxSize = mpi::width_t * mpi::width_x;
-}
 
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
@@ -35,6 +24,7 @@ int main(int argc, char **argv) {
     
     CG::max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
     CG::tol = 1e-10; //Tolerance for convergence
+
     //To call the sequential program one has to choose ranks_x = ranks_t = 1
     if (mpi::rank == 0){
          //---Input data---//
@@ -47,7 +37,6 @@ int main(int argc, char **argv) {
         std::cin >> mpi::ranks_x;
         std::cout << "ranks_t: ";
         std::cin >> mpi::ranks_t;
-        RankErrorMessage();
         std::cout << "m0 min: ";
         std::cin >> m0_min;
         std::cout << "m0 max: ";
@@ -71,7 +60,8 @@ int main(int argc, char **argv) {
         std::cout << " " << std::endl;
     }
     
-    allocate_lattice_arrays();
+    MPI_Bcast(&mpi::ranks_x, 1, MPI_INT,  0, MPI_COMM_WORLD);
+    MPI_Bcast(&mpi::ranks_t, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&m0_min, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
     MPI_Bcast(&m0_max, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
     MPI_Bcast(&Nm0, 1, MPI_INT,  0, MPI_COMM_WORLD);
@@ -82,11 +72,12 @@ int main(int argc, char **argv) {
     MPI_Bcast(&Nmeas, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&Nsteps, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&saveconf, 1, MPI_INT,  0, MPI_COMM_WORLD);
-    
-    std::vector<double> Masses(Nm0);
 
-    periodic_boundary(); //Compute right and left periodic boundary
-    
+    initializeMPI(); //2D rank topology
+    allocate_lattice_arrays(); //Allocates memory for coordinates array
+    periodic_boundary(); //Computes arrays with neighbors
+
+    std::vector<double> Masses(Nm0);    
 	GaugeConf GConf = GaugeConf();  //Gauge configuration
  
     if (Nm0 == 1) 
@@ -94,6 +85,22 @@ int main(int argc, char **argv) {
     else 
         Masses = linspace(m0_min, m0_max, Nm0);
     
+    //Cpmpute start time string on rank 0 (portable)
+    std::string start_time_str;
+    if (mpi::rank == 0) {
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+        std::ostringstream tss;
+        // format: YYYY-MM-DD HH:MM:SS (portable)
+        tss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
+        start_time_str = tss.str();
+    }
+    // broadcast start_time_str length and content so other ranks could log if needed
+    int tlen = static_cast<int>(start_time_str.size());
+    MPI_Bcast(&tlen, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (mpi::rank != 0) start_time_str.resize(tlen);
+    MPI_Bcast(start_time_str.data(), tlen, MPI_CHAR, 0, MPI_COMM_WORLD);
+
 
     std::ostringstream NameData;
     std::ofstream Datfile;
@@ -117,12 +124,14 @@ int main(int argc, char **argv) {
             std::cout << "* Trajectory length = " << trajectory_length << ", Leapfrog steps = " << MD_steps << 
             ", Integration step = " << trajectory_length/MD_steps << std::endl;
             std::cout << "* CG max iterations = " << CG::max_iter << ", CG tolerance = " << CG::tol << std::endl;
-            std::cout << "* Number of MPI ranks = " << mpi::size << std::endl;
+            std::cout << "* Number of ranks on x = " << mpi::ranks_x << ", Number of ranks on t = "  << mpi::ranks_t << std::endl;
+            std::cout << "* Total number of MPI ranks = " << mpi::size << std::endl;
+            std::cout << "* Each rank has " << mpi::maxSize << " lattice sites" << std::endl;
+            std::cout << "* Host: " << std::getenv("HOSTNAME") << std::endl;
+            std::cout << "* Start time: " << start_time_str << std::endl;
             std::cout << "**********************************************************************" << std::endl;
         }
-        //std::cout << "Rank " << mpi::rank << " using " << omp_get_max_threads() << " OpenMP threads." << std::endl;
         
-
         HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, LV::Nx, LV::Nt, m0,saveconf);   
         double begin = MPI_Wtime();
         hmc.HMC_algorithm();
@@ -134,7 +143,7 @@ int main(int argc, char **argv) {
             std::cout << "Acceptance rate: " << hmc.getacceptance_rate(Nmeas+Nsteps*Nmeas) << std::endl;
             double elapsed_secs = end - begin;
 
-            std::cout << "Time = " << elapsed_secs << " s" << std::endl;
+            std::cout << "Execution time = " << elapsed_secs << " s" << std::endl;
             std::cout << "-------------------------------" << std::endl;
             Datfile << std::format("{:<30.17g}\n", m0);
             Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getEp(), hmc.getdEp());

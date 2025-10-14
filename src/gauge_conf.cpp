@@ -254,9 +254,11 @@ void GaugeConf::Compute_Staple() {
         }
 
 
-        //-----------------mu = 1 direction--------------------//
-        //Interior points
-        for(int n = 0; n<maxSize-Nt; n++) {
+//----------------------------mu = 1 direction-----------------------------//
+        //Interior points (includes first row)
+        for(int x = 0; x < width_x-1; x++) {
+        for(int t = 1; t < width_t-1; t++) {  
+            int n = x * width_t + t;
             //U_0(n) U_1(n+0) U*_0(n+1) + U*_0(n-0) U_1(n-0) U_0(n+1-0)
             x1 = RightPB[2*n+1];  
 		    t1 = RightPB[2*n];  
@@ -270,28 +272,99 @@ void GaugeConf::Compute_Staple() {
             Staples.mu1[n] = conf1 * conf2 * std::conj(conf3) +
                 std::conj(conf4) * conf5 * conf6;
         }
+        }
 
-        //Last row
-        for(int n = 0; n < Nt; n++){
+        for(int n = 0; n < width_t; n++){
             TopRow.mu0[n] = std::conj(Conf.mu0[n]); //U*_0(n+1)
             TopRow.mu1[n] = Conf.mu0[LeftPB[2*n]]; //U_0(n+1-0)
         }
-        MPI_Send(TopRow.mu0, Nt, MPI_DOUBLE_COMPLEX, mod(rank-1,size), 0, MPI_COMM_WORLD);
-        MPI_Recv(TopRow.mu0, Nt, MPI_DOUBLE_COMPLEX, mod(rank+1,size), 0, MPI_COMM_WORLD, &status);
+        for(int n = width_t-1; n<maxSize; n+=width_t){
+            RightCol.mu0[n/width_t] = std::conj(Conf.mu0[n]) * Conf.mu1[n]; //U*_0(n-0) U_1(n-0)
+            RightCol.mu1[n/width_t] = Conf.mu0[RightPB[2*n+1]]; //U_0(n+1-0)
+        }
 
-        MPI_Send(TopRow.mu1, Nt, MPI_DOUBLE_COMPLEX, mod(rank-1,size), 1, MPI_COMM_WORLD);
-        MPI_Recv(TopRow.mu1, Nt, MPI_DOUBLE_COMPLEX, mod(rank+1,size), 1, MPI_COMM_WORLD, &status);
-        
-        for(int n = maxSize-Nt; n<maxSize; n++) {
+        for(int n = 0; n<maxSize; n+=width_t){
+            LeftCol.mu0[n/width_t] = Conf.mu1[n]; //U_1(n+0)
+        }
+
+
+        MPI_Send(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, top, 0, cart_comm);
+        MPI_Recv(TopRow.mu0, width_t, MPI_DOUBLE_COMPLEX, bot, 0, cart_comm, &status);
+
+        MPI_Send(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, top, 1, cart_comm);
+        MPI_Recv(TopRow.mu1, width_t, MPI_DOUBLE_COMPLEX, bot, 1, cart_comm, &status);
+
+        MPI_Send(RightCol.mu0, width_x, MPI_DOUBLE_COMPLEX, right, 2, cart_comm);
+        MPI_Recv(RightCol.mu0, width_x, MPI_DOUBLE_COMPLEX, left, 2, cart_comm, &status);
+
+        MPI_Send(RightCol.mu1, width_x, MPI_DOUBLE_COMPLEX, right, 3, cart_comm);
+        MPI_Recv(RightCol.mu1, width_x, MPI_DOUBLE_COMPLEX, left, 3, cart_comm, &status);
+
+        MPI_Send(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, left, 4, cart_comm);
+        MPI_Recv(LeftCol.mu0, width_x, MPI_DOUBLE_COMPLEX, right, 4, cart_comm, &status);
+
+        //Last row (except first and last points)
+        for(int n = maxSize-width_t + 1; n<maxSize - 1; n++) {
             //U_0(n) U_1(n+0) U*_0(n+1) + U*_0(n-0) U_1(n-0) U_0(n+1-0)
-		    t1 = RightPB[2*n];  
+            t1 = RightPB[2*n];  
 		    t_1 = LeftPB[2*n];  
             const c_double& conf1 = Conf.mu0[n];
             const c_double& conf2 = Conf.mu1[t1];
             const c_double& conf4 = Conf.mu0[t_1];
             const c_double& conf5 = Conf.mu1[t_1];
-            Staples.mu1[n] = conf1 * conf2 * TopRow.mu0[n-(maxSize-Nt)] +
-                std::conj(conf4) * conf5 * TopRow.mu1[n-(maxSize-Nt)];
+            Staples.mu1[n] = conf1 * conf2 * TopRow.mu0[n-(maxSize-width_t)] +
+                std::conj(conf4) * conf5 * TopRow.mu1[n-(maxSize-width_t)];
+        }
+        //Left column (except last point)
+        for(int n = 0; n<maxSize-width_t; n+=width_t) {
+            //U_0(n) U_1(n+0) U*_0(n+1) + U*_0(n-0) U_1(n-0) U_0(n+1-0)
+		    x1 = RightPB[2*n+1];
+            t1 = RightPB[2*n];  
+            const c_double& conf1 = Conf.mu0[n];
+            const c_double& conf2 = Conf.mu1[t1];
+            const c_double& conf3 = Conf.mu0[x1];
+            Staples.mu1[n] = conf1 * conf2 * std::conj(conf3) +
+                RightCol.mu0[n/width_t] * RightCol.mu1[n/width_t];
+        }
+        //Right column (except for last point)
+        for(int n = width_t-1; n<maxSize-width_t; n+=width_t) {
+            //U_0(n) U_1(n+0) U*_0(n+1) + U*_0(n-0) U_1(n-0) U_0(n+1-0)
+		    x1 = RightPB[2*n+1]; 
+		    t_1 = LeftPB[2*n];  
+            const c_double& conf1 = Conf.mu0[n];
+            const c_double& conf3 = Conf.mu0[x1];
+            const c_double& conf4 = Conf.mu0[t_1];
+            const c_double& conf5 = Conf.mu1[t_1];
+            const c_double& conf6 = Conf.mu0[x1_t_1[n]]; 
+            Staples.mu1[n] = conf1 * LeftCol.mu0[n/width_t] * std::conj(conf3) +
+                std::conj(conf4) * conf5 * conf6;
+        }
+
+        //Bottom right corner
+        {
+        n = maxSize - 1;
+        //U_0(n) U_1(n+0) U*_0(n+1) + U*_0(n-0) U_1(n-0) U_0(n+1-0)
+		t1 = RightPB[2*n];  
+		t_1 = LeftPB[2*n];  
+        const c_double& conf1 = Conf.mu0[n];
+        const c_double& conf4 = Conf.mu0[t_1];
+        const c_double& conf5 = Conf.mu1[t_1];
+        Staples.mu1[n] = conf1 * LeftCol.mu0[n/width_t] * TopRow.mu0[n-(maxSize-width_t)] +
+            std::conj(conf4) * conf5 * TopRow.mu1[n-(maxSize-width_t)];
+        }
+
+        //Bottom left corner
+        {
+        c_double topright = Conf.mu0[width_t-1]; //U_0(n+1-0)
+        MPI_Send(&topright, 1, MPI_DOUBLE_COMPLEX, top_right, 6, cart_comm);
+        MPI_Recv(&topright, 1, MPI_DOUBLE_COMPLEX, bot_left, 6, cart_comm, &status);
+        n = maxSize - width_t;
+        //U_0(n) U_1(n+0) U*_0(n+1) + U*_0(n-0) U_1(n-0) U_0(n+1-0)
+		t1 = RightPB[2*n];  
+        const c_double& conf1 = Conf.mu0[n];
+        const c_double& conf2 = Conf.mu1[t1];
+        Staples.mu1[n] = conf1 * conf2 * TopRow.mu0[n-(maxSize-width_t)] +
+           RightCol.mu0[n/width_t] * topright;
         }
 
 
@@ -302,7 +375,6 @@ void GaugeConf::Compute_Staple() {
 /*
 Save Gauge configuration
 */   
-
 void SaveConf(const GaugeConf& GConf, const std::string& Name) {
     using namespace LV;
     int counts[mpi::size];
