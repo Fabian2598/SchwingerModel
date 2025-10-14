@@ -26,6 +26,11 @@ namespace mpi{
     extern int bot; 
     extern int right; 
     extern int left;
+    //Diagonal ranks necessary for staples
+    extern int bot_left;
+    extern int bot_right;
+    extern int top_left;
+    extern int top_right;
     extern MPI_Comm cart_comm;
 }
 

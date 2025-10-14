@@ -28,11 +28,11 @@ inline void assignWidth(){
  *                t                    2D parallelization
  *   0  +-------------------+  Nt   +-----------------------+
  *      |                   |       |                       |
- *      |                   |       |          top          |
+ *      |                   |       | top-left top top-right|
  *      |                   |       |           |           |
  *   x  |                   |       |--left--rank2d--right--|
  *      |                   |       |           |           |
- *      |                   |       |          bot          |
+ *      |                   |       | bot-left bot bot-right|
  *      |                   |       |                       |
  *   Nx +-------------------+ Nt    +-----------------------+
  *                Nx
@@ -53,19 +53,33 @@ inline void buildCartesianTopology(){
     //Along x direction
     MPI_Cart_shift(mpi::cart_comm, 0, 1, &mpi::top , &mpi::bot);
 
+    //Diagonal ranks
+    int coords_bot_left[2] = {mod(mpi::coords[0]+1,mpi::ranks_x), mod(mpi::coords[1]-1,mpi::ranks_t)}; //bot-left
+    MPI_Cart_rank(mpi::cart_comm, coords_bot_left, &mpi::bot_left);
+
+    int coords_bot_right[2] = {mod(mpi::coords[0]+1,mpi::ranks_x), mod(mpi::coords[1]+1,mpi::ranks_t)}; //bot-right
+    MPI_Cart_rank(mpi::cart_comm, coords_bot_right, &mpi::bot_right);
+
+    int coords_top_left[2] = {mod(mpi::coords[0]-1,mpi::ranks_x), mod(mpi::coords[1]-1,mpi::ranks_t)}; //top-left
+    MPI_Cart_rank(mpi::cart_comm, coords_top_left, &mpi::top_left);
+
+    int coords_top_right[2] = {mod(mpi::coords[0]-1,mpi::ranks_x), mod(mpi::coords[1]+1,mpi::ranks_t)}; //top-right
+    MPI_Cart_rank(mpi::cart_comm, coords_top_right, &mpi::top_right);
+
     //In case I want to know the rank2d of a particular set of coordinates.
     //int coords_query[2] = {0, 3};
     //int rank_q;
     //MPI_Cart_rank(mpi::cart_comm, coords_query, &rank_q);
     //printf("[Rank %d] coords (%d, %d)",rank_q,coords_query[0],coords_query[1]);
     
-    //printf("[MPI process %d] I am located at (%d, %d). Top %d bot %d right %d left %d \n",
-    //       mpi::rank2d, mpi::coords[0], mpi::coords[1], mpi::top, mpi::bot, mpi::right, mpi::left);
+    //printf("[MPI process %d] I am located at (%d, %d). Top %d bot %d right %d left %d bot-left %d bot-right %d top-left %d top-right %d  \n",
+    //       mpi::rank2d, mpi::coords[0], mpi::coords[1], mpi::top, mpi::bot, mpi::right, mpi::left,
+    //        mpi::bot_left,mpi::bot_right,mpi::top_left,mpi::top_right);
 }
 
 inline void defineDataTypes(){
     //Create a new data type for the blocks corresponding to each rank
-     //Create the datatype
+    //Create the datatype
     /*  
     *              width_t
     *          ---------------     

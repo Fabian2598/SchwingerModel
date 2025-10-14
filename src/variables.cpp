@@ -25,6 +25,10 @@ namespace mpi{
     int bot = 0; 
     int right = 0; 
     int left = 0;
+    int bot_left = 0;
+    int bot_right = 0;
+    int top_left = 0;
+    int top_right = 0;
     MPI_Comm cart_comm;
 }
 
