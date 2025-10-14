@@ -17,10 +17,6 @@ inline void assignWidth(){
     mpi::width_x = LV::Nx/mpi::ranks_x;
     mpi::width_t = LV::Nt/mpi::ranks_t;
     mpi::maxSize = mpi::width_t * mpi::width_x;
-    //if (mpi::rank == 0){
-    //    std::cout << "width_x " << mpi::width_x << std::endl;
-    //    std::cout << "width_t " << mpi::width_t << std::endl;
-    //}
 }
  
 /*
@@ -65,12 +61,6 @@ inline void buildCartesianTopology(){
 
     int coords_top_right[2] = {mod(mpi::coords[0]-1,mpi::ranks_x), mod(mpi::coords[1]+1,mpi::ranks_t)}; //top-right
     MPI_Cart_rank(mpi::cart_comm, coords_top_right, &mpi::top_right);
-
-    //In case I want to know the rank2d of a particular set of coordinates.
-    //int coords_query[2] = {0, 3};
-    //int rank_q;
-    //MPI_Cart_rank(mpi::cart_comm, coords_query, &rank_q);
-    //printf("[Rank %d] coords (%d, %d)",rank_q,coords_query[0],coords_query[1]);
     
     //printf("[MPI process %d] I am located at (%d, %d). Top %d bot %d right %d left %d bot-left %d bot-right %d top-left %d top-right %d  \n",
     //       mpi::rank2d, mpi::coords[0], mpi::coords[1], mpi::top, mpi::bot, mpi::right, mpi::left,
@@ -79,7 +69,6 @@ inline void buildCartesianTopology(){
 
 inline void defineDataTypes(){
     //Create a new data type for the blocks corresponding to each rank
-    //Create the datatype
     /*  
     *              width_t
     *          ---------------     

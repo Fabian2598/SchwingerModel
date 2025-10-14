@@ -43,7 +43,7 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
         err_sqr = std::real(dot(r, r)); //err_sqr = (r_{i+1},r_{i+1})
 		err = sqrt(err_sqr); // err = sqrt(err_sqr)
         if (err < CG::tol*phi_norm2) {
-            //if (mpi::rank == 0)
+            //if (mpi::rank2d == 0)
             //    std::cout << "Converged in " << k << " iterations" << " Error " << err << std::endl;
             return 1;
         }
@@ -61,6 +61,7 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
         r_norm2 = err_sqr;
         k++;
     }
-    std::cout << "CG did not converge in " << CG::max_iter << " iterations" << " Error " << err << std::endl;
+    if (mpi::rank2d == 0)
+        std::cout << "CG did not converge in " << CG::max_iter << " iterations" << " Error " << err << std::endl;
     return 0;
 }

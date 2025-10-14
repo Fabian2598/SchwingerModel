@@ -1,6 +1,7 @@
 #ifndef VARIABLES_H_INCLUDED
 #define VARIABLES_H_INCLUDED
 #include "config.h"
+#include <iostream>
 #include <vector>
 #include <complex>
 #include "mpi.h"
