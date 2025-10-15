@@ -8,18 +8,17 @@
 #include <vector>
 
 /*
-    Given a gauge configuration, this program assembles the Dirac matrix for the Schwinger model.
+    Given a gauge configuration in binary format, this program assembles the Dirac matrix for the Schwinger model.
     Only the non-zero elements of the Dirac matrix are stored in a file.
     The file format is:
     row_index col_index real_part imag_part
 
     The path to the configuration is specified in the code.
-    Lattice dimensions are set to 16x16.
     The values of m0 and beta are read from the user. They have to coincide with the values used in the simulation.
 */
 
 //-------Lattice dimensions-------//
-constexpr int Nx = 16, Nt = 16;
+constexpr int Nx = 128, Nt = 128;
 constexpr int Ntot = Nx * Nt;
 //--------------------------------//
 
@@ -128,6 +127,33 @@ void D_phi(const c_matrix& U, const spinor& phi, spinor &Dphi,const double& m0) 
 	
 }
 
+
+void read_binary(c_matrix& GlobalConf, const std::string& name){
+    std::ifstream infile(name, std::ios::binary);
+    if (!infile) {
+       std::cerr << "File " << name << " not found " << std::endl;
+        exit(1);
+    } 
+    for (int x = 0; x < Nx; x++) {
+    for (int t = 0; t < Nt; t++) {
+        int n = x * Nt + t;
+        for (int mu = 0; mu < 2; mu++) {
+            int x_read, t_read, mu_read;
+            double re, im;
+            infile.read(reinterpret_cast<char*>(&x_read), sizeof(int));
+            infile.read(reinterpret_cast<char*>(&t_read), sizeof(int));
+            infile.read(reinterpret_cast<char*>(&mu_read), sizeof(int));
+            infile.read(reinterpret_cast<char*>(&re), sizeof(double));
+            infile.read(reinterpret_cast<char*>(&im), sizeof(double));
+            GlobalConf[n][mu] = c_double(re, im); //n --> for testing      
+    }
+    }
+    }
+    infile.close();
+    //std::cout << "Binary conf read from " << name << std::endl;     
+}
+
+
 /*
     Canonical vector e_i used for extracting the columns of the Dirac matrix.
 */
@@ -138,33 +164,6 @@ spinor canonical_vector(const int& i, const int& N1, const int& N2) {
     e_i[j][k] = 1.0;
     return e_i;
 }
-
-/*
-    Saves a spinor vector to a file.
-    The file format is:
-    row_index real_part imag_part
-    where row_index = 2*i for the first component and 2*i+1 for the second component.
-*/
-void save_vector(const spinor& psi, const std::string& Name) {
-    std::ofstream Datfile(Name);
-    if (!Datfile.is_open()) {
-        std::cerr << "Error opening file: " << Name << std::endl;
-        return;
-    }
-    for (int i = 0; i < Ntot; i++) {
-        Datfile << 2*i
-                << std::setw(30) << std::setprecision(17) << std::real(psi[i][0])
-                << std::setw(30) << std::setprecision(17) << std::imag(psi[i][0])
-                << "\n";
-
-        Datfile << 2*i+1
-                << std::setw(30) << std::setprecision(17) << std::real(psi[i][1])
-                << std::setw(30) << std::setprecision(17) << std::imag(psi[i][1])
-                << "\n";
-    }
-
-}
-
 
 
 //Formats decimal numbers
@@ -205,34 +204,11 @@ int main() {
    
     
     std::cout << "Reading configuration from " << PATH << std::endl;
-    std::ifstream infile(PATH);
-    if (!infile) {
-        std::cerr << "File not found" << std::endl;
-        return 1;
-    }
-    int x, t, mu;
-    double re, im;
-
-    while (infile >> x >> t >> mu >> re >> im) {
-        Conf[Coords[x][t]][mu] = c_double(re, im);
-    }
-    infile.close();
-
-    //--------Random right hand side--------//
-    spinor Phi(Ntot, c_vector(2, 0));
-    for (int i = 0; i < Ntot; i++) {
-        for (int j = 0; j < 2; j++) {
-            Phi[i][j] = 1.0 * RandomU1();
-        }
-    }
-    std::string rhs_path = "RHS.txt";
-    save_vector(Phi, rhs_path); //Save the random right hand side vector
-    std::cout << "Random right hand side vector saved in " << rhs_path << std::endl;
-    //--------------------------------------//
+    read_binary(Conf,PATH);
 
     //------------Store the matrix---------------//
-    std::string Name = "DiracMatrix.txt";
-    std::ofstream Datfile(Name);
+    std::string Name = "DiracMatrix.bin";
+    std::ofstream Datfile(Name,std::ios::binary);
     if (!Datfile.is_open()) {
         std::cerr << "Error opening file: " << Name << std::endl;
         return 0;
@@ -242,7 +218,7 @@ int main() {
     spinor v(Ntot, c_vector(2, 0)); //Canonical vector
     int row, col;
     std::cout << "Writing Dirac matrix " << Name << std::endl;
-
+    int nonzero = 0;
     //----Loop over the columns of the Dirac matrix----//
     //The Dirac matrix is 2*Ntot x 2*Ntot, where
     for (col = 0; col < 2 * Ntot; col++) {
@@ -251,18 +227,20 @@ int main() {
         for (int n = 0; n < Ntot; n++) {
             for (int mu = 0; mu < 2; mu++) {
                 row = 2 * n + mu; //Row index in the Dirac matrix
-
                 //We only store the non-zero elements of the Dirac matrix
-                if ( std::abs(std::real(Dv[n][mu])) > 1e-10 || std::abs(std::imag(Dv[n][mu])) > 1e-10 ){
-                    Datfile << row
-                    << std::setw(30) << col
-                    << std::setw(30) << std::setprecision(17) << std::real(Dv[n][mu])
-                    << std::setw(30) << std::setprecision(17) << std::imag(Dv[n][mu])
-                    << "\n";
+                if ( std::abs(std::real(Dv[n][mu])) > 1e-10 || std::abs(std::imag(Dv[n][mu])) > 1e-10 ){  
+                    nonzero += 1;
+                    const double& re = std::real(Dv[n][mu]);
+                    const double& im = std::imag(Dv[n][mu]);          
+                    Datfile.write(reinterpret_cast<const char*>(&row), sizeof(int));
+                    Datfile.write(reinterpret_cast<const char*>(&col), sizeof(int));
+                    Datfile.write(reinterpret_cast<const char*>(&re), sizeof(double));
+                    Datfile.write(reinterpret_cast<const char*>(&im), sizeof(double));
                 }       
             }
         }
     }
+    std::cout << "Number of non-zero entries " << nonzero << std::endl;
 
     return 0;
 }

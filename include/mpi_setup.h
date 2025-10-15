@@ -5,13 +5,16 @@
 //Check that number of ranks on the x and t direction match the number of total ranks called.
 inline void assignWidth(){
     if (mpi::ranks_t * mpi::ranks_x != mpi::size){
-        std::cout << "ranks_t * ranks_x != total number of ranks" << std::endl;
-        std::cout << mpi::ranks_t * mpi::ranks_x << " != " << mpi::size << std::endl;
+        if (mpi::rank == 0){
+            std::cout << "ranks_t * ranks_x != total number of ranks" << std::endl;
+            std::cout << mpi::ranks_t * mpi::ranks_x << " != " << mpi::size << std::endl;
+        }
         exit(1);
     }
     //We do this to enforce an equal workload on each rank
     if (LV::Nx % mpi::ranks_x!= 0 ||LV::Nt % mpi::ranks_t != 0){
-        std::cout << "Nx (Nt) is not exactly divisible by rank_x (rank_t)" << std::endl;
+        if (mpi::rank == 0)
+            std::cout << "Nx (Nt) is not exactly divisible by rank_x (rank_t)" << std::endl;
         exit(1);
     }
     mpi::width_x = LV::Nx/mpi::ranks_x;
