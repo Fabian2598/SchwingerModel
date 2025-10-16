@@ -43,7 +43,17 @@ void HMC::Force_G(GaugeConf& GConfig) {
 //2* Re[ Psi^dagger partial D / partial omega(n) D Psi], where Psi = (DD^dagger)^(-1)phi, phi = D chi
 void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
     spinor psi(mpi::maxSize); 
-    conjugate_gradient(GConfig.Conf, phi,psi, m0);  //(DD^dagger)^-1 phi
+    CG_convergence = conjugate_gradient(GConfig.Conf, phi,psi, m0);  //(DD^dagger)^-1 phi
+    //Save gauge configuration if CG does not converge
+    if (CG_convergence == 0){
+        std::ostringstream NameData;
+        NameData << "2D_U1_" << Nx << "x" << Nt
+                 << "_b" << format(beta)
+                 << "_m" << format(m0)
+                 << "_illConf" << illConfId << ".ctxt";
+        SaveConf(GConf,NameData.str());
+        illConfId += 1;
+    } 
     D_dagger_phi(GConfig.Conf, psi,TEMP, m0);
     Forces = phi_dag_partialD_phi(GConfig.Conf,psi,TEMP); //psi^dagger partial D / partial omega(n) D psi
     Force_G(GConfig); //Gauge force 
