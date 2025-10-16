@@ -15,6 +15,7 @@ public:
 
 		Ep = 0; dEp = 0;
 		acceptance_rate = 0;
+		illConfId = 0;
 
 		PConf = re_field(mpi::maxSize); //Momenta PI
 		PConf_copy = re_field(mpi::maxSize); //Momenta PI copy
@@ -42,6 +43,8 @@ private:
 	double Ep, dEp;
 	double gS, dgS;
 	double acceptance_rate;
+	int CG_convergence; //1->converge, 0->not converged
+	int illConfId;
 	bool therm = false;
 	re_field PConf; //Momenta PI
 	re_field PConf_copy; //Momenta PI copy

@@ -1,5 +1,4 @@
 #include "hmc.h"
-#include <iomanip>
 #include <string>
 #include <sstream>
 
@@ -104,8 +103,20 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     MPI_Allreduce(&local_action, &action, 1, MPI_DOUBLE, MPI_SUM, mpi::cart_comm);
     //Fermions contribution
     //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
-    conjugate_gradient(GConfig.Conf, phi,TEMP, m0);
+    CG_convergence = conjugate_gradient(GConfig.Conf, phi,TEMP, m0);
     action += std::real( dot( TEMP, phi)); 
+
+    //Save gauge configuration if CG does not converge
+    if (CG_convergence == 0){
+        std::ostringstream NameData;
+        NameData << "2D_U1_Ns" << Nx << "_Nt" << Nt
+                 << "_b" << format(beta)
+                 << "_m" << format(m0)
+                 << "_illConf_" << illConfId << ".ctxt";
+        SaveConf(GConf,NameData.str());
+        illConfId += 1;
+    } 
+
     return action;
 }
 
@@ -155,15 +166,6 @@ void HMC::HMC_Update() {
     //Else configuration is not modified.
     //if (therm == true && mpi::rank==0)
         //std::cout << "Conf number " << conf_i << " acceptance rate " << getacceptance_rate(conf_i) << std::endl;
-}
-
-//Formats decimal numbers
-static std::string format(const double& number) {
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(4) << number;
-    std::string str = oss.str();
-    str.erase(str.find('.'), 1); //Removes decimal dot
-    return str;
 }
 
 void HMC::HMC_algorithm(){

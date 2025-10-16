@@ -6,6 +6,11 @@
 #include "conjugate_gradient.h"
 #include <format>
 
+
+/*
+Main function for debugging and testing
+*/
+
 //Formats decimal numbers
 //For opening file with confs 
 static std::string format(const double& number) {

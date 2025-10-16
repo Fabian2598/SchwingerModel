@@ -7,9 +7,9 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
     double err;
     double err_sqr;
 
-    spinor r(mpi::maxSize);  //r[coordinate][spin] residual
-    spinor d(mpi::maxSize); //search direction
-    spinor Ad(mpi::maxSize); //DD^dagger*d
+    spinor r(maxSize);  //r[coordinate][spin] residual
+    spinor d(maxSize); //search direction
+    spinor Ad(maxSize); //DD^dagger*d
   
     c_double alpha, beta;
 
@@ -61,7 +61,7 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor& x,const doubl
         r_norm2 = err_sqr;
         k++;
     }
-    if (mpi::rank2d == 0)
-        std::cout << "CG did not converge in " << CG::max_iter << " iterations" << " Error " << err << std::endl;
+    if (rank2d == 0)
+        std::cout << "CG for DD^+ did not converge in " << CG::max_iter << " iterations" << " Error " << err << std::endl;
     return 0;
 }

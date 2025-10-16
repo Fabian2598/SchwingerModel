@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     double beta; //Beta range
     double trajectory_length; //HMC parameters
     int MD_steps;
-    double m0_min, m0_max; //bare mass
+    double m0; //bare mass
 	int saveconf = 0; //Save configurations
     
     CG::max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
@@ -37,12 +37,8 @@ int main(int argc, char **argv) {
         std::cin >> mpi::ranks_x;
         std::cout << "ranks_t: ";
         std::cin >> mpi::ranks_t;
-        std::cout << "m0 min: ";
-        std::cin >> m0_min;
-        std::cout << "m0 max: ";
-        std::cin >> m0_max;
-        std::cout << "Number of masses in [m0_min, m0_max]: ";
-        std::cin >> Nm0;
+        std::cout << "m0: ";
+        std::cin >> m0;
         std::cout << "Molecular dynamics steps: ";
         std::cin >> MD_steps;
         std::cout << "Trajectory length: ";
@@ -62,9 +58,7 @@ int main(int argc, char **argv) {
     
     MPI_Bcast(&mpi::ranks_x, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&mpi::ranks_t, 1, MPI_INT,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&m0_min, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&m0_max, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&Nm0, 1, MPI_INT,  0, MPI_COMM_WORLD);
+    MPI_Bcast(&m0, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
     MPI_Bcast(&MD_steps, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&trajectory_length, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
     MPI_Bcast(&beta, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
@@ -77,14 +71,7 @@ int main(int argc, char **argv) {
     allocate_lattice_arrays(); //Allocates memory for arrays of coordinates
     periodic_boundary(); //Stores neighbors
 
-    std::vector<double> Masses(Nm0);    
-	GaugeConf GConf = GaugeConf();  //Gauge configuration
- 
-    if (Nm0 == 1) 
-        Masses = { m0_min };
-    else 
-        Masses = linspace(m0_min, m0_max, Nm0);
-    
+	GaugeConf GConf = GaugeConf();  //Gauge configuration     
     //Start time string on rank 0 
     std::string start_time_str;
     if (mpi::rank == 0) {
@@ -104,7 +91,7 @@ int main(int argc, char **argv) {
 
     std::ostringstream NameData;
     std::ofstream Datfile;
-    NameData << "2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_SimData"  << ".txt";
+    NameData << "2D_U1_" << LV::Nx << "x" << LV::Nt << "_m0" << format(m0) << "_SimData"  << ".txt";
     if (mpi::rank == 0){
         Datfile.open(NameData.str());
         Datfile << std::format("#Date and time\n");
@@ -122,62 +109,58 @@ int main(int argc, char **argv) {
         Datfile << std::format("#CG max iterations     #CG relative tolerance\n");
         Datfile << std::format("{:<30d}{:<30.17g}\n", CG::max_iter, CG::tol);
         Datfile << std::format("#m0\n");
-        Datfile << std::format("{:<30.17g}\n", m0_min);
+        Datfile << std::format("{:<30.17g}\n", m0);
         Datfile.close();
     }
     
-    for (double m0 : Masses) {
-        if (mpi::rank == 0){
-            std::cout << "**********************************************************************" << std::endl;
-            std::cout << "*                              PARAMETERS" << std::endl;
-            std::cout << "* Nx = " << LV::Nx << ", Nt = " << LV::Nt << std::endl;
-            std::cout << "* m0 = " << m0 << ", kappa = " << 1/(2*(m0+2)) << std::endl;
-            std::cout << "* beta = " << beta << std::endl;
-            std::cout << "* Thermalization confs = " << Ntherm << std::endl;
-            std::cout << "* Measurement confs = " << Nmeas << std::endl;
-            std::cout << "* Decorrelation steps (confs dropped between measurements) = " << Nsteps << std::endl;
-            std::cout << "* Trajectory length = " << trajectory_length << ", Leapfrog steps = " << MD_steps << 
-            ", Integration step = " << trajectory_length/MD_steps << std::endl;
-            std::cout << "* CG max iterations = " << CG::max_iter << ", CG tolerance = " << CG::tol << std::endl;
-            std::cout << "* Number of ranks on x = " << mpi::ranks_x << ", Number of ranks on t = "  << mpi::ranks_t << std::endl;
-            std::cout << "* Total number of MPI ranks = " << mpi::size << std::endl;
-            std::cout << "* Each rank has " << mpi::maxSize << " lattice sites" << std::endl;
-            std::cout << "* Host: " << std::getenv("HOSTNAME") << std::endl;
-            std::cout << "* Start time: " << start_time_str << std::endl;
-            std::cout << "**********************************************************************" << std::endl;
-        }
-        
-        HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, LV::Nx, LV::Nt, m0,saveconf);   
-        double begin = MPI_Wtime();
-        hmc.HMC_algorithm();
-        double end = MPI_Wtime();
 
-         if (mpi::rank == 0){
-            std::cout << "Average plaquette value / volume: Ep = " << hmc.getEp() << " dEp = " << hmc.getdEp() << std::endl;
-            std::cout << "Average gauge action / volume: gS = " << hmc.getgS() << " dgS = " << hmc.getdgS() << std::endl;
-            std::cout << "Acceptance rate: " << hmc.getacceptance_rate(Nmeas+Nsteps*Nmeas) << std::endl;
-            double elapsed_secs = end - begin;
-
-            std::cout << "Execution time = " << elapsed_secs << " s" << std::endl;
-            std::cout << "-------------------------------" << std::endl;
-            Datfile.open(NameData.str(),std::ios::app);
-            Datfile << std::format("#Ep                           #dEp\n");
-            Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getEp(), hmc.getdEp());
-            Datfile << std::format("#gS                           #dgS\n");
-            Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getgS(), hmc.getdgS());
-            Datfile << std::format("#Acceptance rate\n");
-            Datfile << std::format("{:<30.17g}\n", hmc.getacceptance_rate(Nmeas+Nsteps*Nmeas));
-            Datfile << std::format("#Execution time\n");
-            Datfile << std::format("{:<30.17g}", elapsed_secs);
-        }
-            
-
+    if (mpi::rank == 0){
+        std::cout << "**********************************************************************" << std::endl;
+        std::cout << "*                              PARAMETERS" << std::endl;
+        std::cout << "* Nx = " << LV::Nx << ", Nt = " << LV::Nt << std::endl;
+        std::cout << "* m0 = " << m0 << ", kappa = " << 1/(2*(m0+2)) << std::endl;
+        std::cout << "* beta = " << beta << std::endl;
+        std::cout << "* Thermalization confs = " << Ntherm << std::endl;
+        std::cout << "* Measurement confs = " << Nmeas << std::endl;
+        std::cout << "* Decorrelation steps (confs dropped between measurements) = " << Nsteps << std::endl;
+        std::cout << "* Trajectory length = " << trajectory_length << ", Leapfrog steps = " << MD_steps << 
+        ", Integration step = " << trajectory_length/MD_steps << std::endl;
+        std::cout << "* CG max iterations = " << CG::max_iter << ", CG tolerance = " << CG::tol << std::endl;
+        std::cout << "* Number of ranks on x = " << mpi::ranks_x << ", Number of ranks on t = "  << mpi::ranks_t << std::endl;
+        std::cout << "* Total number of MPI ranks = " << mpi::size << std::endl;
+        std::cout << "* Each rank has " << mpi::maxSize << " lattice sites" << std::endl;
+        std::cout << "* Host: " << std::getenv("HOSTNAME") << std::endl;
+        std::cout << "* Start time: " << start_time_str << std::endl;
+        std::cout << "**********************************************************************" << std::endl;
     }
+        
+    HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, LV::Nx, LV::Nt, m0,saveconf);   
+    double begin = MPI_Wtime();
+    hmc.HMC_algorithm();
+    double end = MPI_Wtime();
+
+    if (mpi::rank == 0){
+        std::cout << "Average plaquette value / volume: Ep = " << hmc.getEp() << " dEp = " << hmc.getdEp() << std::endl;
+        std::cout << "Average gauge action / volume: gS = " << hmc.getgS() << " dgS = " << hmc.getdgS() << std::endl;
+        std::cout << "Acceptance rate: " << hmc.getacceptance_rate(Nmeas+Nsteps*Nmeas) << std::endl;
+        double elapsed_secs = end - begin;
+        std::cout << "Execution time = " << elapsed_secs << " s" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        Datfile.open(NameData.str(),std::ios::app);
+        Datfile << std::format("#Ep                           #dEp\n");
+        Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getEp(), hmc.getdEp());
+        Datfile << std::format("#gS                           #dgS\n");
+        Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getgS(), hmc.getdgS());
+        Datfile << std::format("#Acceptance rate\n");
+        Datfile << std::format("{:<30.17g}\n", hmc.getacceptance_rate(Nmeas+Nsteps*Nmeas));
+        Datfile << std::format("#Execution time\n");
+        Datfile << std::format("{:<30.17g}", elapsed_secs);
+    }
+            
     if (mpi::rank == 0) Datfile.close();
     
     //Free coordinate arrays
     free_lattice_arrays();
-    
     MPI_Finalize();
 
 	return 0;

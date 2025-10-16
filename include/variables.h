@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <complex>
+#include <iomanip>
 #include "mpi.h"
 
 extern double pi;
@@ -191,7 +192,15 @@ inline c_double dot(const spinor& x, const spinor& y) {
 }
 
 
-
+//Formats decimal numbers
+//Useful for writing m0 and beta on the file name
+inline std::string format(const double& number) {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(4) << number;
+    std::string str = oss.str();
+    str.erase(str.find('.'), 1); //Removes decimal dot
+    return str;
+}
 
 
 #endif 
