@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #Script has to be run in the same directory where CMakeLists.txt is located
-NX=32 #lattice dimensions
-NT=32 
+NX=512 #lattice dimensions
+NT=512 
 RANKS_X=4 #This has to exactly divide NX
 RANKS_T=2 #The same
 RANKS=$((RANKS_X*$RANKS_T)) #Total number of cores
@@ -11,9 +11,9 @@ M0=0 #bare mass
 BETA=2 #beta
 MD_STEPS=10 #Molecular dynamics steps
 TAU=1.0 #Trajectory length
-NTHERM=1000 #Thermalization
-NMEAS=1000 #Measurements
-NSTEPS=10 #Decorrelation steps between measurements
+NTHERM=1 #Thermalization
+NMEAS=1 #Measurements
+NSTEPS=0 #Decorrelation steps between measurements
 SAVE=0
 
 
