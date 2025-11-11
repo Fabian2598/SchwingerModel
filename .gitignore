@@ -24,3 +24,4 @@ M0Test.cpp
 DiracMatrixOld.cpp
 testCG
 toBinary.cpp
+matrices.sh

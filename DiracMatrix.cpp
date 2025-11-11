@@ -18,7 +18,7 @@
 */
 
 //-------Lattice dimensions-------//
-constexpr int Nx = 128, Nt = 128;
+constexpr int Nx = 256, Nt = 256;
 constexpr int Ntot = Nx * Nt;
 //--------------------------------//
 
@@ -128,6 +128,21 @@ void D_phi(const c_matrix& U, const spinor& phi, spinor &Dphi,const double& m0) 
 }
 
 
+void read_nonbinary(c_matrix& GlobalConf, const std::string& name){
+    std::ifstream infile(name);
+    if (!infile) {
+        std::cerr << "File not found" << std::endl;
+        exit(1);
+    }
+    int x, t, mu;
+    double re, im;
+
+    while (infile >> x >> t >> mu >> re >> im) {
+        GlobalConf[Coords[x][t]][mu] = c_double(re, im);
+    }
+    infile.close();
+}
+
 void read_binary(c_matrix& GlobalConf, const std::string& name){
     std::ifstream infile(name, std::ios::binary);
     if (!infile) {
@@ -180,6 +195,8 @@ int main() {
     srand(time(0));
     Coordinates(); //Vectorized coordinates
     periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
+    std::string PATH;
+    int n = 0; //Configuration number
 
     std::cout << "Assembling Dirac matrix for the Schwinger model" << std::endl;
     std::cout << "Nx = " << Nx << " Nt = " << Nt << std::endl;
@@ -189,25 +206,38 @@ int main() {
     std::cin >> m0; //Mass parameter
     std::cout << "beta (the same as in the simulation) = ";
     std::cin >> beta; //Beta parameter
+    std::cout << "Conf. path: ";
+    std::cin >> PATH; //Beta parameter
+    std::cout << "Conf ID: ";
+    std::cin >> n;
     std::cout << " " << std::endl;
+
     std::cout << "m0 = " << m0 << " beta = " << beta << std::endl;
+    std::cout << "Conf. path " << PATH << std::endl;
 
 
     //------Path to the configuration--------//
-    int n = 0; //Configuration number
-    std::string PATH = "2D_U1_Ns" + std::to_string(Nx) +
+    /*n= 0;
+    PATH = "confs/b2_" + std::to_string(Nx) +
+                   "x" + std::to_string(Nt) + "/m-018/2D_U1_Ns" + std::to_string(Nx) +
                    "_Nt" + std::to_string(Nt) +
                    "_b" + format(beta) +
                    "_m" + format(m0) +
                    "_" + std::to_string(n) + ".ctxt";
+    */
     //--------------------------------------//
    
     
     std::cout << "Reading configuration from " << PATH << std::endl;
-    read_binary(Conf,PATH);
+    read_nonbinary(Conf,PATH);
+    //read_binary(Conf,PATH);
 
     //------------Store the matrix---------------//
-    std::string Name = "DiracMatrix.bin";
+    std::string Name = "DiracMatrix_" + std::to_string(Nx) +
+                   "x" + std::to_string(Nt) +
+                   "_b" + format(beta) +
+                   "_m" + format(m0) +
+                   "_" + std::to_string(n) + ".bin";
     std::ofstream Datfile(Name,std::ios::binary);
     if (!Datfile.is_open()) {
         std::cerr << "Error opening file: " << Name << std::endl;
