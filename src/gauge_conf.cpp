@@ -403,7 +403,7 @@ void SaveConf(const GaugeConf& GConf, const std::string& Name) {
         }
         for (int x = 0; x < Nx; x++) {
         for (int t = 0; t < Nt; t++) {
-        int n = x * Nx + t;
+        int n = x * Nt + t;
             for (int mu = 0; mu < 2; mu++) {
                 const double& re = std::real(mu == 0 ? GlobalConf.mu0[n] : GlobalConf.mu1[n]);
                 const double& im = std::imag(mu == 0 ? GlobalConf.mu0[n] : GlobalConf.mu1[n]);

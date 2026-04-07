@@ -262,10 +262,10 @@ int main() {
                     nonzero += 1;
                     const double& re = std::real(Dv[n][mu]);
                     const double& im = std::imag(Dv[n][mu]);          
-                    Datfile.write(reinterpret_cast<const char*>(&row), sizeof(int));
-                    Datfile.write(reinterpret_cast<const char*>(&col), sizeof(int));
-                    Datfile.write(reinterpret_cast<const char*>(&re), sizeof(double));
-                    Datfile.write(reinterpret_cast<const char*>(&im), sizeof(double));
+                    //Datfile.write(reinterpret_cast<const char*>(&row), sizeof(int));
+                    //Datfile.write(reinterpret_cast<const char*>(&col), sizeof(int));
+                    //Datfile.write(reinterpret_cast<const char*>(&re), sizeof(double));
+                    //Datfile.write(reinterpret_cast<const char*>(&im), sizeof(double));
                 }       
             }
         }

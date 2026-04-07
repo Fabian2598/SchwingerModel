@@ -20,8 +20,8 @@ typedef std::complex<double> c_double;
 //------------Lattice parameters--------------//
 namespace LV {
     //Lattice dimensions//
-    constexpr int Nx= 64; 
-    constexpr int Nt= 64; 
+    constexpr int Nx= 8; 
+    constexpr int Nt= 8; 
     constexpr int Ntot = Nx*Nt; //Total number of lattice points
 }
 
