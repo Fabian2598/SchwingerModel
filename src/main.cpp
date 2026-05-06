@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
         
-    srand(mpi::rank*time(0));
+    srand((mpi::rank+1)*time(0));
     
     int Ntherm, Nmeas, Nsteps, Nm0; //Simulation parameters
     double beta; //Beta range
@@ -28,32 +28,32 @@ int main(int argc, char **argv) {
     //To call the sequential program one has to choose ranks_x = ranks_t = 1
     if (mpi::rank == 0){
          //---Input data---//
-        std::cout << "  -----------------------------" << std::endl;
-        std::cout << "|  Two-flavor Schwinger model   |" << std::endl;
-        std::cout << "| Hybrid Monte Carlo simulation |" << std::endl;
-        std::cout << "  -----------------------------" << std::endl;
-        std::cout << "Nx " << LV::Nx << " Nt " << LV::Nt << std::endl;
-        std::cout << "ranks_x: ";
+        std::cerr << "  -----------------------------" << std::endl;
+        std::cerr << "|  Two-flavor Schwinger model   |" << std::endl;
+        std::cerr << "| Hybrid Monte Carlo simulation |" << std::endl;
+        std::cerr << "  -----------------------------" << std::endl;
+        std::cerr << "Nx " << LV::Nx << " Nt " << LV::Nt << std::endl;
+        std::cerr << "ranks_x: " << std::endl;
         std::cin >> mpi::ranks_x;
-        std::cout << "ranks_t: ";
+        std::cerr << "ranks_t: " << std::endl;
         std::cin >> mpi::ranks_t;
-        std::cout << "m0: ";
+        std::cerr << "m0: " << std::endl;
         std::cin >> m0;
-        std::cout << "Molecular dynamics steps: ";
+        std::cerr << "Molecular dynamics steps: " << std::endl;
         std::cin >> MD_steps;
-        std::cout << "Trajectory length: ";
+        std::cerr << "Trajectory length: " << std::endl;
         std::cin >> trajectory_length; 
-        std::cout << "beta: ";
+        std::cerr << "beta: " << std::endl;
         std::cin >> beta;
-        std::cout << "Thermalization: ";
+        std::cerr << "Thermalization: " << std::endl;
         std::cin >> Ntherm;
-        std::cout << "Measurements: ";
+        std::cerr << "Measurements: " << std::endl;
         std::cin >> Nmeas;
-        std::cout << "Step (sweeps between measurements): ";
+        std::cerr << "Step (sweeps between measurements): " << std::endl;
         std::cin >> Nsteps;
-        std::cout << "Save configurations yes/no (1 or 0): ";
+        std::cerr << "Save configurations yes/no (1 or 0): " << std::endl;
         std::cin >> saveconf;
-        std::cout << " " << std::endl;
+        std::cerr << std::endl;
     }
     
     MPI_Bcast(&mpi::ranks_x, 1, MPI_INT,  0, MPI_COMM_WORLD);
@@ -67,10 +67,14 @@ int main(int argc, char **argv) {
     MPI_Bcast(&Nsteps, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&saveconf, 1, MPI_INT,  0, MPI_COMM_WORLD);
 
+    
     initializeMPI(); //2D rank topology
     allocate_lattice_arrays(); //Allocates memory for arrays of coordinates
     periodic_boundary(); //Stores neighbors
+    
 
+    
+    
 	GaugeConf GConf = GaugeConf();  //Gauge configuration     
     //Start time string on rank 0 
     std::string start_time_str;
@@ -87,7 +91,7 @@ int main(int argc, char **argv) {
     MPI_Bcast(&tlen, 1, MPI_INT, 0, MPI_COMM_WORLD);
     if (mpi::rank != 0) start_time_str.resize(tlen);
     MPI_Bcast(start_time_str.data(), tlen, MPI_CHAR, 0, MPI_COMM_WORLD);
-
+    
 
     std::ostringstream NameData;
     std::ofstream Datfile;
@@ -97,7 +101,8 @@ int main(int argc, char **argv) {
         Datfile << std::format("#Date and time\n");
         Datfile << std::format("{}\n",start_time_str);
         Datfile << std::format("#Host\n");
-        Datfile << std::format("{}\n",std::getenv("HOSTNAME"));
+        const char* hostname = std::getenv("HOSTNAME");
+        Datfile << std::format("{}\n", hostname ? hostname : "unknown");
         Datfile << std::format("#Nx      #Nt\n");
         Datfile << std::format("{:<10d}{:<10d}\n", LV::Nx,LV::Nt);
         Datfile << std::format("#ranks_x     #ranks_t     #ranks\n");
@@ -112,7 +117,7 @@ int main(int argc, char **argv) {
         Datfile << std::format("{:<30.17g}\n", m0);
         Datfile.close();
     }
-    
+   
 
     if (mpi::rank == 0){
         std::cout << "**********************************************************************" << std::endl;
@@ -134,6 +139,8 @@ int main(int argc, char **argv) {
         std::cout << "**********************************************************************" << std::endl;
     }
         
+        
+    
     HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, LV::Nx, LV::Nt, m0,saveconf);   
     double begin = MPI_Wtime();
     hmc.HMC_algorithm();
@@ -156,7 +163,7 @@ int main(int argc, char **argv) {
         Datfile << std::format("#Execution time\n");
         Datfile << std::format("{:<30.17g}", elapsed_secs);
     }
-            
+       
     if (mpi::rank == 0) Datfile.close();
     
     //Free coordinate arrays
