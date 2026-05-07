@@ -15,7 +15,7 @@ set(SOURCES
 )
 
 set(NS "32")   #Lattice dimension x
-set(NT "8")   #Lattice dimension t
+set(NT "32")   #Lattice dimension t
 
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 

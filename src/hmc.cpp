@@ -204,7 +204,9 @@ void HMC::HMC_algorithm(){
                 << "_" << i << ".ctxt";
             SaveConf(GConf, NameData.str());
 		}
-		for (int j = 0; j < Nsteps; j++) { conf_i+=1; HMC_Update(); } //Decorrelation
+		if (i != Nmeas-1){
+            for (int j = 0; j < Nsteps; j++) { conf_i+=1; HMC_Update(); } //Decorrelation
+        }
     }
     Ep = mean(SpVector) / (Ntot * 1.0); dEp = Jackknife_error(SpVector, 20) / (Ntot * 1.0); //Average Plaquette Value
     gS = mean(gAction) / (Ntot * 1.0); dgS = Jackknife_error(gAction, 20) / (Ntot * 1.0);

@@ -159,7 +159,7 @@ int main(int argc, char **argv) {
         Datfile << std::format("#gS                           #dgS\n");
         Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getgS(), hmc.getdgS());
         Datfile << std::format("#Acceptance rate\n");
-        Datfile << std::format("{:<30.17g}\n", hmc.getacceptance_rate(Nmeas+Nsteps*Nmeas));
+        Datfile << std::format("{:<30.17g}\n", hmc.getacceptance_rate(Nmeas+Nsteps*(Nmeas-1)));
         Datfile << std::format("#Execution time\n");
         Datfile << std::format("{:<30.17g}", elapsed_secs);
     }
