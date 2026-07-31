@@ -2,174 +2,148 @@
 #include <ctime>
 #include <fstream>
 #include <string>
-#include <chrono>
-#include "mpi_setup.h"
-#include "hmc.h"
-#include <format>
+#include <sstream>
+#include <iomanip>
+#include "jackknife.h"
+#include "tests.h"
+#include "mpi.h"
 
-
-int main(int argc, char **argv) {
-    MPI_Init(&argc, &argv);
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
-        
-    srand((mpi::rank+1)*time(0));
-    
-    int Ntherm, Nmeas, Nsteps, Nm0; //Simulation parameters
-    double beta; //Beta range
-    double trajectory_length; //HMC parameters
-    int MD_steps;
-    double m0; //bare mass
-	int saveconf = 0; //Save configurations
-    
-    CG::max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
-    CG::tol = 1e-10; //Tolerance for convergence
-
-    //To call the sequential program one has to choose ranks_x = ranks_t = 1
-    if (mpi::rank == 0){
-         //---Input data---//
-        std::cerr << "  -----------------------------" << std::endl;
-        std::cerr << "|  Two-flavor Schwinger model   |" << std::endl;
-        std::cerr << "| Hybrid Monte Carlo simulation |" << std::endl;
-        std::cerr << "  -----------------------------" << std::endl;
-        std::cerr << "Nx " << LV::Nx << " Nt " << LV::Nt << std::endl;
-        std::cerr << "ranks_x: " << std::endl;
-        std::cin >> mpi::ranks_x;
-        std::cerr << "ranks_t: " << std::endl;
-        std::cin >> mpi::ranks_t;
-        std::cerr << "m0: " << std::endl;
-        std::cin >> m0;
-        std::cerr << "Molecular dynamics steps: " << std::endl;
-        std::cin >> MD_steps;
-        std::cerr << "Trajectory length: " << std::endl;
-        std::cin >> trajectory_length; 
-        std::cerr << "beta: " << std::endl;
-        std::cin >> beta;
-        std::cerr << "Thermalization: " << std::endl;
-        std::cin >> Ntherm;
-        std::cerr << "Measurements: " << std::endl;
-        std::cin >> Nmeas;
-        std::cerr << "Step (sweeps between measurements): " << std::endl;
-        std::cin >> Nsteps;
-        std::cerr << "Save configurations yes/no (1 or 0): " << std::endl;
-        std::cin >> saveconf;
-        std::cerr << std::endl;
-    }
-    
-    MPI_Bcast(&mpi::ranks_x, 1, MPI_INT,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&mpi::ranks_t, 1, MPI_INT,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&m0, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&MD_steps, 1, MPI_INT,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&trajectory_length, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&beta, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&Ntherm, 1, MPI_INT,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&Nmeas, 1, MPI_INT,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&Nsteps, 1, MPI_INT,  0, MPI_COMM_WORLD);
-    MPI_Bcast(&saveconf, 1, MPI_INT,  0, MPI_COMM_WORLD);
-
-    
-    initializeMPI(); //2D rank topology
-    allocate_lattice_arrays(); //Allocates memory for arrays of coordinates
-    periodic_boundary(); //Stores neighbors
-    
-
-    
-    
-	GaugeConf GConf = GaugeConf();  //Gauge configuration     
-    //Start time string on rank 0 
-    std::string start_time_str;
-    if (mpi::rank == 0) {
-        auto now = std::chrono::system_clock::now();
-        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-        std::ostringstream tss;
-        // format: YYYY-MM-DD HH:MM:SS 
-        tss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
-        start_time_str = tss.str();
-    }
-    // broadcast start_time_str length and content so other ranks could log if needed
-    int tlen = static_cast<int>(start_time_str.size());
-    MPI_Bcast(&tlen, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    if (mpi::rank != 0) start_time_str.resize(tlen);
-    MPI_Bcast(start_time_str.data(), tlen, MPI_CHAR, 0, MPI_COMM_WORLD);
-    
-
-    std::ostringstream NameData;
-    std::ofstream Datfile;
-    NameData << "2D_U1_" << LV::Nx << "x" << LV::Nt << "_m0" << format(m0) << "_SimData"  << ".txt";
-    if (mpi::rank == 0){
-        Datfile.open(NameData.str());
-        Datfile << std::format("#Date and time\n");
-        Datfile << std::format("{}\n",start_time_str);
-        Datfile << std::format("#Host\n");
-        const char* hostname = std::getenv("HOSTNAME");
-        Datfile << std::format("{}\n", hostname ? hostname : "unknown");
-        Datfile << std::format("#Nx      #Nt\n");
-        Datfile << std::format("{:<10d}{:<10d}\n", LV::Nx,LV::Nt);
-        Datfile << std::format("#ranks_x     #ranks_t     #ranks\n");
-        Datfile << std::format("{:<15d}{:<15d}{:<15d}\n", mpi::ranks_x, mpi::ranks_t, mpi::size);
-        Datfile << std::format("#beta                        #Ntherm     #Nmeas     #Nsteps\n");
-        Datfile << std::format("{:<30.17g}{:<11d}{:<11d}{:<11d}\n", beta, Ntherm, Nmeas, Nsteps);
-        Datfile << std::format("#trajectory_length     #MD_steps\n");
-        Datfile << std::format("{:<30.17g}{:<30d}\n", trajectory_length, MD_steps);
-        Datfile << std::format("#CG max iterations     #CG relative tolerance\n");
-        Datfile << std::format("{:<30d}{:<30.17g}\n", CG::max_iter, CG::tol);
-        Datfile << std::format("#m0\n");
-        Datfile << std::format("{:<30.17g}\n", m0);
-        Datfile.close();
-    }
-   
-
-    if (mpi::rank == 0){
-        std::cout << "**********************************************************************" << std::endl;
-        std::cout << "*                              PARAMETERS" << std::endl;
-        std::cout << "* Nx = " << LV::Nx << ", Nt = " << LV::Nt << std::endl;
-        std::cout << "* m0 = " << m0 << ", kappa = " << 1/(2*(m0+2)) << std::endl;
-        std::cout << "* beta = " << beta << std::endl;
-        std::cout << "* Thermalization confs = " << Ntherm << std::endl;
-        std::cout << "* Measurement confs = " << Nmeas << std::endl;
-        std::cout << "* Decorrelation steps (confs dropped between measurements) = " << Nsteps << std::endl;
-        std::cout << "* Trajectory length = " << trajectory_length << ", Leapfrog steps = " << MD_steps << 
-        ", Integration step = " << trajectory_length/MD_steps << std::endl;
-        std::cout << "* CG max iterations = " << CG::max_iter << ", CG tolerance = " << CG::tol << std::endl;
-        std::cout << "* Number of ranks on x = " << mpi::ranks_x << ", Number of ranks on t = "  << mpi::ranks_t << std::endl;
-        std::cout << "* Total number of MPI ranks = " << mpi::size << std::endl;
-        std::cout << "* Each rank has " << mpi::maxSize << " lattice sites" << std::endl;
-        std::cout << "* Host: " << std::getenv("HOSTNAME") << std::endl;
-        std::cout << "* Start time: " << start_time_str << std::endl;
-        std::cout << "**********************************************************************" << std::endl;
-    }
-        
-        
-    
-    HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, LV::Nx, LV::Nt, m0,saveconf);   
-    double begin = MPI_Wtime();
-    hmc.HMC_algorithm();
-    double end = MPI_Wtime();
-
-    if (mpi::rank == 0){
-        std::cout << "Average plaquette value / volume: Ep = " << hmc.getEp() << " dEp = " << hmc.getdEp() << std::endl;
-        std::cout << "Average gauge action / volume: gS = " << hmc.getgS() << " dgS = " << hmc.getdgS() << std::endl;
-        std::cout << "Acceptance rate: " << hmc.getacceptance_rate(Nmeas+Nsteps*Nmeas) << std::endl;
-        double elapsed_secs = end - begin;
-        std::cout << "Execution time = " << elapsed_secs << " s" << std::endl;
-        std::cout << "-------------------------------" << std::endl;
-        Datfile.open(NameData.str(),std::ios::app);
-        Datfile << std::format("#Ep                           #dEp\n");
-        Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getEp(), hmc.getdEp());
-        Datfile << std::format("#gS                           #dgS\n");
-        Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getgS(), hmc.getdgS());
-        Datfile << std::format("#Acceptance rate\n");
-        Datfile << std::format("{:<30.17g}\n", hmc.getacceptance_rate(Nmeas+Nsteps*(Nmeas-1)));
-        Datfile << std::format("#Execution time\n");
-        Datfile << std::format("{:<30.17g}", elapsed_secs);
-    }
-       
-    if (mpi::rank == 0) Datfile.close();
-    
-    //Free coordinate arrays
-    free_lattice_arrays();
-    MPI_Finalize();
-
-	return 0;
+//Formats decimal numbers
+//For opening file with confs 
+static std::string format(const double& number) {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(4) << number;
+    std::string str = oss.str();
+    str.erase(str.find('.'), 1); //Removes decimal dot 
+    return str;
 }
 
+int main(int argc, char **argv) {
+
+    using namespace SAPV;
+    MPI_Init(&argc, &argv);
+    int rank, size; 
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    srand(19);
+
+    //srand(time(0));
+    
+    Coordinates(); //Builds array with coordinates of the lattice points x * Nt + t
+    MakeBlocks(); //Makes lattice blocks 
+    periodic_boundary(); //Builds LeftPB and RightPB (periodic boundary for U_mu(n))
+    Aggregates(); //build aggregates
+    CheckAggregates();
+    CheckBlocks(); //Check blocks dimensions
+    
+    m0 = -0.18840579710144945; //Globally declared
+    AMGV::SAP_test_vectors_iterations = 4; 
+    FGMRESV::fgmres_restart_length = 25;
+    //Parameters in variables.cpp
+    if (rank == 0)
+        print_parameters();
+    
+    GaugeConf GConf = GaugeConf(Nx, Nt);
+    GConf.initialize(); //Initialize a random gauge configuration
+
+    
+    double beta = 2;
+    int nconf = 20;
+    if (LV::Nx == 64)
+        nconf = 0;
+    else if (LV::Nx == 128)
+        nconf = 3;
+    else if (LV::Nx == 256)
+        nconf = 20;  
+    
+    //Reading Conf
+    {
+        std::ostringstream NameData;
+        NameData << "../../confs/b" << beta << "_" << LV::Nx << "x" << LV::Nt << "/m-018/2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << 
+        format(beta).c_str() << "_m" << format(m0).c_str() << "_" << nconf << ".ctxt";
+        GConf.read_conf(NameData.str());
+    }
+
+    sap.set_params(GConf.Conf, m0); //Setting gauge conf and m0 for SAP 
+
+    spinor rhs(Ntot, c_vector(2, 0)); //right hand side
+    spinor x0(Ntot, c_vector(2, 0)); //initial guess
+    std::ostringstream FileName;
+    FileName << "../../confs/rhs/rhs_conf" << nconf << "_" << Nx << "_Nt" << Nt << ".rhs";
+    read_rhs(rhs,FileName.str());
+    //random_rhs(rhs,10);
+    
+    // Save rhs to a .txt file
+    if (rank == 0){
+        std::ostringstream FileName;
+        FileName << "rhs_conf" << nconf << "_" << Nx << "_Nt" << Nt
+                 << ".rhs";
+        //save_rhs(rhs,FileName.str());
+    }
+    
+    
+    
+    clock_t start, end;
+    double elapsed_time;
+    double startT, endT;
+
+    spinor x_bi(Ntot, c_vector(2, 0));
+    spinor x_cg(Ntot, c_vector(2, 0));
+    spinor x_gmres(Ntot, c_vector(2, 0));
+    spinor x_fsap(Ntot, c_vector(2, 0));
+    spinor x_sap(Ntot, c_vector(2, 0));
+    spinor x_famg(Ntot,c_vector(2,0));
+    spinor x_amg(Ntot,c_vector(2,0));
+
+    Tests tests(GConf,rhs,x0, m0);
+
+    double Iter[3];
+    double dIter[3];
+
+    if (rank == 0){
+        //tests.BiCG(x_bi,10000,false,true); 
+        //tests.GMRES(x_gmres,25, 100,false,true);
+        tests.CG(x_cg);
+    }
+
+    //tests.FGMRES_sap(x_fsap,false,true);
+    //tests.SAP(x_sap,200,true);
+
+
+    for(int i = 0; i < 3; i++){
+
+    AMGV::Nit = 3*i;
+    if (rank == 0) std::cout << "Number of iterations for improving the interpolator: " << AMGV::Nit << std::endl;
+
+    int Meas = 5;
+    std::vector<double> iterations(Meas,0);
+    if (rank == 0) std::cout << "--------------Flexible GMRES with AMG preconditioning--------------" << std::endl;
+
+    for(int i = 0; i < Meas; i++){
+        if (rank == 0) std::cout << "Meas " << i << std::endl;
+        iterations[i] = tests.FGMRES_2grid(x_famg,false, true);
+    }
+    if (rank == 0){
+        std::cout << "Average iteration number over " << Meas << " runs: " << mean(iterations) << " +- " 
+        << standard_deviation(iterations)/sqrt(1.0*Meas) << std::endl;
+    
+    }
+
+    Iter[i] = mean(iterations);
+    dIter[i] = standard_deviation(iterations)/sqrt(1.0*Meas);
+    }
+
+    for(int i = 0; i < 3; i++){
+        if (rank == 0) std::cout << "Nit: " << 3*i << " Iter: " << Iter[i] << " +- " << dIter[i] << std::endl;
+    }
+
+            
+    MPI_Barrier(MPI_COMM_WORLD);
+    //tests.twoLevel(x_amg,false,true);
+    //tests.check_solution(x_amg);
+    
+    MPI_Finalize();
+
+    return 0;
+}

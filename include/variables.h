@@ -2,205 +2,124 @@
 #define VARIABLES_H_INCLUDED
 #include "config.h"
 #include <iostream>
-#include <vector>
 #include <complex>
+#include <vector>
+#include <string>
+#include <fstream>
 #include <iomanip>
-#include "mpi.h"
+#include <random>
 
-extern double pi;
 typedef std::complex<double> c_double;
+constexpr double pi=3.14159265359;
 
-//For scattering and gathering information from the 2D rank topology
-extern MPI_Datatype sub_block_type;
-extern MPI_Datatype sub_block_resized;
-
-namespace mpi{
-    extern int rank;
-    extern int size; 
-    extern int maxSize;
-    extern int ranks_x;
-    extern int ranks_t;
-    extern int width_x;
-    extern int width_t;
-    extern int rank2d; //Rank id in the 2D communicator
-    extern int coords[2];
-    extern int top; 
-    extern int bot; 
-    extern int right; 
-    extern int left;
-    //Diagonal ranks necessary for staples
-    extern int bot_left;
-    extern int bot_right;
-    extern int top_left;
-    extern int top_right;
-    extern MPI_Comm cart_comm;
-}
-
+extern double coarse_time; //Time spent in the coarse grid solver
+extern double smooth_time; //Time spent in the smoother
+extern double SAP_time;
+extern double m0;
 
 //------------Lattice parameters--------------//
 namespace LV {
-    //Lattice dimensions//
-    constexpr int Nx= NS; //We extract this value from config.h
-    constexpr int Nt = NT; //We extract this value from config.h
+    //Parameters for the lattice blocking used for the aggregation
+    //We extract the following values from config.h
+    constexpr int Nx=NS; 
+    constexpr int Nt = NT; 
+    constexpr int block_x = BLOCK_X; 
+    constexpr int block_t = BLOCK_T; 
+    constexpr int Nblocks = block_x * block_t;
+    constexpr int x_elements = Nx/block_x; //Number of elements in the x direction
+    constexpr int t_elements = Nt/block_t; //Number of elements in the t direction
+    constexpr int lattice_sites_per_block = x_elements * t_elements;
+    constexpr int variables_per_agg = lattice_sites_per_block;
     constexpr int Ntot = Nx*Nt; //Total number of lattice points
 }
 
+//------------Schwarz alternating procedure parameters--------------//
+namespace SAPV {
+    using namespace LV; 
+    constexpr int sap_block_x = SAP_BLOCK_X; 
+    constexpr int sap_block_t = SAP_BLOCK_T; 
+    constexpr int sap_x_elements = Nx/sap_block_x; //Number of lattice points in the x direction (without the spin index)
+    constexpr int sap_t_elements = Nt/sap_block_t; //Number of lattice points in the t direction (without the spin index)
+    constexpr int N_sap_blocks = sap_block_x * sap_block_t; //Number of Schwarz blocks
+    constexpr int sap_lattice_sites_per_block = sap_x_elements * sap_t_elements; //Number of lattice points in the block
+    constexpr int sap_variables_per_block = 2 * sap_lattice_sites_per_block; //Number of variables in the block
+    constexpr int sap_coloring_blocks = N_sap_blocks/2; //Number of red or black blocks 
+    extern bool schwarz_blocks; //True if the Schwarz blocks are initialized
+    extern int sap_gmres_restart_length; //GMRES restart length for the Schwarz blocks.
+    extern int sap_gmres_restarts; //GMRES iterations for the Schwarz blocks
+    extern double sap_gmres_tolerance; //GMRES tolerance for the Schwarz blocks 
+    extern double sap_tolerance; //tolerance for the SAP method
+    extern int sap_blocks_per_proc; //Number of blocks per process for the parallel SAP method
+}
+
+//------------Parameters for AMG--------------//
+namespace AMGV{
+    constexpr int Ntest = NTEST; //Number of test vectors
+    constexpr int Nagg = 2*LV::block_t*LV::block_x; //Number of aggregates (one spin per aggregate)
+    extern bool aggregates_initialized; //True if the aggregates are initialized
+    extern int SAP_test_vectors_iterations; //Number of SAP iterations to smooth test vectors
+    //Parameters for the coarse level solver
+    extern int gmres_restarts_coarse_level; //restart length for GMRES at the coarse level
+    extern int gmres_restart_length_coarse_level; //GMRES restart length for the coarse level
+    extern double gmres_tol_coarse_level; //GMRES tolerance for the coarse level
+
+
+    extern int nu1; //Pre-smoothing iterations
+    extern int nu2; //Post-smoothing iterations
+    extern int Nit; //Number of iterations for improving the interpolator 
+    extern bool SetUpDone; 
+}
+
+//--------------Parameters for FGMRES--------------//
+namespace FGMRESV {
+    extern double fgmres_tolerance; //Tolerance for FGMRES
+    extern int fgmres_restart_length; //Restart length for FGMRES
+    extern int fgmres_restarts; //Number of restarts for FGMRES
+}
+
 namespace CG{
-    extern int max_iter; //Maximum number of iterations for the conjugate gradient method
-    extern double tol; //Tolerance for convergence
+    extern int max_iter;
+    extern double tol;
 }
 
 
-struct spinor {
-    c_double* mu0;
-    c_double* mu1;
-    int size;
-    //Constructor
-    spinor(int N = LV::Ntot) : size(N) {
-        mu0 = new c_double[N]();
-        mu1 = new c_double[N]();
-    }
+//Coordinates vectorization for the lattice points
+extern std::vector<std::vector<int>>Coords; 
+void Coordinates();
 
-    // Copy constructor (deep copy)
-    spinor(const spinor& other) : size(other.size) {
-        mu0 = new c_double[size];
-        mu1 = new c_double[size];
-        std::copy(other.mu0, other.mu0 + size, mu0);
-        std::copy(other.mu1, other.mu1 + size, mu1);
-    }
+//Coordinates vectorization for the aggregates 
+//Intialized in Aggregates()
+extern std::vector<int> XCoord; 
+extern std::vector<int> TCoord;
+extern std::vector<int> SCoord;
+extern std::vector<std::vector<int>> Agg; 
+//Aggregates[number_of_aggregate][vectorized_coordinate of the lattice point]
+//This vectorization also takes into account the spin index
 
-    // Assignment operator (deep copy)
-    spinor& operator=(const spinor& other) {
-        if (this != &other) {
-            if (size != other.size) {
-                delete[] mu0;
-                delete[] mu1;
-                size = other.size;
-                mu0 = new c_double[size];
-                mu1 = new c_double[size];
-            }
-            std::copy(other.mu0, other.mu0 + size, mu0);
-            std::copy(other.mu1, other.mu1 + size, mu1);
-        }
-        return *this;
-    }
+//--Coordinates of the neighbors to avoid recomputing them each time the operator D is called--//
+//Check dirac_operator.h for the definition of RightPB and LeftPB
+extern std::vector<std::vector<int>>RightPB; //Right periodic boundary
+extern std::vector<std::vector<int>>LeftPB; //Left periodic boundary
+extern std::vector<std::vector<c_double>>SignR; //Right fermionic boundary
+extern std::vector<std::vector<c_double>>SignL; //Left fermionic boundary
 
-    // Destructor
-    ~spinor() {
-        delete[] mu0;
-        delete[] mu1;
-    }
+extern std::vector<std::vector<c_double>>D_TEMP;
 
-    inline void clearBuffer(){
-        for(int n = 0; n<size; n++){
-            mu0[n] = 0;
-            mu1[n] = 0;
-        }
-    }
-};
+extern std::vector<std::vector<int>> LatticeBlocks;
+extern int LeftPB_blocks[LV::Nblocks][2];
+extern int RightPB_blocks[LV::Nblocks][2];
 
-struct re_field {
-    double* mu0;
-    double* mu1;
-    int size;
-    //Constructor
-    re_field(int N = LV::Ntot) : size(N) {
-        mu0 = new double[N]();
-        mu1 = new double[N]();
-    }
+//Build lattice blocks 
+void MakeBlocks();
 
-    // Copy constructor (deep copy)
-    re_field(const re_field& other) : size(other.size) {
-        mu0 = new double[size];
-        mu1 = new double[size];
-        std::copy(other.mu0, other.mu0 + size, mu0);
-        std::copy(other.mu1, other.mu1 + size, mu1);
-    }
+void CheckBlocks(); //Check that Nx/block_x and Nt/block_t are integers, the same for Schwarz blocks
+void CheckAggregates(); //Check that the aggregates are initialized and have the correct size
 
-    // Assignment operator (deep copy)
-    re_field& operator=(const re_field& other) {
-        if (this != &other) {
-            if (size != other.size) {
-                delete[] mu0;
-                delete[] mu1;
-                size = other.size;
-                mu0 = new double[size];
-                mu1 = new double[size];
-            }
-            std::copy(other.mu0, other.mu0 + size, mu0);
-            std::copy(other.mu1, other.mu1 + size, mu1);
-        }
-        return *this;
-    }
+void save_vec(const std::vector<double>& vec,const std::string& name); //save vector to .txt file 
+void read_rhs(std::vector<std::vector<c_double>>& vec,const std::string& name);
+void save_rhs(std::vector<std::vector<c_double>>& vec,const std::string& name);
+void random_rhs(std::vector<std::vector<c_double>>& vec,const int seed);
 
-    // Destructor
-    ~re_field() {
-        delete[] mu0;
-        delete[] mu1;
-    }
-};
-
-typedef spinor c_matrix;
-
-int Coords(const int& x, const int& t);
-extern int* LeftPB;
-extern int* RightPB;
-extern c_double* SignL;
-extern c_double* SignR;
-extern int* x_1_t1;
-extern int* x1_t_1;
-
-void allocate_lattice_arrays();
-void free_lattice_arrays();
-
-
-//Memory preallocation
-extern spinor DTEMP;
-extern spinor TEMP; 
-
-//Buffers for MPI communication
-extern spinor TopRow;
-extern spinor BottomRow;
-extern spinor RightCol;
-extern spinor LeftCol; //Shoul be width_x
-
-
-/*
-	Modulo operation
-*/
-inline int mod(int a, int b) {
-	int r = a % b;
-	return r < 0 ? r + b : r;
-}
-
-
-/*
-    dot product between two spinors of the form psi[ntot][2]
-    A.B = sum_i A_i conj(B_i) 
-*/
-inline c_double dot(const spinor& x, const spinor& y) {
-
-    c_double local_z = 0;
-    //reduction over all lattice points and spin components
-    for (int n = 0; n < mpi::maxSize; n++) {
-        local_z += x.mu0[n] * std::conj(y.mu0[n]);
-        local_z += x.mu1[n] * std::conj(y.mu1[n]);
-    }
-    c_double z;
-    MPI_Allreduce(&local_z, &z, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, mpi::cart_comm);
-    return z;
-}
-
-
-//Formats decimal numbers
-//Useful for writing m0 and beta on the file name
-inline std::string format(const double& number) {
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(4) << number;
-    std::string str = oss.str();
-    str.erase(str.find('.'), 1); //Removes decimal dot
-    return str;
-}
-
+void print_parameters();
 
 #endif 

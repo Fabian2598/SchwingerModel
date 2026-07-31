@@ -13,7 +13,7 @@
         
     The convergence criterion is ||r|| < ||phi|| * tol
 */
-int conjugate_gradient(const spinor& U, const spinor& phi, spinor &x, const double& m0); 
+int conjugate_gradient(const c_matrix& U, const spinor& phi, spinor &x, const double& m0); 
 
 
 #endif
