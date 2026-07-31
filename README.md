@@ -202,7 +202,6 @@ The exact compiler and generator flags may vary depending on your setup.
 .
 ├── CMakeLists.txt
 ├── README.md
-├── README_improved.md
 ├── run.sh
 ├── readBin.sh
 ├── readBinConf.cpp
