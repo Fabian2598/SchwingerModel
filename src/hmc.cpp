@@ -117,6 +117,7 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     action += std::real( dot( TEMP, phi)); 
 
     //Save gauge configuration if CG does not converge
+    /*
     if (CG_convergence == 0){
         std::ostringstream NameData;
         NameData << "2D_U1_" << Nx << "x" << Nt
@@ -126,7 +127,8 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
         SaveConf(GConf,NameData.str());
         illConfId += 1;
     } 
-
+    */
+   
     return action;
 }
 

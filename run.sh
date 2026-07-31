@@ -1,20 +1,20 @@
 #!/bin/bash
 
 #Script has to be run in the same directory where CMakeLists.txt is located
-NX=512 #lattice dimensions
-NT=512 
-RANKS_X=4 #This has to exactly divide NX
-RANKS_T=2 #The same
+NX=64 #lattice dimensions
+NT=64 
+RANKS_X=2 #This has to exactly divide NX
+RANKS_T=2 #The same for Nt
 RANKS=$((RANKS_X*$RANKS_T)) #Total number of cores
 CMAKELISTS="CMakeLists.txt"
-M0=0 #bare mass
-BETA=2 #beta
+M0=0.2 #bare mass
+BETA=4 #beta
 MD_STEPS=10 #Molecular dynamics steps
-TAU=1.0 #Trajectory length
-NTHERM=1 #Thermalization
-NMEAS=1 #Measurements
-NSTEPS=0 #Decorrelation steps between measurements
-SAVE=0
+TAU=0.1 #Trajectory length
+NTHERM=10 #Thermalization
+NMEAS=10 #Measurements
+NSTEPS=10 #Decorrelation steps between measurements
+SAVE=1 #0 do not save confs, 1 save confs
 
 
 sed -i "17s/set(NS \".*\")/set(NS \"${NX}\")/" "$CMAKELISTS"
