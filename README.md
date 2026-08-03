@@ -8,35 +8,7 @@ $$
 (x, t, \mu, \mathrm{Re}(U_\mu(t,x)), \mathrm{Im}(U_\mu(t,x)))
 $$
 
-The action implemented is
-
-$$
-S[\Phi,\Phi^\dagger,U_\mu]
-= \beta \sum_{x\in V}\sum_{\mu<\nu}\mathrm{Re}\left(1-U_{\mu\nu}(x)\right)
-+ \Phi_\alpha^\dagger(\mathbf{n}') (DD^\dagger)^{-1\,\alpha\beta}_{\mathbf{n}',\mathbf{n}} \Phi_\beta(\mathbf{n})
-$$
-
-where $U_{\mu\nu}$ is the plaquette and $\Phi$ is the pseudofermion field. The Dirac operator has the form
-
-$$
-D[\mathbf{n}',\mathbf{n}]^{\alpha\beta}
-= (m_0 + 2)\delta^{\alpha\beta}\delta_{\mathbf{n}',\mathbf{n}}
-- \frac{1}{2}\sum_{\mu=\{0,1\}}
-\left[
-\left(1-\sigma_\mu\right)^{\alpha\beta}U_\mu(\mathbf{n}')\delta_{\mathbf{n}' + \hat{\mu},\mathbf{n}}
-+\left(1+\sigma_\mu\right)^{\alpha\beta}U_\mu^\dagger(\mathbf{n}'-\hat{\mu})\delta_{\mathbf{n}' - \hat{\mu},\mathbf{n}}
-\right].
-$$
-
-with
-
-$$
-\sigma_0 = \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix},
-\qquad
-\sigma_1 = \begin{pmatrix} 0 & -i \\ i & 0 \end{pmatrix}.
-$$
-
-Here $\mu=0$ denotes the time direction and $\mu=1$ denotes the spatial direction.
+Here $\mu=0$ denotes the time direction and $\mu=1$ denotes the spatial direction. Check [HMC_doc.pdf](HMC_doc.pdf) for details of the HMC formulation in this model.
 
 ---
 
