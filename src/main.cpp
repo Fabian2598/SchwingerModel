@@ -3,9 +3,10 @@
 #include <fstream>
 #include <string>
 #include <chrono>
+#include <sstream>
+#include <iomanip>
 #include "mpi_setup.h"
 #include "hmc.h"
-#include <format>
 
 
 int main(int argc, char **argv) {
@@ -95,26 +96,32 @@ int main(int argc, char **argv) {
 
     std::ostringstream NameData;
     std::ofstream Datfile;
-    NameData << "2D_U1_" << LV::Nx << "x" << LV::Nt << "_m0" << format(m0) << "_SimData"  << ".txt";
+    NameData << "2D_U1_" << LV::Nx << "x" << LV::Nt << "_m0";
+    {
+        std::ostringstream m0_stream;
+        m0_stream << std::setprecision(17) << m0;
+        NameData << m0_stream.str();
+    }
+    NameData << "_SimData.txt";
     if (mpi::rank == 0){
         Datfile.open(NameData.str());
-        Datfile << std::format("#Date and time\n");
-        Datfile << std::format("{}\n",start_time_str);
-        Datfile << std::format("#Host\n");
+        Datfile << "#Date and time\n";
+        Datfile << start_time_str << "\n";
+        Datfile << "#Host\n";
         const char* hostname = std::getenv("HOSTNAME");
-        Datfile << std::format("{}\n", hostname ? hostname : "unknown");
-        Datfile << std::format("#Nx      #Nt\n");
-        Datfile << std::format("{:<10d}{:<10d}\n", LV::Nx,LV::Nt);
-        Datfile << std::format("#ranks_x     #ranks_t     #ranks\n");
-        Datfile << std::format("{:<15d}{:<15d}{:<15d}\n", mpi::ranks_x, mpi::ranks_t, mpi::size);
-        Datfile << std::format("#beta                        #Ntherm     #Nmeas     #Nsteps\n");
-        Datfile << std::format("{:<30.17g}{:<11d}{:<11d}{:<11d}\n", beta, Ntherm, Nmeas, Nsteps);
-        Datfile << std::format("#trajectory_length     #MD_steps\n");
-        Datfile << std::format("{:<30.17g}{:<30d}\n", trajectory_length, MD_steps);
-        Datfile << std::format("#CG max iterations     #CG relative tolerance\n");
-        Datfile << std::format("{:<30d}{:<30.17g}\n", CG::max_iter, CG::tol);
-        Datfile << std::format("#m0\n");
-        Datfile << std::format("{:<30.17g}\n", m0);
+        Datfile << (hostname ? hostname : "unknown") << "\n";
+        Datfile << "#Nx      #Nt\n";
+        Datfile << std::setw(10) << LV::Nx << std::setw(10) << LV::Nt << "\n";
+        Datfile << "#ranks_x     #ranks_t     #ranks\n";
+        Datfile << std::setw(15) << mpi::ranks_x << std::setw(15) << mpi::ranks_t << std::setw(15) << mpi::size << "\n";
+        Datfile << "#beta                        #Ntherm     #Nmeas     #Nsteps\n";
+        Datfile << std::setw(30) << std::setprecision(17) << beta << std::setw(11) << Ntherm << std::setw(11) << Nmeas << std::setw(11) << Nsteps << "\n";
+        Datfile << "#trajectory_length     #MD_steps\n";
+        Datfile << std::setw(30) << std::setprecision(17) << trajectory_length << std::setw(30) << MD_steps << "\n";
+        Datfile << "#CG max iterations     #CG relative tolerance\n";
+        Datfile << std::setw(30) << CG::max_iter << std::setw(30) << std::setprecision(17) << CG::tol << "\n";
+        Datfile << "#m0\n";
+        Datfile << std::setw(30) << std::setprecision(17) << m0 << "\n";
         Datfile.close();
     }
    
@@ -154,14 +161,14 @@ int main(int argc, char **argv) {
         std::cout << "Execution time = " << elapsed_secs << " s" << std::endl;
         std::cout << "-------------------------------" << std::endl;
         Datfile.open(NameData.str(),std::ios::app);
-        Datfile << std::format("#Ep                           #dEp\n");
-        Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getEp(), hmc.getdEp());
-        Datfile << std::format("#gS                           #dgS\n");
-        Datfile << std::format("{:<30.17g}{:<30.17g}\n", hmc.getgS(), hmc.getdgS());
-        Datfile << std::format("#Acceptance rate\n");
-        Datfile << std::format("{:<30.17g}\n", hmc.getacceptance_rate(Nmeas+Nsteps*(Nmeas-1)));
-        Datfile << std::format("#Execution time\n");
-        Datfile << std::format("{:<30.17g}", elapsed_secs);
+        Datfile << "#Ep                           #dEp\n";
+        Datfile << std::setw(30) << std::setprecision(17) << hmc.getEp() << std::setw(30) << hmc.getdEp() << "\n";
+        Datfile << "#gS                           #dgS\n";
+        Datfile << std::setw(30) << std::setprecision(17) << hmc.getgS() << std::setw(30) << hmc.getdgS() << "\n";
+        Datfile << "#Acceptance rate\n";
+        Datfile << std::setw(30) << std::setprecision(17) << hmc.getacceptance_rate(Nmeas+Nsteps*(Nmeas-1)) << "\n";
+        Datfile << "#Execution time\n";
+        Datfile << std::setw(30) << std::setprecision(17) << elapsed_secs;
     }
        
     if (mpi::rank == 0) Datfile.close();
