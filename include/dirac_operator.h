@@ -3,6 +3,8 @@
 #include <complex>
 #include "gauge_conf.h"
 #include "mpi.h"
+#include "halo_exchange.h"
+#include "boundary.h"
 
 
 extern c_double I_number; //imaginary number
@@ -91,5 +93,34 @@ void D_D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi,const doubl
 	This derivative is needed for the fermion force
 */
 re_field phi_dag_partialD_phi(const spinor& U, const spinor& left, const spinor& right);
+
+/*
+	Dirac operator application D phi
+	U: gauge configuration
+	phi: spinor to apply the operator to
+	m0: mass parameter
+*/
+void D_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi, const double& m0);
+
+/*
+	Dirac dagger operator application D^+ phi
+	U: gauge configuration
+	phi: spinor to apply the operator to
+	m0: mass parameter
+*/
+void D_dagger_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi, const double& m0);
+
+/*
+	Application of D D^+
+	It just calls the previous functions
+*/
+void D_D_dagger_phi_v2(const spinor_v2& U, const spinor_v2& phi, spinor_v2 &Dphi,const double& m0);
+
+/*
+	2* Re ( left^+ d D / d omega(z) right )
+	This derivative is needed for the fermion force
+*/
+void phi_dag_partialD_phi_v2(const spinor_v2& U, const spinor_v2& left_term,const spinor_v2& right_term,re_field_v2& Dphi);
+
 
 #endif

@@ -2,19 +2,17 @@
 
 double pi=3.14159265359;
 
+
+//For scattering and gathering information from the 2D rank topology
 MPI_Datatype sub_block_type;
 MPI_Datatype sub_block_resized;
-
-/*
-	Vectorized lattice coords.*/
-int Coords(const int& x, const int& t){
-	return x*mpi::width_t + t;
-}
 
 namespace mpi{
     int rank = 0;
     int size = 1; 
-    int maxSize = LV::Ntot; //Default value, will be updated in main
+    int maxSize = LV::Nx*LV::Nt;    //nsites
+    int maxSizeH = 2*(LV::Nx+2)*(LV::Nt+2); //maxSize with halos and spin included
+    int sitesH = (mpi::width_x+2)*(mpi::width_t+2);
     int ranks_x = 1;
     int ranks_t = 1;
     int width_x = LV::Nx;
@@ -29,8 +27,17 @@ namespace mpi{
     int bot_right = 0;
     int top_left = 0;
     int top_right = 0;
-    MPI_Comm cart_comm;
+
+    MPI_Comm cart_comm; //cartesian communicator
+    //Datatypes for reading/writing gauge confs and rhs
+    MPI_Datatype column_type;
+    MPI_Datatype global_conf_type;
+    MPI_Datatype global_conf_resized;
+    MPI_Datatype local_conf_type;
+    MPI_Datatype local_conf_resized;
+
 }
+
 
 namespace CG{
 	int max_iter = 10000; //Maximum number of iterations for the conjugate gradient method

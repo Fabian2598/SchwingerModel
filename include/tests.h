@@ -1,0 +1,43 @@
+#ifndef TESTS_H
+#define TESTS_H
+
+#include "dirac_operator.h"
+#include "utils.h"
+
+
+class Tests {
+
+public:
+    Tests(double m0) : m0(m0) {
+        U     = spinor(mpi::maxSize);
+        phi   = spinor(mpi::maxSize);
+        left  = spinor(mpi::maxSize);
+        right = spinor(mpi::maxSize);
+        
+        U_v2    = spinor_v2(mpi::maxSizeH);
+        phi_v2  = spinor_v2(mpi::maxSizeH);
+        left_v2  = spinor_v2(mpi::maxSizeH);
+        right_v2 = spinor_v2(mpi::maxSizeH);
+    }
+    ~Tests() {} 
+
+    
+    void initialize_spinors();
+    void test_D_operator();
+    void test_D_dagger_operator();
+    void test_phi_dag_partialD_phi();
+    void test_D_D_dagger_phi();
+
+private:
+    double m0;
+    spinor U;
+    spinor phi;
+    spinor left, right;
+
+    spinor_v2 U_v2;
+    spinor_v2 phi_v2;
+    spinor_v2 left_v2, right_v2;
+     
+};
+
+#endif

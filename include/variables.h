@@ -16,26 +16,40 @@ extern MPI_Datatype sub_block_resized;
 
 namespace mpi{
     extern int rank;
-    extern int size; 
+    extern int size;
     extern int maxSize;
+    extern int maxSizeH;
+    extern int sitesH;
     extern int ranks_x;
     extern int ranks_t;
     extern int width_x;
     extern int width_t;
-    extern int rank2d; //Rank id in the 2D communicator
+    extern int rank2d;
     extern int coords[2];
-    extern int top; 
-    extern int bot; 
-    extern int right; 
+    extern int top;
+    extern int bot;
+    extern int right;
     extern int left;
-    //Diagonal ranks necessary for staples
     extern int bot_left;
     extern int bot_right;
     extern int top_left;
     extern int top_right;
-    extern MPI_Comm cart_comm;
+
+    extern MPI_Comm cart_comm; //cartesian communicator
+    //Datatypes for reading/writing gauge confs and rhs
+    extern MPI_Datatype column_type;
+    extern MPI_Datatype global_conf_type;
+    extern MPI_Datatype global_conf_resized;
+    extern MPI_Datatype local_conf_type;
+    extern MPI_Datatype local_conf_resized;
+
 }
 
+/*
+	Vectorized lattice coords.*/
+inline int Coords(const int& x, const int& t){
+	return x*mpi::width_t + t;
+}
 
 //------------Lattice parameters--------------//
 namespace LV {
@@ -202,5 +216,40 @@ inline std::string format(const double& number) {
     return str;
 }
 
+//Flattened spinor
+template <typename T>
+struct spinor_template{
+    T* val;
+    int size;
+
+    explicit spinor_template(int N = LV::Ntot) : size(N), val(new T[N]()) {}
+
+    spinor_template(const spinor_template& other) : size(other.size), val(new T[size]) {
+        std::copy(other.val, other.val + size, val);
+    }
+
+    spinor_template& operator=(const spinor_template& other) {
+        if (this != &other) {
+            if (size != other.size) {
+                delete[] val;
+                size = other.size;
+                val = new T[size];
+            }
+            std::copy(other.val, other.val + size, val);
+        }
+        return *this;
+    }
+
+    ~spinor_template() {
+        delete[] val;
+    }
+
+    void clearBuffer() {
+        std::fill(val, val + size, T{});
+    }
+};
+
+using spinor_v2 = spinor_template<c_double>;
+using re_field_v2 = spinor_template<double>;
 
 #endif 

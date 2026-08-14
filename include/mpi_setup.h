@@ -6,20 +6,33 @@
 inline void assignWidth(){
     if (mpi::ranks_t * mpi::ranks_x != mpi::size){
         if (mpi::rank == 0){
-            std::cout << "ranks_t * ranks_x != total number of ranks" << std::endl;
-            std::cout << mpi::ranks_t * mpi::ranks_x << " != " << mpi::size << std::endl;
+            std::cerr << "ranks_t * ranks_x != total number of ranks" << std::endl;
+            std::cerr << mpi::ranks_t * mpi::ranks_x << " != " << mpi::size << std::endl;
         }
         exit(1);
     }
     //We do this to enforce an equal workload on each rank
     if (LV::Nx % mpi::ranks_x!= 0 ||LV::Nt % mpi::ranks_t != 0){
         if (mpi::rank == 0)
-            std::cout << "Nx (Nt) is not exactly divisible by rank_x (rank_t)" << std::endl;
+            std::cerr << "Nx (Nt) is not exactly divisible by rank_x (rank_t)" << std::endl;
         exit(1);
     }
+
+    if ((mpi::ranks_x == 1 && mpi::ranks_t != 1) || (mpi::ranks_x != 1 && mpi::ranks_t == 1)){
+        if (mpi::rank == 0){
+            std::cerr << "Unsupported MPI topology: this code requires both Cartesian dimensions to have more than one rank. "
+                      << "Got ranks_x = " << mpi::ranks_x << " and ranks_t = " << mpi::ranks_t << ". "
+                      << "Please run with a 2D grid such as (1,1), (2,2), (2,3), etc., not (2,1) or (1,2)."
+                      << std::endl;
+        }
+        exit(1);
+    }
+
     mpi::width_x = LV::Nx/mpi::ranks_x;
     mpi::width_t = LV::Nt/mpi::ranks_t;
     mpi::maxSize = mpi::width_t * mpi::width_x;
+    mpi::maxSizeH = 2*(mpi::width_x+2)*(mpi::width_t+2); //With halos included
+    mpi::sitesH = (mpi::width_x+2)*(mpi::width_t+2);
 }
  
 /*
@@ -91,6 +104,33 @@ inline void defineDataTypes(){
     MPI_Type_create_resized(sub_block_type, 0, extent * sizeof(std::complex<double>), &sub_block_resized);
     MPI_Type_commit(&sub_block_resized);
 
+
+
+    MPI_Type_vector(mpi::width_x,mpi::width_t*2,2*(mpi::width_t+2),MPI_DOUBLE_COMPLEX, &mpi::local_conf_type);
+    MPI_Type_commit(&mpi::local_conf_type);
+
+    //The displacement of local_domain_resized is in units of std::complex<double>
+    MPI_Type_create_resized(mpi::local_conf_type, 0, sizeof(std::complex<double>), &mpi::local_conf_resized);
+    MPI_Type_commit(&mpi::local_conf_resized);
+
+    // Gather inner domains from all ranks in the coarse communicator
+    // Buffer has size (Nx_coarse_rank+2)*(Nt_coarse_rank+2)*DOF
+    // Create a type that matches the global buffer layout (strided by full global row including halo)
+    MPI_Type_vector(mpi::width_x,                 // number of rows to place per rank
+        2 * mpi::width_t,               		// elements per row (complex numbers)
+        2 * (LV::Nt + 2),  	// stride between rows in global buffer (complex elements) including halo
+            MPI_DOUBLE_COMPLEX,
+            &mpi::global_conf_type);
+    MPI_Type_commit(&mpi::global_conf_type);
+
+    // Resize type so displacements are specified in units of one complex element
+    MPI_Type_create_resized(mpi::global_conf_type, 0, sizeof(std::complex<double>), &mpi::global_conf_resized);
+    MPI_Type_commit(&mpi::global_conf_resized);
+
+
+    //Datatype for the halo exchange
+    MPI_Type_vector(mpi::width_x, 2, 2*(mpi::width_t+2), MPI_DOUBLE_COMPLEX, &mpi::column_type);
+    MPI_Type_commit(&mpi::column_type);
 }
 
 inline void initializeMPI(){

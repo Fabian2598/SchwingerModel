@@ -1,18 +1,13 @@
 #ifndef GAUGECONF_H_INCLUDED
 #define GAUGECONF_H_INCLUDED
 #include "variables.h"
+#include "utils.h"
 #include "statistics.h"
 #include <iomanip>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include "mpi.h"
-
-
-/*
-Generate a random U(1) variable
-*/
-c_double RandomU1(); 
 
 
 class GaugeConf {

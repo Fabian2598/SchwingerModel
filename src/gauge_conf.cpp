@@ -20,13 +20,6 @@
  * 
  */
 
-c_double RandomU1() {
-	//Random angle in (0,2*pi) with uniform distribution 
-	double cociente = ((double) rand() / (RAND_MAX));
-    double theta = 2.0*pi * cociente;
-	c_double z(cos(theta), sin(theta));
-	return z;
-}
 
 void GaugeConf::initialization() {
 	for (int n = 0; n < mpi::maxSize; n++) {
