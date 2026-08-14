@@ -44,7 +44,7 @@ void Tests::test_D_operator(){
     spinor_v2 Dphi_v2(mpi::maxSizeH);
 
     D_phi(U, phi, Dphi, m0);
-    D_phi_v2(U_v2, phi_v2, Dphi_v2, m0);
+    D_phi_v2(U_v2, phi_v2, Dphi_v2);
     bool test_passed = true;
     if (mpi::rank2d == 0)
         std::cout << "\n\n\nTesting implementations for D" << std::endl;
@@ -81,7 +81,7 @@ void Tests::test_D_dagger_operator(){
     spinor_v2 Dphi_v2(mpi::maxSizeH);
 
     D_dagger_phi(U, phi, Dphi, m0);
-    D_dagger_phi_v2(U_v2, phi_v2, Dphi_v2, m0);
+    D_dagger_phi_v2(U_v2, phi_v2, Dphi_v2);
     bool test_passed = true;
     if (mpi::rank2d == 0)
         std::cout << "\n\n\nTesting implementations for D^+" << std::endl;
@@ -153,7 +153,7 @@ void Tests::test_D_D_dagger_phi(){
     spinor_v2 Dphi_v2(mpi::maxSizeH);
 
     D_D_dagger_phi(U, phi, Dphi, m0);
-    D_D_dagger_phi_v2(U_v2, phi_v2, Dphi_v2, m0);
+    D_D_dagger_phi_v2(U_v2, phi_v2, Dphi_v2);
     bool test_passed = true;
     if (mpi::rank2d == 0)
         std::cout << "\n\n\nTesting implementations for DD^+" << std::endl;
@@ -180,4 +180,21 @@ void Tests::test_D_D_dagger_phi(){
         if (mpi::rank2d == 0)
             std::cout << "Implementations do not coincide" << std::endl;
     }
+}
+
+void Tests::test_CG(){
+    initialize_spinors();
+    spinor x(mpi::maxSize); 
+    spinor_v2 x_v2(mpi::maxSizeH);
+
+    if (mpi::rank2d == 0)
+        std::cout << "Testing conjugate gradient version 1" << std::endl;
+    conjugate_gradient(U,phi,x,m0);
+    if (mpi::rank2d == 0)
+        std::cout << "\n";
+     if (mpi::rank2d == 0)
+        std::cout << "Testing conjugate gradient version 2" << std::endl;
+    conjugate_gradient_v2(U_v2,phi_v2,x_v2);
+
+    
 }

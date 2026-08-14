@@ -12,7 +12,7 @@ set(SOURCES
     src/dirac_operator.cpp      #Implementation of D, D^+ and 2* Re ( left^+ d D / d omega(z) right )
     src/halo_exchange.cpp
     src/tests.cpp
-    #src/conjugate_gradient.cpp  #Conjugate gradient and Bi-cgstab
+    src/conjugate_gradient.cpp  #Conjugate gradient and Bi-cgstab
     #src/hmc.cpp                 #Hybrid Monte Carlo
 )
 

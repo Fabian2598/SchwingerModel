@@ -51,7 +51,7 @@ inline int Coords(const int& x, const int& t){
 	return x*mpi::width_t + t;
 }
 
-//------------Lattice parameters--------------//
+//Lattice dimensions
 namespace LV {
     //Lattice dimensions//
     constexpr int Nx= NS; //We extract this value from config.h
@@ -59,9 +59,17 @@ namespace LV {
     constexpr int Ntot = Nx*Nt; //Total number of lattice points
 }
 
+//CG parameters
 namespace CG{
     extern int max_iter; //Maximum number of iterations for the conjugate gradient method
     extern double tol; //Tolerance for convergence
+    extern bool print_convergence_message;
+}
+
+//Simulation parameters
+namespace sim_params {
+    extern double beta;
+    extern double m0;
 }
 
 

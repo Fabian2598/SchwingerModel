@@ -100,7 +100,7 @@ re_field phi_dag_partialD_phi(const spinor& U, const spinor& left, const spinor&
 	phi: spinor to apply the operator to
 	m0: mass parameter
 */
-void D_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi, const double& m0);
+void D_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi);
 
 /*
 	Dirac dagger operator application D^+ phi
@@ -108,13 +108,13 @@ void D_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi, const
 	phi: spinor to apply the operator to
 	m0: mass parameter
 */
-void D_dagger_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi, const double& m0);
+void D_dagger_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi);
 
 /*
 	Application of D D^+
 	It just calls the previous functions
 */
-void D_D_dagger_phi_v2(const spinor_v2& U, const spinor_v2& phi, spinor_v2 &Dphi,const double& m0);
+void D_D_dagger_phi_v2(const spinor_v2& U, const spinor_v2& phi, spinor_v2 &Dphi);
 
 /*
 	2* Re ( left^+ d D / d omega(z) right )

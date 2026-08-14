@@ -15,5 +15,7 @@
 */
 int conjugate_gradient(const spinor& U, const spinor& phi, spinor &x, const double& m0); 
 
+int conjugate_gradient_v2(const spinor_v2& U, const spinor_v2& phi, spinor_v2 &x); 
+
 
 #endif

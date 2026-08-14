@@ -52,6 +52,9 @@ int main(int argc, char **argv) {
     MPI_Bcast(&Nsteps, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&saveconf, 1, MPI_INT,  0, MPI_COMM_WORLD);
 
+    sim_params::m0 = m0;
+    sim_params::beta = beta;
+
     
     initializeMPI(); //2D rank topology
     allocate_lattice_arrays(); //Allocates memory for arrays of coordinates
@@ -63,6 +66,7 @@ int main(int argc, char **argv) {
     tests.test_D_dagger_operator();
     tests.test_phi_dag_partialD_phi();
     tests.test_D_D_dagger_phi();
+    tests.test_CG();
 
     //Free coordinate arrays
     free_lattice_arrays();

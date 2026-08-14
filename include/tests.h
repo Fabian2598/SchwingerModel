@@ -1,7 +1,7 @@
 #ifndef TESTS_H
 #define TESTS_H
 
-#include "dirac_operator.h"
+#include "conjugate_gradient.h"
 #include "utils.h"
 
 
@@ -27,6 +27,7 @@ public:
     void test_D_dagger_operator();
     void test_phi_dag_partialD_phi();
     void test_D_D_dagger_phi();
+    void test_CG();
 
 private:
     double m0;

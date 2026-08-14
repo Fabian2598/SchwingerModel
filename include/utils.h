@@ -24,4 +24,21 @@ inline c_double RandomU1() {
 }
 
 
+/*
+    dot product between two spinors of the form psi[ntot][2]
+    A.B = sum_i A_i conj(B_i) 
+*/
+inline c_double dot(const spinor_v2& x, const spinor_v2& y) {
+    c_double local_z = 0;
+    //reduction over all lattice points and spin components
+    for (int n = 0; n < mpi::maxSize; n++) {
+        local_z += x.val[2*n]   * std::conj(y.val[2*n]);
+        local_z += x.val[2*n+1] * std::conj(y.val[2*n+1]);
+    }
+    c_double z;
+    MPI_Allreduce(&local_z, &z, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, mpi::cart_comm);
+    return z;
+}
+ 
+
 #endif

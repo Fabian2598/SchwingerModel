@@ -580,9 +580,10 @@ re_field phi_dag_partialD_phi(const spinor& U, const spinor& left,const spinor& 
  }
 
 
- void D_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi, const double& m0){
+ void D_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi){
 	using namespace LV;
 	using namespace mpi;
+	using namespace sim_params;
 	MPI_Status status;
 
 	int n, right, down, left, up;
@@ -615,9 +616,10 @@ re_field phi_dag_partialD_phi(const spinor& U, const spinor& left,const spinor& 
 	}		
 }
 
-void D_dagger_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi, const double& m0){
+void D_dagger_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi){
 	using namespace LV;
 	using namespace mpi;
+	using namespace sim_params;
 	MPI_Status status;
 
 	int n, right, down, left, up;
@@ -649,10 +651,10 @@ void D_dagger_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi
 	}	
 }
 
-void D_D_dagger_phi_v2(const spinor_v2& U, const spinor_v2& phi, spinor_v2 &Dphi,const double& m0){
+void D_D_dagger_phi_v2(const spinor_v2& U, const spinor_v2& phi, spinor_v2 &Dphi){
 	spinor_v2 ddagg_buffer(mpi::maxSizeH);
-	D_dagger_phi_v2(U, phi, ddagg_buffer, m0);
-	D_phi_v2(U,  ddagg_buffer, Dphi, m0);
+	D_dagger_phi_v2(U, phi, ddagg_buffer);
+	D_phi_v2(U,  ddagg_buffer, Dphi);
 }
 
 
