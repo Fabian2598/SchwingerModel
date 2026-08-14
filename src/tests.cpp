@@ -192,7 +192,7 @@ void Tests::test_CG(){
     conjugate_gradient(U,phi,x,m0);
     if (mpi::rank2d == 0)
         std::cout << "\n";
-     if (mpi::rank2d == 0)
+    if (mpi::rank2d == 0)
         std::cout << "Testing conjugate gradient version 2" << std::endl;
     conjugate_gradient_v2(U_v2,phi_v2,x_v2);
 

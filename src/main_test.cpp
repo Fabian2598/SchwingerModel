@@ -24,8 +24,6 @@ int main(int argc, char **argv) {
     double m0; //bare mass
 	int saveconf = 0; //Save configurations
     
-    CG::max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
-    CG::tol = 1e-10; //Tolerance for convergence
 
     //To call the sequential program one has to choose ranks_x = ranks_t = 1
     if (mpi::rank == 0){
@@ -52,6 +50,7 @@ int main(int argc, char **argv) {
     MPI_Bcast(&Nsteps, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&saveconf, 1, MPI_INT,  0, MPI_COMM_WORLD);
 
+    m0 = 0;
     sim_params::m0 = m0;
     sim_params::beta = beta;
 
@@ -60,8 +59,8 @@ int main(int argc, char **argv) {
     allocate_lattice_arrays(); //Allocates memory for arrays of coordinates
     periodic_boundary(); //Stores neighbors
 
-    m0 = 0;
-    Tests tests(m0);
+    
+    Tests tests(sim_params::m0);
     tests.test_D_operator();
     tests.test_D_dagger_operator();
     tests.test_phi_dag_partialD_phi();
