@@ -66,6 +66,10 @@ int main(int argc, char **argv) {
     tests.test_phi_dag_partialD_phi();
     tests.test_D_D_dagger_phi();
     tests.test_CG();
+    tests.test_plaquettes();
+    tests.test_staples();
+    tests.test_gauge_action();
+    tests.test_IO();
 
     //Free coordinate arrays
     free_lattice_arrays();

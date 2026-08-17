@@ -32,7 +32,7 @@ inline void assignWidth(){
     mpi::width_t = LV::Nt/mpi::ranks_t;
     mpi::maxSize = mpi::width_t * mpi::width_x;
     mpi::maxSizeH = 2*(mpi::width_x+2)*(mpi::width_t+2); //With halos included
-    mpi::sitesH = (mpi::width_x+2)*(mpi::width_t+2);
+    mpi::sitesH = (mpi::width_x+2)*(mpi::width_t+2); 
 }
  
 /*

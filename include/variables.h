@@ -26,6 +26,7 @@ namespace mpi{
     extern int width_t;
     extern int rank2d;
     extern int coords[2];
+    //Neighboring ranks of rank2d
     extern int top;
     extern int bot;
     extern int right;

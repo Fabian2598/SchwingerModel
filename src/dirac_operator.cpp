@@ -581,10 +581,8 @@ re_field phi_dag_partialD_phi(const spinor& U, const spinor& left,const spinor& 
 
 
  void D_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi){
-	using namespace LV;
 	using namespace mpi;
 	using namespace sim_params;
-	MPI_Status status;
 
 	int n, right, down, left, up;
 	double rsign, lsign;
@@ -617,10 +615,8 @@ re_field phi_dag_partialD_phi(const spinor& U, const spinor& left,const spinor& 
 }
 
 void D_dagger_phi_v2(const spinor_v2& U, const spinor_v2&  phi, spinor_v2&  Dphi){
-	using namespace LV;
 	using namespace mpi;
 	using namespace sim_params;
-	MPI_Status status;
 
 	int n, right, down, left, up;
 	double rsign, lsign;
@@ -661,9 +657,7 @@ void D_D_dagger_phi_v2(const spinor_v2& U, const spinor_v2& phi, spinor_v2 &Dphi
 //2* Re ( left^dag \partial D / \partial omega(z) right )
 //Eqs (37) and (38) of the documentation
 void phi_dag_partialD_phi_v2(const spinor_v2& U, const spinor_v2& left_term,const spinor_v2& right_term,re_field_v2& Dphi){
-	using namespace LV;
 	using namespace mpi;
-	MPI_Status status;
 
 	int n, right, down, left, up;
 	double rsign, lsign;
