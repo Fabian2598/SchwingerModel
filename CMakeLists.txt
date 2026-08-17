@@ -5,7 +5,7 @@ project(Schwinger_model VERSION 1.0)
 
 
 set(SOURCES
-    #src/statistics.cpp          #Functions to perform statistical analysis
+    src/utils.cpp               #Utility functions
     src/variables.cpp           #Relevant parameters for the lattice
     src/main_test.cpp           #Main program
     src/gauge_conf.cpp          #Gauge configuration (computes staples, plaquettes and gauge action)
@@ -13,7 +13,7 @@ set(SOURCES
     src/halo_exchange.cpp
     src/tests.cpp
     src/conjugate_gradient.cpp  #Conjugate gradient and Bi-cgstab
-    #src/hmc.cpp                 #Hybrid Monte Carlo
+    src/hmc.cpp                 #Hybrid Monte Carlo
 )
 
 set(NS "64")   #Lattice dimension x

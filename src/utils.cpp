@@ -1,5 +1,4 @@
-#include "statistics.h"
-//The other libraries are pullled from statistics.h
+#include "utils.h"
 
 //----------Jackknife---------//
 std::vector<double> samples_mean(std::vector<double> dat, int bin) {
