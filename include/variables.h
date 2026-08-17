@@ -5,27 +5,24 @@
 #include <vector>
 #include <complex>
 #include <iomanip>
+#include <string>
 #include "mpi.h"
 
-extern double pi;
+constexpr double pi = 3.14159265359;
 typedef std::complex<double> c_double;
-
-//For scattering and gathering information from the 2D rank topology
-extern MPI_Datatype sub_block_type;
-extern MPI_Datatype sub_block_resized;
+const c_double I_number(0,1); //imaginary number
 
 namespace mpi{
-    extern int rank;
-    extern int size;
-    extern int maxSize;
-    extern int maxSizeH;
-    extern int sitesH;
-    extern int ranks_x;
-    extern int ranks_t;
-    extern int width_x;
-    extern int width_t;
-    extern int rank2d;
-    extern int coords[2];
+    extern int rank;     //rank ID
+    extern int size;     //number of ranks
+    extern int maxSizeH; //number of variables (including halo and spin)
+    extern int sitesH;   //number of lattice sites (including halo)
+    extern int ranks_x;  //number of ranks on x 
+    extern int ranks_t;  //number of ranks on t
+    extern int width_x;  //number of lattice sites on x (no halo)
+    extern int width_t;  //number of lattice sites on t (no halo)
+    extern int rank2d;   //rank ID for the cartesian communicator
+    extern int coords[2]; //rank 2D coordinates
     //Neighboring ranks of rank2d
     extern int top;
     extern int bot;
@@ -44,12 +41,6 @@ namespace mpi{
     extern MPI_Datatype local_conf_type;
     extern MPI_Datatype local_conf_resized;
 
-}
-
-/*
-	Vectorized lattice coords.*/
-inline int Coords(const int& x, const int& t){
-	return x*mpi::width_t + t;
 }
 
 //Lattice dimensions
@@ -71,158 +62,12 @@ namespace CG{
 namespace sim_params {
     extern double beta;
     extern double m0;
-}
-
-
-struct spinor {
-    c_double* mu0;
-    c_double* mu1;
-    int size;
-    //Constructor
-    spinor(int N = LV::Ntot) : size(N) {
-        mu0 = new c_double[N]();
-        mu1 = new c_double[N]();
-    }
-
-    // Copy constructor (deep copy)
-    spinor(const spinor& other) : size(other.size) {
-        mu0 = new c_double[size];
-        mu1 = new c_double[size];
-        std::copy(other.mu0, other.mu0 + size, mu0);
-        std::copy(other.mu1, other.mu1 + size, mu1);
-    }
-
-    // Assignment operator (deep copy)
-    spinor& operator=(const spinor& other) {
-        if (this != &other) {
-            if (size != other.size) {
-                delete[] mu0;
-                delete[] mu1;
-                size = other.size;
-                mu0 = new c_double[size];
-                mu1 = new c_double[size];
-            }
-            std::copy(other.mu0, other.mu0 + size, mu0);
-            std::copy(other.mu1, other.mu1 + size, mu1);
-        }
-        return *this;
-    }
-
-    // Destructor
-    ~spinor() {
-        delete[] mu0;
-        delete[] mu1;
-    }
-
-    inline void clearBuffer(){
-        for(int n = 0; n<size; n++){
-            mu0[n] = 0;
-            mu1[n] = 0;
-        }
-    }
-};
-
-struct re_field {
-    double* mu0;
-    double* mu1;
-    int size;
-    //Constructor
-    re_field(int N = LV::Ntot) : size(N) {
-        mu0 = new double[N]();
-        mu1 = new double[N]();
-    }
-
-    // Copy constructor (deep copy)
-    re_field(const re_field& other) : size(other.size) {
-        mu0 = new double[size];
-        mu1 = new double[size];
-        std::copy(other.mu0, other.mu0 + size, mu0);
-        std::copy(other.mu1, other.mu1 + size, mu1);
-    }
-
-    // Assignment operator (deep copy)
-    re_field& operator=(const re_field& other) {
-        if (this != &other) {
-            if (size != other.size) {
-                delete[] mu0;
-                delete[] mu1;
-                size = other.size;
-                mu0 = new double[size];
-                mu1 = new double[size];
-            }
-            std::copy(other.mu0, other.mu0 + size, mu0);
-            std::copy(other.mu1, other.mu1 + size, mu1);
-        }
-        return *this;
-    }
-
-    // Destructor
-    ~re_field() {
-        delete[] mu0;
-        delete[] mu1;
-    }
-};
-
-typedef spinor c_matrix;
-
-int Coords(const int& x, const int& t);
-extern int* LeftPB;
-extern int* RightPB;
-extern c_double* SignL;
-extern c_double* SignR;
-extern int* x_1_t1;
-extern int* x1_t_1;
-
-void allocate_lattice_arrays();
-void free_lattice_arrays();
-
-
-//Memory preallocation
-extern spinor DTEMP;
-extern spinor TEMP; 
-
-//Buffers for MPI communication
-extern spinor TopRow;
-extern spinor BottomRow;
-extern spinor RightCol;
-extern spinor LeftCol; //Shoul be width_x
-
-
-/*
-	Modulo operation
-*/
-inline int mod(int a, int b) {
-	int r = a % b;
-	return r < 0 ? r + b : r;
-}
-
-
-/*
-    dot product between two spinors of the form psi[ntot][2]
-    A.B = sum_i A_i conj(B_i) 
-*/
-inline c_double dot(const spinor& x, const spinor& y) {
-
-    c_double local_z = 0;
-    //reduction over all lattice points and spin components
-    for (int n = 0; n < mpi::maxSize; n++) {
-        local_z += x.mu0[n] * std::conj(y.mu0[n]);
-        local_z += x.mu1[n] * std::conj(y.mu1[n]);
-    }
-    c_double z;
-    MPI_Allreduce(&local_z, &z, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, mpi::cart_comm);
-    return z;
-}
-
-
-//Formats decimal numbers
-//Useful for writing m0 and beta on the file name
-inline std::string format(const double& number) {
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(4) << number;
-    std::string str = oss.str();
-    str.erase(str.find('.'), 1); //Removes decimal dot
-    return str;
+    extern int MD_steps;
+    extern double trajectory_length;
+    extern int Ntherm;
+    extern int Nmeas;
+    extern int Nsteps;
+    extern std::string start_time_str;
 }
 
 //Flattened spinor
@@ -258,7 +103,15 @@ struct spinor_template{
     }
 };
 
-using spinor_v2 = spinor_template<c_double>;
-using re_field_v2 = spinor_template<double>;
+using spinor = spinor_template<c_double>;
+using re_field = spinor_template<double>;
+
+/*
+	Modulo operation
+*/
+inline int mod(int a, int b) {
+	int r = a % b;
+	return r < 0 ? r + b : r;
+}
 
 #endif 

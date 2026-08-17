@@ -42,3 +42,27 @@ double Jackknife(std::vector<double> dat, std::vector<int> bins) {
     return error;
 }
 //-------------End of Jackknife--------------//
+
+void print_parameters(){
+    using namespace sim_params;
+    if (mpi::rank == 0){
+        std::cout << "**********************************************************************" << std::endl;
+        std::cout << "*                              PARAMETERS" << std::endl;
+        std::cout << "* Nx = " << LV::Nx << ", Nt = " << LV::Nt << std::endl;
+        std::cout << "* m0 = " << m0 << ", kappa = " << 1/(2*(m0+2)) << std::endl;
+        std::cout << "* beta = " << beta << std::endl;
+        std::cout << "* Thermalization confs = " << Ntherm << std::endl;
+        std::cout << "* Measurement confs = " << Nmeas << std::endl;
+        std::cout << "* Decorrelation steps (confs dropped between measurements) = " << Nsteps << std::endl;
+        std::cout << "* Trajectory length = " << trajectory_length << ", Leapfrog steps = " << MD_steps << 
+        ", Integration step = " << trajectory_length/MD_steps << std::endl;
+        std::cout << "* CG max iterations = " << CG::max_iter << ", CG tolerance = " << CG::tol << std::endl;
+        std::cout << "* Number of ranks on x = " << mpi::ranks_x << ", Number of ranks on t = "  << mpi::ranks_t << std::endl;
+        std::cout << "* Total number of MPI ranks = " << mpi::size << std::endl;
+        std::cout << "* Each rank has " << mpi::width_x*mpi::width_t << " lattice sites" << std::endl;
+        std::cout << "* Host: " << std::getenv("HOSTNAME") << std::endl;
+        std::cout << "* Start time: " << start_time_str << std::endl;
+        std::cout << "**********************************************************************" << std::endl;
+    }
+        
+}

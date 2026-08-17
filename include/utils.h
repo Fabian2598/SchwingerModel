@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cmath>
 #include <random>
+#include <fstream>
+#include <sstream>
 
 inline int idx(int x, int t, int mu) {
     //x ranges from 0 to width_x+1
@@ -13,7 +15,6 @@ inline int idx(int x, int t, int mu) {
     //mu = 0, 1
     return ((x*(mpi::width_t+2) + t)*2 + mu);
 }
-
 
 /*
 Generate a random U(1) variable
@@ -26,17 +27,31 @@ inline c_double RandomU1() {
 	return z;
 }
 
+//Formats decimal numbers
+//Useful for writing m0 and beta on the file name
+inline std::string format(const double& number) {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(4) << number;
+    std::string str = oss.str();
+    str.erase(str.find('.'), 1); //Removes decimal dot
+    return str;
+}
+
 
 /*
-    dot product between two spinors of the form psi[ntot][2]
+    dot product between two spinors
     A.B = sum_i A_i conj(B_i) 
 */
-inline c_double dot(const spinor_v2& x, const spinor_v2& y) {
+inline c_double dot(const spinor& X, const spinor& Y) {
     c_double local_z = 0;
     //reduction over all lattice points and spin components
-    for (int n = 0; n < mpi::maxSize; n++) {
-        local_z += x.val[2*n]   * std::conj(y.val[2*n]);
-        local_z += x.val[2*n+1] * std::conj(y.val[2*n+1]);
+    int n;
+    for(int x = 1; x<=mpi::width_x; x++){
+        for(int t = 1; t<=mpi::width_t; t++){
+            n = x*(mpi::width_t+2)+t;
+            local_z += X.val[2*n]   * std::conj(Y.val[2*n]);
+            local_z += X.val[2*n+1] * std::conj(Y.val[2*n+1]);
+        }
     }
     c_double z;
     MPI_Allreduce(&local_z, &z, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, mpi::cart_comm);
@@ -77,5 +92,7 @@ std::vector<double> linspace(T min, T max, int n) {
     }
     return linspace;
 }
+
+void print_parameters();
  
 #endif

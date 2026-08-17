@@ -7,11 +7,12 @@ project(Schwinger_model VERSION 1.0)
 set(SOURCES
     src/utils.cpp               #Utility functions
     src/variables.cpp           #Relevant parameters for the lattice
-    src/main_test.cpp           #Main program
+    #src/main_test.cpp           #Main program
+    src/main.cpp
     src/gauge_conf.cpp          #Gauge configuration (computes staples, plaquettes and gauge action)
     src/dirac_operator.cpp      #Implementation of D, D^+ and 2* Re ( left^+ d D / d omega(z) right )
     src/halo_exchange.cpp
-    src/tests.cpp
+    #src/tests.cpp
     src/conjugate_gradient.cpp  #Conjugate gradient and Bi-cgstab
     src/hmc.cpp                 #Hybrid Monte Carlo
 )
@@ -30,7 +31,7 @@ target_include_directories("SM_${NS}x${NT}"
         ${PROJECT_SOURCE_DIR}/include
 )
 target_compile_options("SM_${NS}x${NT}" PRIVATE
-			-O1
+			-O3
             #-g #For profiling
 )
 

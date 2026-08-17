@@ -17,10 +17,11 @@ public:
 		acceptance_rate = 0;
 		illConfId = 0;
 
-		PConf = re_field(mpi::maxSize); //Momenta PI
-		PConf_copy = re_field(mpi::maxSize); //Momenta PI copy
-		Forces = re_field(mpi::maxSize); //Forces
-		chi = spinor(mpi::maxSize);
+		PConf = re_field(mpi::maxSizeH); //Momenta PI
+		PConf_copy = re_field(mpi::maxSizeH); //Momenta PI copy
+		Forces = re_field(mpi::maxSizeH); //Forces
+		chi = spinor(mpi::maxSizeH);
+		TEMP = spinor(mpi::maxSizeH); //buffer
 	
 	}
 	~HMC() {} 
@@ -52,6 +53,7 @@ private:
 	GaugeConf GConf; //Gauge configuration
 	GaugeConf GConf_copy; //Copy of the gauge configuration
 	spinor chi;
+	spinor TEMP;
 
 	double Action(GaugeConf& GConfig, const spinor& phi);
 	void Force_G(GaugeConf& GConfig); //force for gauge part

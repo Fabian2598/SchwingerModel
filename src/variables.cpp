@@ -1,16 +1,8 @@
 #include "variables.h"
 
-double pi=3.14159265359;
-
-
-//For scattering and gathering information from the 2D rank topology
-MPI_Datatype sub_block_type;
-MPI_Datatype sub_block_resized;
-
 namespace mpi{
     int rank = 0;
     int size = 1; 
-    int maxSize = LV::Nx*LV::Nt;    //nsites
     int maxSizeH = 2*(LV::Nx+2)*(LV::Nt+2); //maxSize with halos and spin included
     int sitesH = (mpi::width_x+2)*(mpi::width_t+2);
     int ranks_x = 1;
@@ -38,51 +30,19 @@ namespace mpi{
 
 }
 
-
 namespace CG{
 	int max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
 	double tol = 1e-10; //Tolerance for convergence
-    bool print_convergence_message = true; //printing convergence message, useful for testing
+    bool print_convergence_message = false; //printing convergence message, useful for testing
 }
 
 namespace sim_params {
     double beta=1;
     double m0=1;
+    int MD_steps = 10;
+    double trajectory_length = 1.0;
+    int Ntherm = 10;
+    int Nmeas = 10;
+    int Nsteps = 1;
+    std::string start_time_str = "";
 }
-
-int* LeftPB = nullptr;
-int* RightPB = nullptr;
-c_double* SignL = nullptr;
-c_double* SignR = nullptr;
-int* x_1_t1 = nullptr;
-int* x1_t_1 = nullptr;
-
-void allocate_lattice_arrays() {
-    using namespace mpi;
-    LeftPB  = new int[maxSize * 2];
-    RightPB = new int[maxSize * 2];
-    SignL   = new c_double[maxSize * 2];
-    SignR   = new c_double[maxSize * 2];
-    x_1_t1  = new int[maxSize];
-    x1_t_1  = new int[maxSize]; 
-}
-
-void free_lattice_arrays() {
-    delete[] LeftPB;
-    delete[] RightPB;
-    delete[] SignL;
-    delete[] SignR;
-    delete[] x_1_t1;
-    delete[] x1_t_1;
-}
-
-
-//Memory preallocation I need to give them the right dimension mpi::maxSize, but I only know it in main after MPI_Init ...
-spinor DTEMP;
-spinor TEMP; 
-
-spinor TopRow(LV::Nt); //Should be width_t
-spinor BottomRow(LV::Nt);
-spinor RightCol(LV::Nx);
-spinor LeftCol(LV::Nx); //Shoul be width_x
-//Buffers for MPI communication

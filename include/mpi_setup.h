@@ -30,7 +30,6 @@ inline void assignWidth(){
 
     mpi::width_x = LV::Nx/mpi::ranks_x;
     mpi::width_t = LV::Nt/mpi::ranks_t;
-    mpi::maxSize = mpi::width_t * mpi::width_x;
     mpi::maxSizeH = 2*(mpi::width_x+2)*(mpi::width_t+2); //With halos included
     mpi::sitesH = (mpi::width_x+2)*(mpi::width_t+2); 
 }
@@ -96,16 +95,7 @@ inline void defineDataTypes(){
     *          ---------------
     */
     //int MPI_Type_vector(int block_count, int block_length, int stride, MPI_Datatype old_datatype, MPI_Datatype* new_datatype);
-    MPI_Type_vector(mpi::width_x, mpi::width_t, LV::Nt, MPI_DOUBLE_COMPLEX, &sub_block_type);
-    MPI_Type_commit(&sub_block_type);
-
-    //Resize the data type to use scatterV properly
-    int extent = mpi::width_t;
-    MPI_Type_create_resized(sub_block_type, 0, extent * sizeof(std::complex<double>), &sub_block_resized);
-    MPI_Type_commit(&sub_block_resized);
-
-
-
+   
     MPI_Type_vector(mpi::width_x,mpi::width_t*2,2*(mpi::width_t+2),MPI_DOUBLE_COMPLEX, &mpi::local_conf_type);
     MPI_Type_commit(&mpi::local_conf_type);
 
