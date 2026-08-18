@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
     std::string filePath;   
 
     // Rank 0 opens the list file, reads paths and broadcasts them to all ranks.
-    if (mpi::rank == 0) {
+    if (mpi::rank2d == 0) {
         std::ifstream listFile(listFilePath);
         if (!listFile.is_open()) {
             std::cerr << "Error: Could not open the file containing the list of paths: " << listFilePath << std::endl;
@@ -89,12 +89,12 @@ int main(int argc, char **argv) {
     // Broadcast each file path (length + chars)
     for (int i = 0; i < nconf; ++i) {
         int len = 0;
-        if (mpi::rank == 0) len = static_cast<int>(filePaths[i].size()) + 1; // include null
+        if (mpi::rank2d == 0) len = static_cast<int>(filePaths[i].size()) + 1; // include null
         MPI_Bcast(&len, 1, MPI_INT, 0, MPI_COMM_WORLD);
         char* buf = new char[len];
-        if (mpi::rank == 0) std::strcpy(buf, filePaths[i].c_str());
+        if (mpi::rank2d == 0) std::strcpy(buf, filePaths[i].c_str());
         MPI_Bcast(buf, len, MPI_CHAR, 0, MPI_COMM_WORLD);
-        if (mpi::rank != 0) filePaths.push_back(std::string(buf));
+        if (mpi::rank2d != 0) filePaths.push_back(std::string(buf));
         delete[] buf;
     }
     
@@ -141,36 +141,37 @@ int main(int argc, char **argv) {
     //--------Compute c(nt) for the pion--------//
     
     for(int confID = 0; confID<nconf; confID++){
-        exchange_halo(Confs[confID]->val);
         if (confID % 100 == 0 && mpi::rank2d == 0)
             std::cout << "--------Computing c(nt) for conf " << confID << "--------" << std::endl; 
         //We only need two sources, equivalent to extracting the first two columns of D^-1
+        exchange_halo(Confs[confID]->val);
         bi_cgstab(*Confs[confID], source1, x0, Dcol1); //D^-1 source = D^-1((nx,nt),0)
         bi_cgstab(*Confs[confID], source2, x0, Dcol2); //D^-1 source = D^-1((nx,nt),1)
-        //Up to this part everything works fine ...
+        //Up to this part everything works fine in parallel
 
+        //This particular part only works fine if I have one rank. For more than one rank 
+        //I have to think on how to modify this to consider the contribution for the other ranks
+        //Note: I will have to transfer from the coordinates in one rank to its global coordinates
         int n;
         for(int t=1; t<=mpi::width_t; t++){
             double local_contribution = 0;
-            double global_contribution;
+            double global_contribution = 0;
             for(int x=1; x<=mpi::width_x; x++){
                 n = x*(mpi::width_t+2)+t;
-
                 local_contribution += std::real(Dcol1.val[2*n] * std::conj(Dcol1.val[2*n]))
                 + std::real(Dcol1.val[2*n+1]    * std::conj(Dcol1.val[2*n+1]))  
                 + std::real(Dcol2.val[2*n]      * std::conj(Dcol2.val[2*n]))
                 + std::real(Dcol2.val[2*n+1]    * std::conj(Dcol2.val[2*n+1])); 
             }
+
             local_contribution *= 1.0/std::sqrt(LV::Nx); //Average over spatial coordinates
             MPI_Allreduce(&local_contribution, &global_contribution, 1, MPI_DOUBLE, MPI_SUM, mpi::cart_comm);
-            if (mpi::rank2d == 0) CorrMat[t][confID] = global_contribution;
+            if (mpi::rank2d == 0) CorrMat[t-1][confID] = global_contribution;
     
         } 
-        
+            
     }
-
-    
-        
+  
     //Write c(nt) and its error into a file
     //Only the root rank performs this part
     if (mpi::rank2d == 0){
@@ -184,7 +185,7 @@ int main(int argc, char **argv) {
             std::cout << "c(" << t << ") = " << Corr[t] << " +/- " << dCorr[t] << std::endl;
         } 
         std::ostringstream Name;
-        Name << "2D_U1_Ns" << LV::Nx << "_Nt" << LV::Nt << "_b" << beta << "_m" << format(m0) << "_" << "corr" << ".txt";
+        Name << "2D_U1_" << LV::Nx << "x" << LV::Nt << "_b" << beta << "_m" << format(m0) << "_" << "corr" << ".txt";
         write_correlator(Corr, dCorr, Name.str());
     }
     
