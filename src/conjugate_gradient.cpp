@@ -1,13 +1,6 @@
 #include "conjugate_gradient.h"
 
 
-//Buffers
-namespace CG{
-    spinor r(mpi::maxSizeH);  //r[coordinate][spin] residual
-    spinor d(mpi::maxSizeH);  //search direction
-    spinor Ad(mpi::maxSizeH); //DD^dagger*d
-}
-
 int conjugate_gradient(const spinor& U, const spinor& phi, spinor &sol){
     using namespace mpi;
     using namespace CG;
@@ -15,9 +8,9 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor &sol){
     double err;
     double err_sqr;
 
-    r.clearBuffer(); //r[coordinate][spin] residual
-    d.clearBuffer(); //search direction
-    Ad.clearBuffer();//DD^dagger*d
+    spinor r(mpi::maxSizeH);  //r[coordinate][spin] residual
+    spinor d(mpi::maxSizeH);  //search direction
+    spinor Ad(mpi::maxSizeH); //DD^dagger*d
   
     c_double alpha, beta;
 

@@ -247,7 +247,7 @@ void GaugeConf::ReadConf(const std::string& Name){
         }
         }
         infile.close();
-        std::cout << "Binary conf read from " << Name << std::endl;     
+        //std::cout << "Binary conf read from " << Name << std::endl;     
     }
 
     int input_ini_local = 2 * (mpi::width_t + 2 + 1);

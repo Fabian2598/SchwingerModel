@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
     NameData << "2D_U1_" << LV::Nx << "x" << LV::Nt << "_m0";
     {
         std::ostringstream m0_stream;
-        m0_stream << std::setprecision(17) << sim_params::m0;
+        m0_stream << std::setprecision(4) << sim_params::m0;
         NameData << m0_stream.str();
     }
     NameData << "_SimData.txt";
@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
         Datfile << LV::Nx << std::setw(10) << LV::Nt << "\n";
         Datfile << "#ranks_x     #ranks_t     #ranks\n";
         Datfile << mpi::ranks_x << std::setw(15) << mpi::ranks_t << std::setw(15) << mpi::size << "\n";
-        Datfile << "#beta                        #Ntherm     #Nmeas     #Nsteps\n";
+        Datfile << "#beta     #Ntherm     #Nmeas     #Nsteps\n";
         Datfile <<  std::setprecision(17) << sim_params::beta << std::setw(11) 
         << sim_params::Ntherm << std::setw(11) << sim_params::Nmeas << std::setw(11) << sim_params::Nsteps << "\n";
         Datfile << "#trajectory_length     #MD_steps\n";

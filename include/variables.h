@@ -58,6 +58,13 @@ namespace CG{
     extern bool print_convergence_message;
 }
 
+//BiCGstab parameters
+namespace BiCG{
+    extern int max_iter; //Maximum number of iterations for the conjugate gradient method
+    extern double tol; //Tolerance for convergence
+    extern bool print_convergence_message;
+}
+
 //Simulation parameters
 namespace sim_params {
     extern double beta;

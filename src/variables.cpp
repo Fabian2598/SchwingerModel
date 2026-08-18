@@ -3,7 +3,7 @@
 namespace mpi{
     int rank = 0;
     int size = 1; 
-    int maxSizeH = 2*(LV::Nx+2)*(LV::Nt+2); //maxSize with halos and spin included
+    int maxSizeH = 2*(LV::Nx+2)*(LV::Nt+2); //maxSize with halos and spin included. For 1 rank this is the default value
     int sitesH = (mpi::width_x+2)*(mpi::width_t+2);
     int ranks_x = 1;
     int ranks_t = 1;
@@ -31,6 +31,12 @@ namespace mpi{
 }
 
 namespace CG{
+	int max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
+	double tol = 1e-10; //Tolerance for convergence
+    bool print_convergence_message = false; //printing convergence message, useful for testing
+}
+
+namespace BiCG{
 	int max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
 	double tol = 1e-10; //Tolerance for convergence
     bool print_convergence_message = false; //printing convergence message, useful for testing

@@ -89,7 +89,7 @@ void D_dagger_phi(const spinor& U, const spinor&  phi, spinor&  Dphi){
 	}	
 }
 
-spinor ddagg_buffer(mpi::maxSizeH);
+spinor ddagg_buffer(mpi::maxSizeH);//Note that maxSizeH = 2*(Nx+2)*(Nt+2) by default, so this buffer is quite large ... 
 void D_D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi){
 	D_dagger_phi(U, phi, ddagg_buffer);
 	D_phi(U,  ddagg_buffer, Dphi);
