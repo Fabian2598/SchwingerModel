@@ -1,14 +1,23 @@
 #include "conjugate_gradient.h"
 
+
+//Buffers
+namespace CG{
+    spinor r(mpi::maxSizeH);  //r[coordinate][spin] residual
+    spinor d(mpi::maxSizeH);  //search direction
+    spinor Ad(mpi::maxSizeH); //DD^dagger*d
+}
+
 int conjugate_gradient(const spinor& U, const spinor& phi, spinor &sol){
     using namespace mpi;
+    using namespace CG;
     int k = 0; //Iteration number
     double err;
     double err_sqr;
 
-    spinor r(maxSizeH);  //r[coordinate][spin] residual
-    spinor d(maxSizeH); //search direction
-    spinor Ad(maxSizeH); //DD^dagger*d
+    r.clearBuffer(); //r[coordinate][spin] residual
+    d.clearBuffer(); //search direction
+    Ad.clearBuffer();//DD^dagger*d
   
     c_double alpha, beta;
 
@@ -72,7 +81,9 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor &sol){
         r_norm2 = err_sqr;
         k++;
     }
-    if (rank2d == 0)
-        std::cout << "CG for DD^+ did not converge in " << CG::max_iter << " iterations" << " Error " << err << std::endl;
+    if (rank2d == 0){
+        std::cout << "CG for DD^+ did not converge in " << CG::max_iter << " iterations with a relative tolerance of "
+        << CG::tol*phi_norm2 << ". The final residual norm is " << err << std::endl;
+    }
     return 0;
 }

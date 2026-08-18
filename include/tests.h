@@ -5,6 +5,7 @@
 #include "utils.h"
 
 
+//Testing both implementations of the operations
 class Tests {
 
 public:

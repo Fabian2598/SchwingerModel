@@ -11,6 +11,14 @@
         
     The convergence criterion is ||r|| < ||phi|| * tol
 */
+
+//Buffers
+namespace CG{
+    extern spinor r;  //r[coordinate][spin] residual
+    extern spinor d; //search direction
+    extern spinor Ad; //DD^dagger*d
+}
+    
 int conjugate_gradient(const spinor& U, const spinor& phi, spinor &x); 
 
 

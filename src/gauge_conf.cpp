@@ -36,7 +36,8 @@ void GaugeConf::initialization() {
 //mu = 0 time direction, mu = 1 space direction
 void GaugeConf::Compute_Plaquette01() {
 	//U_01(n) = U_0(n) U_1(n+0) U*_0(n+1) U*_1(n)
-    exchange_halo(Conf.val);
+    //Halo must be communicated externally
+    //exchange_halo(Conf.val);
     int n, right, down, left, up;
     double lsign, rsign;
     for(int x = 1; x<=mpi::width_x; x++){
@@ -59,7 +60,8 @@ void GaugeConf::Compute_Staple() {
     int x1, x_1, t1, t_1; //Nearest neighbors
     int x_1_t1, x1_t_1;   //Diagonal neighbors
     double rsign, lsign;
-    exchange_halo(Conf.val);
+    //Halo must be communicated externally
+    //exchange_halo(Conf.val);
     //Corners we have to communicate manually 
     //Update top-right corner (needs bottom-left corner from diagonal rank)
     {

@@ -71,11 +71,7 @@ int main(int argc, char **argv) {
     
     initializeMPI(); //2D rank topology
         
-    
-	
-
-
-     //Get time
+    //Get time
     std::string start_time_str;
     if (mpi::rank == 0) {
         auto now = std::chrono::system_clock::now();

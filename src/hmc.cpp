@@ -54,6 +54,7 @@ void HMC::Force_G(GaugeConf& GConfig) {
 //2* Re[ Psi^dagger partial D / partial omega(n) D Psi], where Psi = (DD^dagger)^(-1)phi, phi = D chi
 void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
     spinor psi(mpi::maxSizeH); 
+    exchange_halo(GConfig.Conf.val);
     CG_convergence = conjugate_gradient(GConfig.Conf, phi,psi);  //(DD^dagger)^-1 phi
     //Save gauge configuration if CG does not converge
     if (CG_convergence == 0){
@@ -65,6 +66,7 @@ void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
         GConf.SaveConf(NameData.str());
         illConfId += 1;
     } 
+   
     D_dagger_phi(GConfig.Conf, psi,TEMP);
     phi_dag_partialD_phi(GConfig.Conf,psi,TEMP,Forces); //psi^dagger partial D / partial omega(n) D psi
     Force_G(GConfig); //Gauge force 
@@ -124,6 +126,7 @@ void HMC::Leapfrog(const spinor& phi){
 double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     double local_action = 0.0;
     double action;
+    exchange_halo(GConfig.Conf.val);
     GConfig.Compute_Plaquette01();
     //Gauge contribution
     int n;
@@ -163,7 +166,7 @@ double HMC::Hamiltonian(GaugeConf& GConfig, const re_field& Pi,const spinor& phi
     for(int x = 1; x<=mpi::width_x; x++){
 	    for(int t = 1; t<=mpi::width_t; t++){
             n = x*(mpi::width_t+2)+t;
-            local_H += 0.5 * Pi.val[2*n] * Pi.val[2*n];
+            local_H += 0.5 * Pi.val[2*n]   * Pi.val[2*n];
 		    local_H += 0.5 * Pi.val[2*n+1] * Pi.val[2*n+1];
         }
     }
@@ -184,6 +187,8 @@ void HMC::HMC_Update() {
     RandomCHI();
 
     spinor phi(mpi::maxSizeH);
+
+    exchange_halo(GConf.Conf.val);
     D_phi(GConf.Conf, chi,phi);
     Leapfrog(phi); //Evolve [Pi] and [U] 
     double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]

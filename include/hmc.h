@@ -53,7 +53,7 @@ private:
 	GaugeConf GConf; //Gauge configuration
 	GaugeConf GConf_copy; //Copy of the gauge configuration
 	spinor chi;
-	spinor TEMP;
+	spinor TEMP;  //buffer
 
 	double Action(GaugeConf& GConfig, const spinor& phi);
 	void Force_G(GaugeConf& GConfig); //force for gauge part

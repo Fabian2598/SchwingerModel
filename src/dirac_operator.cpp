@@ -31,7 +31,7 @@
 	
 	//Communicate halos 
 	exchange_halo(phi.val);
-	exchange_halo(U.val);
+	//exchange_halo(U.val);
 	for(int x = 1; x<=width_x; x++){
 		for(int t = 1; t<=width_t; t++){
 			n = x*(width_t+2)+t;
@@ -64,7 +64,7 @@ void D_dagger_phi(const spinor& U, const spinor&  phi, spinor&  Dphi){
 	double rsign, lsign;
 	//Communicate halos 
 	exchange_halo(phi.val);
-	exchange_halo(U.val);
+	//exchange_halo(U.val);
 	for(int x = 1; x<=width_x; x++){
 		for(int t = 1; t<=width_t; t++){
 			n = x*(width_t+2)+t;
@@ -89,8 +89,8 @@ void D_dagger_phi(const spinor& U, const spinor&  phi, spinor&  Dphi){
 	}	
 }
 
+spinor ddagg_buffer(mpi::maxSizeH);
 void D_D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi){
-	spinor ddagg_buffer(mpi::maxSizeH);
 	D_dagger_phi(U, phi, ddagg_buffer);
 	D_phi(U,  ddagg_buffer, Dphi);
 }
@@ -106,7 +106,7 @@ void phi_dag_partialD_phi(const spinor& U, const spinor& left_term,const spinor&
 	//Communicate halos 
 	exchange_halo(left_term.val);
 	exchange_halo(right_term.val);
-	exchange_halo(U.val);
+	//exchange_halo(U.val);
 	for(int x = 1; x<=width_x; x++){
 		for(int t = 1; t<=width_t; t++){
 			n = x*(width_t+2)+t;

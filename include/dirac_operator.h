@@ -6,6 +6,9 @@
 #include "boundary.h"
 
 
+//Halos for the gauge configuration U have to be communicated before calling the functions, this way we prevent
+//communicating them multiple times when it's not necessary.
+
 /*
 	Dirac operator application D phi
 	U: gauge configuration
@@ -26,6 +29,7 @@ void D_dagger_phi(const spinor& U, const spinor&  phi, spinor&  Dphi);
 	Application of D D^+
 	It just calls the previous functions
 */
+extern spinor ddagg_buffer;
 void D_D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi);
 
 /*
