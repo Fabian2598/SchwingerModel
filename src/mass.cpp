@@ -194,8 +194,8 @@ int main(int argc, char **argv) {
             std::cout << "--------Computing c(nt) for conf " << confID << "--------" << std::endl; 
         //We only need two sources, equivalent to extracting the first two columns of D^-1
         exchange_halo(Confs[confID]->val);
-        bi_cgstab(*Confs[confID], source1, x0, Dcol1); //D^-1 source = D^-1((nx,nt),0)
-        bi_cgstab(*Confs[confID], source2, x0, Dcol2); //D^-1 source = D^-1((nx,nt),1)
+        bi_cgstab(*Confs[confID], source1, x0, Dcol1); //D^-1 source = D^-1((nx,nt),(0,0))_alf,0
+        bi_cgstab(*Confs[confID], source2, x0, Dcol2); //D^-1 source = D^-1((nx,nt),(0,0)_alf,1
 
         /*
         Note: The proper way of parallelizing the following part is by communicating only among those ranks 
