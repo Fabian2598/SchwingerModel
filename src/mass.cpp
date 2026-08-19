@@ -2,6 +2,24 @@
 #include "bi_cgstab.h"
 #include <cstring>
 
+
+/*
+    This program computes the correlator to compute the pion mass
+    c(n_t):=<O_pi(0,n_t)\overline{O}_pi(0,0)>=-\sum_{alpha,beta=0}^1 |D^{-1}(0,n_t|0,0)_{\alpha,\beta}|^2
+    Inputs:
+        - ranks_x
+        - ranks_t
+        - m0    (bare mass)
+        - beta
+        - List with configurations. Suggestion: Type 
+                                                ls -1 -v *.ctxt > confFiles.txt 
+                                                in the directory with all the confs
+    Outputs:
+        -A .txt file with c(n_t). The errors are computed using jackknife 
+*/
+
+constexpr int blocks = 20; //Jackknife blocks (change this accordingly to the number of confs you have)
+
 //Read configurations from a list of files
 //Confs is passed by reference so we can fill the caller's buffers.
 void read_confs_from_list(const int nconf, std::vector<spinor*>& Confs, const std::vector<std::string>& filePaths){
@@ -123,13 +141,31 @@ int main(int argc, char **argv) {
     spinor Dcol1(mpi::maxSizeH), Dcol2(mpi::maxSizeH); //D^-1 source 
     spinor x0(mpi::maxSizeH); //Initial solution
 
+    //------------------------//
+    //We need this part for gathering the vectors to the root rank and compute the correlator once 
+    //the matrix is inverted 
+    int counts[mpi::size];
+    int displs[mpi::size];
+    for (int r = 0; r < mpi::size; ++r) {
+        counts[r] = 1;
+        int rx = r / mpi::ranks_t;
+        int rt = r % mpi::ranks_t;
+        int global_x_start = rx * mpi::width_x + 1;
+        int global_t_start = rt * mpi::width_t + 1;
+        displs[r] = (global_x_start * (LV::Nt + 2) + global_t_start)*2; // in complex-element units
+    }
+    // index of first inner element (skip halo) in local Conf.val
+    int input_ini_local = 2 * (mpi::width_t + 2 + 1); // 2*(1*(width_t+2) + 1) -> 2*(width_t+3)
+    spinor GlobalDcol1((LV::Nt+2)*(LV::Nx+2)*2);
+    spinor GlobalDcol2((LV::Nt+2)*(LV::Nx+2)*2);
+    //-------------------------//
+
+    //Fill initial solution with ones.
     for(int nx = 1; nx<=mpi::width_x; nx++)
         for(int nt = 1; nt<=mpi::width_t; nt++)
             for(int mu=0; mu<2; mu++)
                 x0.val[idx(nx,nt,mu)]=1;
 
-        
-      
     if (mpi::rank2d == 0){
         int nx = 1, nt = 1;
         int n0 = nx*(mpi::width_t+2) + nt;
@@ -139,7 +175,6 @@ int main(int argc, char **argv) {
 
     
     //--------Compute c(nt) for the pion--------//
-    
     for(int confID = 0; confID<nconf; confID++){
         if (confID % 100 == 0 && mpi::rank2d == 0)
             std::cout << "--------Computing c(nt) for conf " << confID << "--------" << std::endl; 
@@ -147,29 +182,35 @@ int main(int argc, char **argv) {
         exchange_halo(Confs[confID]->val);
         bi_cgstab(*Confs[confID], source1, x0, Dcol1); //D^-1 source = D^-1((nx,nt),0)
         bi_cgstab(*Confs[confID], source2, x0, Dcol2); //D^-1 source = D^-1((nx,nt),1)
-        //Up to this part everything works fine in parallel
 
-        //This particular part only works fine if I have one rank. For more than one rank 
-        //I have to think on how to modify this to consider the contribution for the other ranks
-        //Note: I will have to transfer from the coordinates in one rank to its global coordinates
-        int n;
-        for(int t=1; t<=mpi::width_t; t++){
-            double local_contribution = 0;
-            double global_contribution = 0;
-            for(int x=1; x<=mpi::width_x; x++){
-                n = x*(mpi::width_t+2)+t;
-                local_contribution += std::real(Dcol1.val[2*n] * std::conj(Dcol1.val[2*n]))
-                + std::real(Dcol1.val[2*n+1]    * std::conj(Dcol1.val[2*n+1]))  
-                + std::real(Dcol2.val[2*n]      * std::conj(Dcol2.val[2*n]))
-                + std::real(Dcol2.val[2*n+1]    * std::conj(Dcol2.val[2*n+1])); 
-            }
-
-            local_contribution *= 1.0/std::sqrt(LV::Nx); //Average over spatial coordinates
-            MPI_Allreduce(&local_contribution, &global_contribution, 1, MPI_DOUBLE, MPI_SUM, mpi::cart_comm);
-            if (mpi::rank2d == 0) CorrMat[t-1][confID] = global_contribution;
-    
+        /*
+        Note: The proper way of parallelizing the following part is by communicating only among those ranks 
+            that share the same t coordinate (globally). Essentially, one would have to "slice" the cartesian communicator
+            in different rows that communicate among themselves. The amount of effort for this case is not worth it, so I will just
+            gather everything on the root rank and evaluate the correlator there.
+        */
+        //Gather local inner blocks into GlobalConf at root
+        MPI_Gatherv(&Dcol1.val[input_ini_local], 1, mpi::local_conf_resized,
+                &GlobalDcol1.val[0], counts, displs, mpi::global_conf_resized,
+                0, mpi::cart_comm);
+        MPI_Gatherv(&Dcol2.val[input_ini_local], 1, mpi::local_conf_resized,
+                &GlobalDcol2.val[0], counts, displs, mpi::global_conf_resized,
+                0, mpi::cart_comm);
+        if (mpi::rank2d == 0){
+            int n;
+            double correlator = 0;
+            for(int t=1; t<=LV::Nt; t++){
+                for(int x=1; x<=LV::Nx; x++){
+                    n = x*(LV::Nx+2)+t;
+                    correlator += std::real(GlobalDcol1.val[2*n] * std::conj(GlobalDcol1.val[2*n]))
+                    + std::real(GlobalDcol1.val[2*n+1]    * std::conj(GlobalDcol1.val[2*n+1]))  
+                    + std::real(GlobalDcol2.val[2*n]      * std::conj(GlobalDcol2.val[2*n]))
+                    + std::real(GlobalDcol2.val[2*n+1]    * std::conj(GlobalDcol2.val[2*n+1])); 
+                }
+                correlator *= 1.0/std::sqrt(LV::Nx); //Average over spatial coordinates
+                CorrMat[t-1][confID] = correlator;
+            } 
         } 
-            
     }
   
     //Write c(nt) and its error into a file
@@ -181,7 +222,7 @@ int main(int argc, char **argv) {
                 Corr[t] += CorrMat[t][confID]; //Sum over configurations
             }
             Corr[t] /= nconf; //Average over configurations
-            dCorr[t] = Jackknife_error(CorrMat[t], 20); //Jackknife error with 20 bins.
+            dCorr[t] = Jackknife_error(CorrMat[t], blocks); 
             std::cout << "c(" << t << ") = " << Corr[t] << " +/- " << dCorr[t] << std::endl;
         } 
         std::ostringstream Name;
