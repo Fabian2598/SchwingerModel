@@ -32,13 +32,13 @@ namespace mpi{
 
 namespace CG{
 	int max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
-	double tol = 1e-10; //Tolerance for convergence
+	double tol = 1e-10;   //Tolerance for convergence
     bool print_convergence_message = false; //printing convergence message, useful for testing
 }
 
 namespace BiCG{
-	int max_iter = 10000; //Maximum number of iterations for the conjugate gradient method
-	double tol = 1e-10; //Tolerance for convergence
+	int max_iter = 10000; //Maximum number of iterations for the bi-cgstab method
+	double tol = 1e-10;   //Tolerance for convergence
     bool print_convergence_message = false; //printing convergence message, useful for testing
 }
 

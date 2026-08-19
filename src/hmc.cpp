@@ -142,20 +142,7 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
     CG_convergence = conjugate_gradient(GConfig.Conf, phi,TEMP);
     action += std::real( dot( TEMP, phi)); 
-
-    //Save gauge configuration if CG does not converge
-    /*
-    if (CG_convergence == 0){
-        std::ostringstream NameData;
-        NameData << "2D_U1_" << Nx << "x" << Nt
-                 << "_b" << format(beta)
-                 << "_m" << format(m0)
-                 << "_illConf" << illConfId << ".ctxt";
-        GConf.SaveConf(NameData.str());
-        illConfId += 1;
-    } 
-    */
-   
+  
     return action;
 }
 

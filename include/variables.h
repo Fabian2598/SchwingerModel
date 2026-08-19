@@ -60,7 +60,7 @@ namespace CG{
 
 //BiCGstab parameters
 namespace BiCG{
-    extern int max_iter; //Maximum number of iterations for the conjugate gradient method
+    extern int max_iter; //Maximum number of iterations
     extern double tol; //Tolerance for convergence
     extern bool print_convergence_message;
 }

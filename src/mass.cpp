@@ -81,6 +81,20 @@ int main(int argc, char **argv) {
     sim_params::beta = beta;
 
     initializeMPI(); //initialize 2d communicator and MPI datatypes 
+
+
+    if (mpi::rank2d == 0){
+        std::cout << "**********************************************************************" << std::endl;
+        std::cout << "*                              PARAMETERS" << std::endl;
+        std::cout << "* Nx = " << LV::Nx << ", Nt = " << LV::Nt << std::endl;
+        std::cout << "* m0 = " << sim_params::m0 << ", kappa = " << 1/(2*(sim_params::m0 +2)) << std::endl;
+        std::cout << "* beta = " << sim_params::beta << std::endl;
+        std::cout << "* Number of ranks on x = " << mpi::ranks_x << ", Number of ranks on t = "  << mpi::ranks_t << std::endl;
+        std::cout << "* Total number of MPI ranks = " << mpi::size << std::endl;
+        std::cout << "* Each rank has " << mpi::width_x*mpi::width_t << " lattice sites" << std::endl;
+        std::cout << "* Host: " << std::getenv("HOSTNAME") << std::endl;
+        std::cout << "**********************************************************************" << std::endl;
+    }
     
  
     std::vector<std::string> filePaths; //file path of configurations to read
@@ -198,10 +212,10 @@ int main(int argc, char **argv) {
                 0, mpi::cart_comm);
         if (mpi::rank2d == 0){
             int n;
-            double correlator = 0;
             for(int t=1; t<=LV::Nt; t++){
+                double correlator = 0;
                 for(int x=1; x<=LV::Nx; x++){
-                    n = x*(LV::Nx+2)+t;
+                    n = x*(LV::Nt+2)+t;
                     correlator += std::real(GlobalDcol1.val[2*n] * std::conj(GlobalDcol1.val[2*n]))
                     + std::real(GlobalDcol1.val[2*n+1]    * std::conj(GlobalDcol1.val[2*n+1]))  
                     + std::real(GlobalDcol2.val[2*n]      * std::conj(GlobalDcol2.val[2*n]))
