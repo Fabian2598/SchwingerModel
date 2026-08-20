@@ -146,6 +146,7 @@ def plot_correlators(correlator_dir,obs, masses, beta, Nx, Nt, save=False):
             label='$m_0=${0}'.format(np.round(m0, 4)),capsize=1.5)
     
     plt.legend()
+    plt.tight_layout()
     plt.show()
 
     if save:
@@ -212,6 +213,7 @@ def plot_effective_mass(correlator_dir,masses,beta,Nx,Nt,mean_ranges,save=False)
              )
 
     plt.legend()
+    plt.tight_layout()
     plt.show()
     if save:
         fig.savefig("meff_b{0}_{1}x{2}.pdf".format(beta, Nx, Nt))
@@ -285,7 +287,7 @@ def compute_mpi(correlator_dir,masses,beta,Nx,Nt,mean_ranges):
     dMpi = np.array(dMpi)
     return Mpi, dMpi
 
-def mpi_vs_mpcac(correlator_dir,masses,beta,Nx,Nt,mean_ranges):
+def mpi_vs_mpcac(correlator_dir,masses,beta,Nx,Nt,mean_ranges,save=False):
     t0, t1 = mean_ranges
     Mpi, dMpi = compute_mpi(correlator_dir,masses,beta,Nx,Nt,mean_ranges)
     Mpcac, dMpcac = compute_pcac(correlator_dir, masses, beta, Nx, Nt,mean_ranges)
@@ -305,3 +307,7 @@ def mpi_vs_mpcac(correlator_dir,masses,beta,Nx,Nt,mean_ranges):
     y = 2.008*(x**2*g)**(1/3)
     plt.plot(x,y,label=r"Smilga prediction $m_\pi=2.008 \left( m^2 g\right)^{1/3}$")
     plt.legend()
+    plt.tight_layout()
+    plt.show()
+    if save == True:
+        fig.savefig("mpi_mpcac_b{0}_{1}x{2}.pdf".format(beta,Nx,Nt))
