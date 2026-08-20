@@ -7,12 +7,10 @@ project(Schwinger_model VERSION 1.0)
 set(SOURCES
     src/utils.cpp               #Utility functions
     src/variables.cpp           #Relevant parameters for the lattice
-    #src/main_test.cpp          #Main program
-    src/main.cpp
+    src/main.cpp                #Main program
     src/gauge_conf.cpp          #Gauge configuration (computes staples, plaquettes and gauge action)
     src/dirac_operator.cpp      #Implementation of D, D^+ and 2* Re ( left^+ d D / d omega(z) right )
-    src/halo_exchange.cpp
-    #src/tests.cpp
+    src/halo_exchange.cpp       #Halo exchange
     src/conjugate_gradient.cpp  #Conjugate gradient and Bi-cgstab
     src/hmc.cpp                 #Hybrid Monte Carlo
 )
@@ -49,10 +47,10 @@ target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
 set(SOURCES_MASS
     src/utils.cpp               #Utility functions
     src/variables.cpp           #Relevant parameters for the lattice
-    src/mass.cpp                #main program
+    src/mass.cpp                #Main program for computing pion and pcac correlators
     src/gauge_conf.cpp          #Gauge configuration (computes staples, plaquettes and gauge action)
     src/dirac_operator.cpp      #Implementation of D, D^+ and 2* Re ( left^+ d D / d omega(z) right )
-    src/halo_exchange.cpp
+    src/halo_exchange.cpp       #Halo exchange
     src/bi_cgstab.cpp           #Bi-cgstab
 )
 
@@ -64,7 +62,6 @@ target_include_directories("mass_${NS}x${NT}"
 )
 target_compile_options("mass_${NS}x${NT}" PRIVATE
 			-O3
-            #-fopenmp
 )
 
 find_package(MPI REQUIRED)
