@@ -4,8 +4,12 @@
 
 
 /*
-    This program computes the correlator to compute the pion mass
-    c(n_t):=<O_pi(0,n_t)\overline{O}_pi(0,0)>=-\sum_{alpha,beta=0}^1 |D^{-1}(0,n_t|0,0)_{\alpha,\beta}|^2
+    This program computes the correlator of the pion iso-triplet O_pi = \overline{d} gamma_5 u and the PCAC mass 
+    c_pi(n_t):=\sum_x <O_pi(x,n_t)\overline{O}_pi(0,0)>=-\sum_x \sum_{alpha,beta=0}^1 |D^{-1}(x,n_t|0,0)_{\alpha,\beta}|^2
+
+    m_PCAC(t) = 1/4 * (C_AP(t+1)-AP(t-1))/CPP(t),
+    CPP(t) = -1/2 * \sum_x \sum_{alpha,beta=0}^1 |D^{-1}(x,n_t|0,0)_{\alpha,\beta}|^2
+    CAP(t) = -1/2 * \sum_x Tr[gamma_0 gamma_5 D^{-1}(x,nt|0,0) gamma_5 D^{-1}(0,0|x,nt)]
     Inputs:
         - ranks_x
         - ranks_t
@@ -15,7 +19,8 @@
                                                 ls -1 -v *.ctxt > confFiles.txt 
                                                 in the directory with all the confs
     Outputs:
-        -A .txt file with c(n_t). The errors are computed using jackknife 
+        -A .txt file with c_pi(n_t). The errors are computed using jackknife 
+        -A .txt file with m_PCAC(n_t). The errors are computed using jackknife
 */
 
 constexpr int blocks = 20; //Jackknife blocks (change this accordingly to the number of confs you have)
@@ -140,9 +145,13 @@ int main(int argc, char **argv) {
 
 
     
-    std::vector<std::vector<double>> CorrMat; //Correlation function for each conf.
+    std::vector<std::vector<double>> CorrMatPi; //Correlation function for each conf.
+    std::vector<std::vector<double>> CorrMatAP; 
+    std::vector<std::vector<double>> CorrMatPCAC; 
     if (mpi::rank2d == 0){
-        CorrMat.resize(LV::Nt, std::vector<double>(nconf, 0)); // Resize CorrMat
+        CorrMatPi.resize(LV::Nt, std::vector<double>(nconf, 0)); // Resize CorrMatPi
+        CorrMatAP.resize(LV::Nt, std::vector<double>(nconf, 0));
+        CorrMatPCAC.resize(LV::Nt, std::vector<double>(nconf, 0)); 
         std::cout << "Reading configurations from list ...";
     }
     read_confs_from_list(nconf, Confs, filePaths); //Read configurations and store them in Confs
@@ -188,10 +197,10 @@ int main(int argc, char **argv) {
     }
 
     
-    //--------Compute c(nt) for the pion--------//
+    //--------     Compute correlation functions  --------//
     for(int confID = 0; confID<nconf; confID++){
         if (confID % 100 == 0 && mpi::rank2d == 0)
-            std::cout << "--------Computing c(nt) for conf " << confID << "--------" << std::endl; 
+            std::cout << "--------Computing correlators for conf " << confID << "--------" << std::endl; 
         //We only need two sources, equivalent to extracting the first two columns of D^-1
         exchange_halo(Confs[confID]->val);
         bi_cgstab(*Confs[confID], source1, x0, Dcol1); //D^-1 source = D^-1((nx,nt),(0,0))_alf,0
@@ -212,6 +221,8 @@ int main(int argc, char **argv) {
                 0, mpi::cart_comm);
         if (mpi::rank2d == 0){
             int n;
+
+            //-----Computing c_pi(nt)-----//
             for(int t=1; t<=LV::Nt; t++){
                 double correlator = 0;
                 for(int x=1; x<=LV::Nx; x++){
@@ -222,26 +233,58 @@ int main(int argc, char **argv) {
                     + std::real(GlobalDcol2.val[2*n+1]    * std::conj(GlobalDcol2.val[2*n+1])); 
                 }
                 correlator *= 1.0/std::sqrt(LV::Nx); //Average over spatial coordinates
-                CorrMat[t-1][confID] = correlator;
-            } 
+                CorrMatPi[t-1][confID] = correlator;
+            }
+            //-----------------------------// 
+
+             //-----Computing c_AP(nt)-----//
+            for(int t=1; t<=LV::Nt; t++){
+                double correlator = 0;
+                for(int x=1; x<=LV::Nx; x++){
+                    n = x*(LV::Nt+2)+t;
+                    correlator += std::real(
+                                  GlobalDcol1.val[2*n+1] * std::conj(GlobalDcol1.val[2*n])
+                                + GlobalDcol2.val[2*n+1] * std::conj(GlobalDcol2.val[2*n])
+                                + GlobalDcol1.val[2*n] * std::conj(GlobalDcol1.val[2*n+1])
+                                + GlobalDcol2.val[2*n] * std::conj(GlobalDcol2.val[2*n+1])
+                                );
+                        //Let us define D^{-1}((x,t)|(0,0))_{alf,bet} := M_{alf,bet}. We are implementing
+                        //correlator += M_{1,0} M*_{0,0} + M_{1,1} M*_{0,1} + M_{0,0} M*_{1,0} + M_{0,1} M*_{1,1}
+                }
+                correlator *= 0.5/std::sqrt(LV::Nx); //The sqrt comes from the projection on zero momentum
+                CorrMatAP[t-1][confID] = correlator;
+            }
+            //-----------------------------// 
         } 
     }
   
     //Write c(nt) and its error into a file
     //Only the root rank performs this part
     if (mpi::rank2d == 0){
-        std::vector<double> Corr(LV::Nt,0), dCorr(LV::Nt,0); //Correlation function averaged over configurations and its error
+        std::vector<double> CorrPi(LV::Nt,0), dCorrPi(LV::Nt,0); //Correlation function averaged over configurations and its error
+        std::vector<double> CorrPCAC(LV::Nt,0), dCorrPCAC(LV::Nt,0); //Correlation function averaged over configurations and its error
         for(int t=0; t<LV::Nt; t++){
             for(int confID=0; confID<nconf; confID++){
-                Corr[t] += CorrMat[t][confID]; //Sum over configurations
+                CorrPi[t] += CorrMatPi[t][confID]; //Sum over configurations
+                CorrMatPCAC[t][confID] = 0.25 * (CorrMatAP[mod(t+1,LV::Nt)][confID]-CorrMatAP[mod(t-1,LV::Nt)][confID])
+                                    / (CorrMatPi[t][confID]*(-0.5));
+                CorrPCAC[t] += CorrMatPCAC[t][confID];
             }
-            Corr[t] /= nconf; //Average over configurations
-            dCorr[t] = Jackknife_error(CorrMat[t], blocks); 
-            std::cout << "c(" << t << ") = " << Corr[t] << " +/- " << dCorr[t] << std::endl;
-        } 
-        std::ostringstream Name;
-        Name << "2D_U1_" << LV::Nx << "x" << LV::Nt << "_b" << beta << "_m" << format(m0) << "_" << "corr" << ".txt";
-        write_correlator(Corr, dCorr, Name.str());
+            CorrPi[t] /= nconf; //Average over configurations
+            dCorrPi[t] = Jackknife_error(CorrMatPi[t], blocks); 
+            CorrPCAC[t] /= nconf; //Average over configurations
+            dCorrPCAC[t] = Jackknife_error(CorrMatPCAC[t], blocks); 
+            std::cout << "c_pi(" << t << ") = " << CorrPi[t] << " +/- " << dCorrPi[t] << std::endl;
+            std::cout << "m_pcac(" << t << ") = " << CorrPCAC[t] << " +/- " << dCorrPCAC[t] << std::endl;
+        }
+        
+        
+        std::ostringstream NameCorrPi;
+        NameCorrPi << "2D_U1_" << LV::Nx << "x" << LV::Nt << "_b" << beta << "_m" << format(m0) << "_" << "corr" << ".txt";
+        write_correlator(CorrPi, dCorrPi, NameCorrPi.str());
+        std::ostringstream NameCorrPCAC;
+        NameCorrPCAC << "2D_U1_" << LV::Nx << "x" << LV::Nt << "_b" << beta << "_m" << format(m0) << "_" << "corrPCAC" << ".txt";
+        write_correlator(CorrPCAC, dCorrPCAC, NameCorrPCAC.str());
     }
     
     for (auto ptr : Confs) delete ptr;
