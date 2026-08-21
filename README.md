@@ -1,6 +1,6 @@
 # SchwingerModel
 
-Simulation of the two-flavor Schwinger Model with degenerate fermions. The simulation is performed using pseudofermions, HMC and (for the moment) conjugate gradient to invert $(DD^\dagger)^{-1}$. Later multigrid will replace conjugate gradient, so temporarily ignore the AMG directory. Check HMC_doc.pdf for a detailed explanation of the Hybrid Monte Carlo in this context.
+Simulation of the two-flavor Schwinger Model with degenerate fermions. The simulation is performed using pseudofermions, HMC and (for the moment) conjugate gradient to invert $(DD^\dagger)^{-1}$. This version is parallelized with OpenMP.
 
 The code implements Wilson fermions 
 
@@ -61,28 +61,4 @@ Step (sweeps between measurements): 10
 Save configurations yes/no (1 or 0): 1
 ```
 
-The other executable
-
- ```
-mass_NSxNT.exe
-```
-
-measures the pion mass correlator, given a set of gauge configurations. The latter are generated during the simulation.
-## Windows
-
-The instructions are essentially the same. The CMakeLists.txt only needs the address of your C++ and C compiler on lines 4 and 5. 
-Then, in the `build` folder, run the following commands:
-```
-cmake -G "MinGW Makefiles" -DCMAKE_CXX_COMPILER=C:\msys64\ucrt64\bin\g++ -DCMAKE_C_COMPILER=C:\msys64\ucrt64\bin\gcc ../
-```
-
- This command depends on the compiler you are using. In this case, we are using MinGW. If you are using another compiler 
- you have to change the `-G` flag. The `-DCMAKE_CXX_COMPILER` and `-DCMAKE_C_COMPILER` flags are the address of the compiler.
-
-Then you can run the executable
-
-```
-SM_NSxNT.exe
-```
-
-**Only the average plaquette value is measured, one can implement other observables.**
+The number of OMP Threads has to be set as an environment variable.
