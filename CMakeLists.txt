@@ -43,31 +43,6 @@ target_link_libraries("SM_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
 
 #---------------------------------------#
 
-#-----------------For measuring the pion correlator-----------------#
-set(SOURCES_MASS
-    src/statistics.cpp
-    src/variables.cpp
-    src/mass.cpp              #Pion correlator implementation
-    src/gauge_conf.cpp
-    src/dirac_operator.cpp
-    src/conjugate_gradient.cpp
-)
-
-add_executable("mass_${NS}x${NT}" ${SOURCES_MASS})
-
-target_include_directories("mass_${NS}x${NT}"
-        PUBLIC 
-        ${PROJECT_SOURCE_DIR}/include
-)
-target_compile_options("mass_${NS}x${NT}" PRIVATE
-			-O3
-            #-fopenmp
-)
-
-
-find_package(MPI REQUIRED)
-target_link_libraries("mass_${NS}x${NT}" PUBLIC MPI::MPI_CXX)
-
 #PROJECT_SOURCE_DIR: it indicates where src is located
 #cmake -G "MinGW Makefiles" -DCMAKE_CXX_COMPILER="C:/msys64/ucrt64/bin/g++.exe" -DCMAKE_C_COMPILER="C:/msys64/ucrt64/bin/gcc.exe" ../
 #dir/s/b *.txt > confs.txt
