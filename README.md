@@ -1,52 +1,51 @@
 # HMC for the Schwinger model
 
-This project implements an MPI-parallel Monte Carlo simulation of the two-flavor Schwinger model using a Hybrid Monte Carlo (HMC) algorithm. The simulation uses Wilson fermions, pseudofermions, and a conjugate-gradient solver to invert $(DD^\dagger)^{-1}$. For an OpenMP implementation check the OpenMP branch.
+This project implements an MPI-parallel Monte Carlo simulation of the two-flavor Schwinger model using a Hybrid Monte Carlo (HMC) algorithm. The simulation uses Wilson fermions, pseudofermions, and iterative solvers for the fermion operator. For an OpenMP implementation, check the OpenMP branch.
 
-The code generates gauge configurations in a binary format, with the following structure:
+Gauge configurations are written in binary format with records of the form:
 
 $$
 (x, t, \mu, \mathrm{Re}(U_\mu(t,x)), \mathrm{Im}(U_\mu(t,x)))
 $$
 
-Here $\mu=0$ denotes the time direction and $\mu=1$ denotes the spatial direction. Check [HMC_doc.pdf](HMC_doc.pdf) for details of the HMC formulation in this model.
+Here $\mu=0$ denotes the time direction and $\mu=1$ denotes the spatial direction. See [HMC_doc.pdf](HMC_doc.pdf) for details of the HMC formulation.
 
----
+The `mass_analysis` directory contains Python helpers and a notebook for computing $m_\pi$ and $m_{\mathrm{PCAC}}$ from the correlators. Results are in the same directory.
 
 ## Requirements
 
 - CMake
-- C++ compiler
-- MPI implementation (OpenMPI, MPICH, etc.)
-- Linux or Windows with a compatible toolchain
+- A C++20 compiler
+- An MPI implementation such as OpenMPI, MPICH, or Microsoft MPI
+- Python 3 with Jupyter, NumPy, Matplotlib, and SciPy for the mass analysis
+- Linux, Windows with a compatible toolchain, or another Unix-like environment
 
----
+The shell scripts require Bash and common Unix utilities such as `sed` and `mv`. On Windows, run them from an MSYS2/MinGW environment or follow the manual CMake commands below.
 
 ## Build the project
 
-Create a build directory:
+From the repository root, configure and build the project:
 
 ```bash
-mkdir build
-cd build
+cmake -S . -B build
+cmake --build build
 ```
 
-Then configure and build:
+The lattice dimensions are set in `CMakeLists.txt`:
 
-```bash
-cmake ..
-cmake --build .
+```cmake
+set(NS "64")
+set(NT "64")
 ```
 
-This produces an executable named `SM_NSxNT` (or a name defined in `CMakeLists.txt`). The lattice dimensions are fixed in `CMakeLists.txt`, so you should edit them there before building.
-
----
+Change `NS` and `NT` before configuring if a different lattice is required. The build produces `SM_${NS}x${NT}` for the HMC simulation and `mass_${NS}x${NT}` for correlator computation. On Windows, the executables have an `.exe` suffix.
 
 ## Run the simulation
 
-Execute the program with MPI:
+For the default lattice, run the HMC executable with MPI:
 
 ```bash
-mpirun -n <number_of_cores> ./SM_NSxNT
+mpirun -n <number-of-ranks> ./build/SM_64x64
 ```
 
 The program will prompt for the simulation parameters. A typical example is:
@@ -82,144 +81,96 @@ Save configurations yes/no (1 or 0): 1
 - `Step`: number of sweeps discarded between saved measurements.
 - `Save configurations`: set to `1` to write configurations to disk, or `0` to skip writing them.
 
-### Notes on tuning
-
-The molecular dynamics steps and trajectory length must be tuned to achieve a good acceptance rate, typically between $0.6$ and $0.8$. This indicates a reasonable level of decorrelation between configurations.
-
-For many simulations, a reasonable starting point is:
-
-- `MD steps = 10`
-- `trajectory length = 1.0`
-
-Close to the critical mass, longer runs and careful tuning are often required. Increasing the MD steps typically increases the cost of each trajectory.
-
----
+The script `run.sh` edits the lattice dimensions, configures the build if needed, builds the HMC executable, supplies a sample parameter set, and runs it. Review its variables before use. It currently moves the executable into the repository root and writes output there.
 
 ## Critical mass values
 
-The bare mass parameter must remain above the critical mass to avoid unphysical configurations. The critical values for various $\beta$ are:
+The bare mass parameter must remain above the critical mass to avoid unphysical configurations. The following values are useful guides:
 
 | $\beta$ | $-m_{\mathrm{crit}}$ |
 | :-----: | :------------------: |
-|    1    |       0.3204(7)      |
-|    2    |       0.1968(9)      |
-|    3    |       0.1351(2)      |
-|    4    |       0.1033(1)      |
-|    5    |       0.0840(1)      |
-|    6    |       0.0719(1)      |
+| 1 | 0.3204(7) |
+| 2 | 0.1968(9) |
+| 3 | 0.1351(2) |
+| 4 | 0.1033(1) |
+| 5 | 0.0840(1) |
+| 6 | 0.0719(1) |
 
-These values are from the literature and are useful as a guide when choosing a physical mass parameter. See N. Christian, K. Jansen, K. Nagai and B. Pollakowski. “Scaling test of the fermion actions in the Schwinger Model”, Nucl. Phys. B, 739, (2006).
-
----
+These values are from N. Christian, K. Jansen, K. Nagai and B. Pollakowski, “Scaling test of the fermion actions in the Schwinger Model”, *Nucl. Phys. B* 739 (2006).
 
 ## Output files
 
-Configurations are stored in binary format. After a successful run, the simulation produces gauge configurations and a summary file such as `_SimData.txt`.
+When `Save configurations` is `1`, the simulation writes binary `.ctxt` files and a summary file such as `_SimData.txt`.
 
-To convert the binary gauge configurations to a human-readable text format, compile and run `readBinConf.cpp`. You may need to update the lattice dimensions inside that source file before conversion.
+## Convert binary configurations
 
-A simple convenience script is provided:
+`readBinConf.cpp` converts one binary configuration to text. Update `NX`, `NT`, and `CONF_PATH` in `readBin.sh`, then run it from the repository root:
 
 ```bash
-./run.sh
+./readBin.sh
 ```
 
-This script shows how the program can be compiled and executed in practice.
-
----
-
-## Converting binary configurations to text
-
-The repository includes a helper script and a C++ converter:
-
-- `readBinConf.cpp`
-- `readBin.sh`
-
-The script compiles the converter and reads a binary configuration file. The output is written in the form:
+The converter writes records in the form:
 
 ```text
 x, t, mu, Re(U_mu), Im(U_mu)
 ```
 
-This is useful for inspecting or post-processing saved gauge configurations.
+## Windows (MSYS2/MinGW)
 
----
-
-## Windows
-
-The build steps are similar on Windows. The main difference is that the CMake configuration must point to the correct C and C++ compiler paths.
-
-For example, with MinGW:
+From an MSYS2 shell with MinGW and an MPI implementation available on `PATH`:
 
 ```bash
-cmake -G "MinGW Makefiles" \
-  -DCMAKE_CXX_COMPILER=C:\msys64\ucrt64\bin\g++ \
-  -DCMAKE_C_COMPILER=C:\msys64\ucrt64\bin\gcc \
-  ..
+cmake -S . -B build -G "MinGW Makefiles" \
+  -DCMAKE_CXX_COMPILER=C:/msys64/ucrt64/bin/g++.exe \
+  -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe
+cmake --build build --config Release
+mpiexec -n 4 ./build/SM_64x64.exe
 ```
 
-Then build the project and run the generated executable:
+The exact compiler, MPI implementation, and generator flags may vary. The Bash helper scripts are not native PowerShell scripts.
 
-```bash
-SM_NSxNT.exe
-```
+## Compute pion and PCAC masses
 
-The exact compiler and generator flags may vary depending on your setup.
-
----
-
-## Repository structure
+Once the simluation is completed and the configurations written to disk, the `mass_NSxNT` program determines the necessary correlators, which are later analyzed with Python (check mass_analysis.ipynb) to compute $m_\pi$ and $m_{\mathrm{PCAC}}$. When executed, the program will ask for some parameters 
 
 ```text
-.
-├── CMakeLists.txt
-├── README.md
-├── run.sh
-├── readBin.sh
-├── readBinConf.cpp
-├── include/
-│   ├── config.h
-│   ├── conjugate_gradient.h
-│   ├── dirac_operator.h
-│   ├── gauge_conf.h
-│   ├── hmc.h
-│   ├── mpi_setup.h
-│   ├── statistics.h
-│   └── variables.h
-├── src/
-│   ├── conjugate_gradient.cpp
-│   ├── dirac_operator.cpp
-│   ├── gauge_conf.cpp
-│   ├── hmc.cpp
-│   ├── main.cpp
-│   ├── statistics.cpp
-│   └── variables.cpp
-├── build/
-└── data files and output logs
+----------------------------
+|  Pion correlator computation   |
+----------------------------
+Nx NS Nt NT
+ranks_x: number of processes on the x direction
+ranks_t: number of processes on the t direction
+m0: same as the simulation
+File with list of confs (ls -1 *.ctxt > confFiles.txt): confFiles.txt
 ```
 
----
+The last one corresponds to a list with the name of the configurations that will be considered for the analysis. This can be easily created in Linux by typing 
+
+```bash
+ls -1 -v *.ctxt > confFiles.txt
+```
+
+in the directory with the configurations. The output of the program are two .txt files with the correlators for the pion and PCAC. The corresponding names are `2D_U1_${NX}x${NT}"_b${BETA}_m${M0}_corr.txt` and `2D_U1_${NX}x${NT}"_b${BETA}_m${M0}_corrPCAC.txt`. This files are used in the Python program to calculate $m_\pi$ and $m_{\mathrm{PCAC}}$.
 
 ## Troubleshooting
 
 ### MPI errors
 
-If CMake or the runtime reports missing MPI libraries, check that MPI is installed and that your compiler environment is configured properly.
+If CMake or the runtime reports missing MPI libraries, verify that MPI is installed and that the compiler and MPI launcher are on `PATH`.
 
 ### Wrong lattice dimensions
 
-If the simulation or conversion code does not match the configuration files, verify the lattice dimensions in `CMakeLists.txt` and in `readBinConf.cpp`.
+Use the same `NS` and `NT` values when building the simulation, building the mass executable, and converting configurations. Also keep `readBinConf.cpp` consistent with the configuration dimensions.
 
-### Acceptance rate is too low
+### Low acceptance rate
 
-If the acceptance rate is poor, reduce the trajectory length or increase the number of molecular dynamics integration steps.
+Reduce the trajectory length or increase the number of molecular-dynamics steps.
 
-### Missing or corrupted output
+### Missing output
 
-Check the save flag in the simulation input and confirm that the process has write permissions in the working directory.
-
----
+Set `Save configurations` to `1` and verify that the process can write to the working directory.
 
 ## References
 
-For more background on the physics and the algorithm, see the project documentation and the cited work on scaling tests of fermion actions in the Schwinger model.
+For background on the physics and algorithm, see [HMC_doc.pdf](HMC_doc.pdf) and the scaling-test reference cited above.
