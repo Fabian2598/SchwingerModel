@@ -1,6 +1,6 @@
 # HMC for the Schwinger model
 
-This version of the code is also MPI-parallelized, but the halo exchanges is not implemented in a very readable manner, so I refactored the code and merge everything into the merge branch. This is the old version where the data was communicated in a less readable way inside each individual function.
+This version of the code is also MPI-parallelized, but the halo exchanges is not implemented in a very readable manner, so I refactored the code and merge everything into the main branch. 
 
 This project implements an MPI-parallel Monte Carlo simulation of the two-flavor Schwinger model using a Hybrid Monte Carlo (HMC) algorithm. The simulation uses Wilson fermions, pseudofermions, and a conjugate-gradient solver to invert $(DD^\dagger)^{-1}$. 
 
