@@ -93,6 +93,20 @@ spinor ddagg_buffer(mpi::maxSizeH);//Note that maxSizeH = 2*(Nx+2)*(Nt+2) by def
 void D_D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi){
 	D_dagger_phi(U, phi, ddagg_buffer);
 	D_phi(U,  ddagg_buffer, Dphi);
+	
+	#ifdef TWISTED_MASS
+	//We add the twisted mass term
+	//Due to the way things are implemented in the code, we don't need to modify anything else. 
+	int n;
+	for(int x = 1; x<=mpi::width_x; x++){
+		for(int t = 1; t<=mpi::width_t; t++){
+			n = x*(mpi::width_t+2)+t;
+			Dphi.val[2*n]   += sim_params::tm*sim_params::tm*phi.val[2*n];
+			Dphi.val[2*n+1] += sim_params::tm*sim_params::tm*phi.val[2*n+1];
+		}
+	}
+	#endif
+
 }
 
 

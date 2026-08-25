@@ -51,4 +51,5 @@ namespace sim_params {
     int Nmeas = 10;
     int Nsteps = 1;
     std::string start_time_str = "";
+    double tm = 0; //twisted mass term (default value)
 }

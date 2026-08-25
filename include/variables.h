@@ -75,6 +75,7 @@ namespace sim_params {
     extern int Nmeas;
     extern int Nsteps;
     extern std::string start_time_str;
+    extern double tm; //twisted mass
 }
 
 //Flattened spinor

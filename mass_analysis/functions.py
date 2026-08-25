@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import optimize
+from scipy.optimize import curve_fit
 
 
 def Datos(path):
@@ -311,3 +312,52 @@ def mpi_vs_mpcac(correlator_dir,masses,beta,Nx,Nt,mean_ranges,save=False):
     plt.show()
     if save == True:
         fig.savefig("mpi_mpcac_b{0}_{1}x{2}.pdf".format(beta,Nx,Nt))
+
+def critical_mass(correlator_dir,masses,beta,Nx,Nt,mean_ranges,save=False):
+    masses = np.array(masses)
+    mpcac, dmpcac = compute_pcac(correlator_dir, masses, beta, Nx, Nt,mean_ranges)
+
+    def linear(x, a, b):
+        return a*x + b
+    
+    popt, pcov = curve_fit(linear,masses,mpcac,sigma=dmpcac,absolute_sigma=True)
+    # Best-fit parameters
+    a, b = popt
+    # Parameter uncertainties
+    da, db = np.sqrt(np.diag(pcov))
+    print(f"Slope     = {a:.6f} +/- {da:.6f}")
+    print(f"Intercept = {b:.6f} +/- {db:.6f}")
+    # Chi-square
+    residuals = mpcac - linear(masses, a, b)
+    chi2 = np.sum((residuals / dmpcac)**2)
+    # Degrees of freedom
+    dof = len(masses) - len(popt)
+    print(f"chi^2     = {chi2:.3f}")
+    print(f"dof       = {dof}")
+    print(f"chi^2/dof = {chi2/dof:.3f}")
+    
+
+    # Critical mass
+    mc = -b / a
+    # Covariance between a and b
+    cov_ab = pcov[0, 1]
+    # Error propagation for mc = -b/a
+    dmc = np.sqrt((db/a)**2 + (b*da/a**2)**2- 2*b*cov_ab/a**3)
+    print(f"m_c = {mc:.6f} +/- {dmc:.6f}")
+
+    xfit = np.linspace(mc, np.max(masses), 200)
+    yfit = linear(xfit, a, b)
+
+    fig = plt.figure(dpi=100)
+    plt.errorbar(masses,mpcac,yerr=dmpcac,fmt='*',markersize=5,elinewidth=0.5,solid_capstyle='projecting',capsize=1.5,label='HMC simulation') 
+    plt.plot(xfit,yfit, '--',label=r'Linear fit: $m_{\mathrm{PCAC}}=a m_0+b$')
+    plt.title(r'$N_x$={0}, $N_t={1}$, $\beta$={2}'.format(Nx, Nt, beta),size=15)
+    plt.ylabel(r'$m_{\mathrm{PCAC}}$', size=15)
+    plt.xlabel(r'$m_0$', size=15)
+    plt.legend()
+    plt.xlim([mc,max(masses)+0.01])
+    plt.ylim([0,max(mpcac)+0.01])
+    plt.show()
+    
+    if save == True:
+        fig.savefig("critical_mass_plot_b{0}_{1}x{2}.pdf".format(beta,Nx,Nt))

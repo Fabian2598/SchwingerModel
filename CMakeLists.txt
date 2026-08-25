@@ -3,6 +3,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 project(Schwinger_model VERSION 1.0)
 
+option(TWISTED_MASS "Use twisted mass fermions" OFF)
+
+
 
 set(SOURCES
     src/utils.cpp               #Utility functions
@@ -23,6 +26,9 @@ configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/inclu
 
 add_executable("SM_${NS}x${NT}" ${SOURCES})
 
+if(TWISTED_MASS)
+    target_compile_definitions("SM_${NS}x${NT}" PRIVATE TWISTED_MASS)
+endif()
 
 target_include_directories("SM_${NS}x${NT}"
         PUBLIC 

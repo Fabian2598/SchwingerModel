@@ -17,6 +17,7 @@ int main(int argc, char **argv) {
     double trajectory_length; //HMC parameters
     int MD_steps;
     double m0; //bare mass
+    double tm;
 	int saveconf = 0; //Save configurations
 
     //To call the sequential program one has to choose ranks_x = ranks_t = 1
@@ -33,6 +34,10 @@ int main(int argc, char **argv) {
         std::cin >> mpi::ranks_t;
         std::cerr << "m0: " << std::endl;
         std::cin >> m0;
+        #ifdef TWISTED_MASS
+        std::cerr << "mu (twisted mass): " << std::endl;
+        std::cin >> tm;
+        #endif
         std::cerr << "Molecular dynamics steps: " << std::endl;
         std::cin >> MD_steps;
         std::cerr << "Trajectory length: " << std::endl;
@@ -53,6 +58,9 @@ int main(int argc, char **argv) {
     MPI_Bcast(&mpi::ranks_x, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&mpi::ranks_t, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&m0, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
+    #ifdef TWISTED_MASS
+    MPI_Bcast(&tm, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
+    #endif
     MPI_Bcast(&MD_steps, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&trajectory_length, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
     MPI_Bcast(&beta, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
@@ -68,6 +76,9 @@ int main(int argc, char **argv) {
     sim_params::Ntherm = Ntherm;
     sim_params::Nmeas = Nmeas;
     sim_params::Nsteps = Nsteps;
+    #ifdef TWISTED_MASS
+    sim_params::tm = tm;
+    #endif
     
     initializeMPI(); //2D rank topology
         
@@ -120,6 +131,8 @@ int main(int argc, char **argv) {
         Datfile << CG::max_iter << std::setw(30) << std::setprecision(17) << CG::tol << "\n";
         Datfile << "#m0\n";
         Datfile << std::setprecision(17) << sim_params::m0 << "\n";
+        Datfile << "#mu (twisted mass)\n";
+        Datfile << std::setprecision(17) << sim_params::tm << "\n";
         Datfile.close();
     }
     print_parameters();
