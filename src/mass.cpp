@@ -62,9 +62,9 @@ int main(int argc, char **argv) {
 
     if (mpi::rank == 0){
          //---Input data---//
-        std::cerr << "  -----------------------------" << std::endl;
-        std::cerr << "|  Pion correlator computation  |" << std::endl;
-        std::cerr << "  -----------------------------" << std::endl;
+        std::cerr << "  ---------------------------------------" << std::endl;
+        std::cerr << "|  Pion and PCAC correlators computation  |" << std::endl;
+        std::cerr << "  ---------------------------------------" << std::endl;
         std::cerr << "Nx " << LV::Nx << " Nt " << LV::Nt << std::endl;
         std::cerr << "ranks_x: " << std::endl;
         std::cin >> mpi::ranks_x;

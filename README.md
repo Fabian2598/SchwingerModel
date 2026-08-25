@@ -40,6 +40,14 @@ set(NT "64")
 
 Change `NS` and `NT` before configuring if a different lattice is required. The build produces `SM_${NS}x${NT}` for the HMC simulation and `mass_${NS}x${NT}` for correlator computation. On Windows, the executables have an `.exe` suffix.
 
+### Twisted mass
+Twisted mass is also implemented in the code. To compile the twisted mass version build:
+
+```bash
+cmake -S . -B build -DTWISTED_MASS=ON
+cmake --build build
+```
+
 ## Run the simulation
 
 For the default lattice, run the HMC executable with MPI:
@@ -67,6 +75,8 @@ Measurements: 1000
 Step (sweeps between measurements): 10
 Save configurations yes/no (1 or 0): 1
 ```
+
+In case the program was compiled for the twisted mass operator, an extra parameter (the twisted mass) will be requested.
 
 ### Parameter descriptions
 
@@ -132,16 +142,17 @@ The exact compiler, MPI implementation, and generator flags may vary. The Bash h
 
 ## Compute pion and PCAC masses
 
-Once the simluation is completed and the configurations written to disk, the `mass_NSxNT` program determines the necessary correlators, which are later analyzed with Python (check mass_analysis.ipynb) to compute $m_\pi$ and $m_{\mathrm{PCAC}}$. When executed, the program will ask for some parameters 
+Once the simulation is completed and the configurations are written to disk, the `mass_NSxNT` program determines the necessary correlators, which are later analyzed with Python (check mass_analysis.ipynb) to compute $m_\pi$ and $m_{\mathrm{PCAC}}$. When executed, the program will ask for some parameters 
 
 ```text
-----------------------------
-|  Pion correlator computation   |
-----------------------------
+--------------------------------------------
+|  Pion and PCAC correlators computation   |
+--------------------------------------------
 Nx NS Nt NT
 ranks_x: number of processes on the x direction
 ranks_t: number of processes on the t direction
 m0: same as the simulation
+beta: same as the simulation (using for file naming)
 File with list of confs (ls -1 *.ctxt > confFiles.txt): confFiles.txt
 ```
 

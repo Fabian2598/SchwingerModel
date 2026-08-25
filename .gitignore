@@ -6,3 +6,4 @@ build
 .vscode
 confs/
 mass_analysis/__pycache__
+mass_analysis/.ipynb_checkpoints
