@@ -53,6 +53,7 @@ void GaugeConf::Compute_Plaquette01() {
 
 //mu = 0 time direction, mu = 1 space direction
 void GaugeConf::Compute_Q() {
+    MPI_Status status;
     //Halo must be communicated externally
     //Corners we have to communicate manually 
     //Update top-right corner (needs bottom-left corner from diagonal rank)
@@ -141,7 +142,7 @@ void GaugeConf::Compute_Q() {
             Un_m = Conf.val[2*n] * std::conj(Conf.val[2*x_1_t1+1]) * std::conj(Conf.val[2*up]) * Conf.val[2*up+1];
 
             //U_{-1,-0}(n) = U*_1(n-1) U*_0(n-0-1) U_1(n-0-1) U_0(n-0)
-            U_m_v = Conv.val[2*up+1] * std::conj(Conf.val[2*x_1_t_1]) * Conf.val[2*x_1_t_1+1] * Conf.val[2*left];
+            U_m_v = Conf.val[2*up+1] * std::conj(Conf.val[2*x_1_t_1]) * Conf.val[2*x_1_t_1+1] * Conf.val[2*left];
 
             //U_{-01}(n) = U*_0(n-0) U_1(n-0) U_1(n+1-0) U*_1(n)
             U_vm = std::conj(Conf.val[2*left]) * Conf.val[2*left+1] * Conf.val[2*x1_t_1] * std::conj(Conf.val[2*n+1]);

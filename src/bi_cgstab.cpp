@@ -2,7 +2,7 @@
 
 
 //Solves Dx x = phi with the Bi-CGstab method
-int bi_cgstab(const spinor& U, const spinor& phi, const spinor& x0, spinor& x) {
+int bi_cgstab(const GaugeConf& GConf, const spinor& phi, const spinor& x0, spinor& x) {
     using namespace BiCG;
     spinor r(mpi::maxSizeH);  //r[coordinate][spin] residual
     spinor r_tilde(mpi::maxSizeH);  //r[coordinate][spin] residual
@@ -19,7 +19,7 @@ int bi_cgstab(const spinor& U, const spinor& phi, const spinor& x0, spinor& x) {
 
     x = x0; //initial solution
     //std::cout << "U[0] from rank " << mpi::rank2d << "   " << U.val[(mpi::width_t+2)+1] << std::endl; 
-    D_phi(U, x, Dphi);
+    D_phi(GConf, x, Dphi);
     for(int nx = 1; nx<=mpi::width_x; nx++){
     for(int nt = 1; nt<=mpi::width_t; nt++){
     for(int mu=0; mu<2; mu++){
@@ -50,7 +50,7 @@ int bi_cgstab(const spinor& U, const spinor& phi, const spinor& x0, spinor& x) {
             }
         }
 
-        D_phi(U, d, Ad);  //A d_i 
+        D_phi(GConf, d, Ad);  //A d_i 
         alpha = rho_i / dot(Ad, r_tilde); //alpha_i = rho_{i-1} / (Ad_i, r_tilde)
         //s = r - alpha * Ad; //s = r_{i-1} - alpha_i * Ad_i
         for(int nx = 1; nx<=mpi::width_x; nx++){
@@ -78,7 +78,7 @@ int bi_cgstab(const spinor& U, const spinor& phi, const spinor& x0, spinor& x) {
             }
             return k+1;
         }
-        D_phi(U, s, t);   //A s
+        D_phi(GConf, s, t);   //A s
         omega = dot(s, t) / dot(t, t); //omega_i = t^dagg . s / t^dagg . t
 
         for(int nx = 1; nx<=mpi::width_x; nx++){

@@ -27,12 +27,12 @@ constexpr int blocks = 20; //Jackknife blocks (change this accordingly to the nu
 
 //Read configurations from a list of files
 //Confs is passed by reference so we can fill the caller's buffers.
-void read_confs_from_list(const int nconf, std::vector<spinor*>& Confs, const std::vector<std::string>& filePaths){
+void read_confs_from_list(const int nconf, std::vector<GaugeConf*>& Confs, const std::vector<std::string>& filePaths){
     GaugeConf GConf;
     for(int conf=0; conf<nconf; conf++){
         GConf.ReadConf(filePaths[conf]);
         // Copy the read configuration into the pre-allocated spinor buffer
-        *Confs[conf] = GConf.Conf;
+        *Confs[conf] = GConf;
     }
 }
 
@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
 
-    std::vector<spinor*> Confs; //Vector with the gauge configurations
+    std::vector<GaugeConf*> Confs; //Vector with the gauge configurations
     int nconf = 0; 
     double m0, beta; 
     std::string listFilePath;
@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
         std::cout << "#" << nconf <<  " confs in " << listFilePath << std::endl;
     
     for(int confID = 0; confID<nconf; confID++){
-        spinor* temp = new spinor(mpi::maxSizeH);
+        GaugeConf* temp = new GaugeConf();
         Confs.push_back(temp);
     }
 
@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
         if (confID % 100 == 0 && mpi::rank2d == 0)
             std::cout << "--------Computing correlators for conf " << confID << "--------" << std::endl; 
         //We only need two sources, equivalent to extracting the first two columns of D^-1
-        exchange_halo(Confs[confID]->val);
+        exchange_halo(Confs[confID]->Conf.val);
         bi_cgstab(*Confs[confID], source1, x0, Dcol1); //D^-1 source = D^-1((nx,nt),(0,0))_alf,0
         bi_cgstab(*Confs[confID], source2, x0, Dcol2); //D^-1 source = D^-1((nx,nt),(0,0)_alf,1
 
