@@ -43,4 +43,16 @@ inline void get_neighbors(const int x, const int t, int& right, int& down, int& 
 	}
 }
 
+inline void get_corners(const int x, const int t, int& x1_t_1, int& x_1_t_1,int& x_1_t1){
+   int xp = x+1;
+   int xm = x-1;
+   int tp = t+1;
+   int tm = t-1;
+
+   x1_t_1 = xp*(mpi::width_t+2)+tm;//(x+1,t-1)
+   x_1_t_1 = xm*(mpi::width_t+2)+tm; //(x-1,t-1)
+   x_1_t1 = xm*(mpi::width_t+2)+tp; //(x-1,t+1)
+
+}
+
 #endif

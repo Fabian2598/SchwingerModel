@@ -13,6 +13,8 @@ public:
 		Plaquette01 = new c_double[mpi::sitesH];
 		Conf = spinor(mpi::maxSizeH); //Gauge configuration
 		Staples = spinor(mpi::maxSizeH); //Staples
+		Q01 = new c_double[mpi::sitesH];	//Clover
+		Q10 = new c_double[mpi::sitesH];	
 	}
 
 	/*
@@ -44,6 +46,8 @@ public:
 	*/
 	~GaugeConf() {
 		delete[] Plaquette01;
+		delete[] Q01;
+		delete[] Q10;
 	}; 
 
 	/*
@@ -55,6 +59,8 @@ public:
 	spinor Conf; 
 	spinor Staples; //Staples
 	c_double* Plaquette01; //Plaquette U_01(x)
+	c_double* Q01; 
+	c_double* Q10; 
 
 	/*
 		Computes staple
@@ -70,6 +76,12 @@ public:
 		with m = 0, nu = 1
 	*/
 	void Compute_Plaquette01(); 
+
+	/*
+		Compute Q_01(x) and Q_10(x)
+		Q_mv(x) = U_{m,v}(x) + U_{v,-m}(x) + U_{-m,-v}(x) + U_{-v,m}(x)
+	*/
+	void Compute_Q();
 
 	/*
 		Measures average plaquette real value
