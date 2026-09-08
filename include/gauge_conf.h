@@ -25,6 +25,8 @@ public:
 		Staples = GConfig.Staples; 
 		Plaquette01 = new c_double[mpi::sitesH];
         std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + mpi::sitesH, Plaquette01);
+		std::copy(GConfig.Q01, GConfig.Q01 + mpi::sitesH, Q01);
+		std::copy(GConfig.Q10, GConfig.Q10 + mpi::sitesH, Q10);
 	}
 
 	/*
@@ -37,6 +39,8 @@ public:
 			delete[] Plaquette01;
 			Plaquette01 = new c_double[mpi::sitesH];
 			std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + mpi::sitesH, Plaquette01);
+			std::copy(GConfig.Q01, GConfig.Q01 + mpi::sitesH, Q01);
+			std::copy(GConfig.Q10, GConfig.Q10 + mpi::sitesH, Q10);
 		}
 		return *this;
 	}
@@ -78,7 +82,7 @@ public:
 	void Compute_Plaquette01(); 
 
 	/*
-		Compute Q_01(x) and Q_10(x)
+		Compute Q_01(x) and Q_10(x) for the clover term
 		Q_mv(x) = U_{m,v}(x) + U_{v,-m}(x) + U_{-m,-v}(x) + U_{-v,m}(x)
 	*/
 	void Compute_Q();

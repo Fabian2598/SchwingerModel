@@ -22,13 +22,13 @@
  */
 //Eqs (34) of the documentation
 
- void D_phi(const spinor& U, const spinor&  phi, spinor&  Dphi){
+ void D_phi(const GaugeConf& GConf, const spinor&  phi, spinor&  Dphi){
 	using namespace mpi;
 	using namespace sim_params;
 
 	int n, right, down, left, up;
 	double rsign, lsign;
-	
+	const spinor& U = GConf.Conf;
 	//Communicate halos 
 	exchange_halo(phi.val);
 	//exchange_halo(U.val);
@@ -38,6 +38,26 @@
 			//get coordinates of the neighbors and boundary sign 
 			get_neighbors(x, t,right, down, left, up, rsign, lsign); //check boundary.h for conventions
 			
+			#ifdef CLOVER
+			//mu = 0
+			c_double DeltaQ = GConf.Q01[n]-GConf.Q10[n];
+			Dphi.val[2*n] = (m0 + 2 - I_number*0.0625*csw*DeltaQ)  * phi.val[2*n] - 0.5 * ( 
+					U.val[2*n] 	 			* rsign  	* (phi.val[2*right] - phi.val[2*right+1])
+				+	U.val[2*n+1] 			*  			  (phi.val[2*down] + I_number * phi.val[2*down+1])
+				+ std::conj(U.val[2*left])  * lsign		* (phi.val[2*left] + phi.val[2*left+1])
+				+ std::conj(U.val[2*up+1]) 	*  			  (phi.val[2*up] - I_number*phi.val[2*up+1])
+			);
+			//mu = 1
+			Dphi.val[2*n+1] = (m0 + 2 + I_number*0.0625*csw*DeltaQ) * phi.val[2*n+1] - 0.5 * ( 
+					U.val[2*n] 	 			* rsign 	* (-phi.val[2*right] + phi.val[2*right+1])
+				+	U.val[2*n+1] 			* 			  (-I_number*phi.val[2*down] + phi.val[2*down+1])
+				+ std::conj(U.val[2*left])  * lsign 	* (phi.val[2*left] + phi.val[2*left+1])
+				+ std::conj(U.val[2*up+1]) 	* 			  (I_number*phi.val[2*up] + phi.val[2*up+1])
+			);
+			#endif
+
+
+			#ifndef CLOVER
 			//mu = 0
 			Dphi.val[2*n] = (m0 + 2) * phi.val[2*n] - 0.5 * ( 
 					U.val[2*n] 	 			* rsign  	* (phi.val[2*right] - phi.val[2*right+1])
@@ -52,16 +72,18 @@
 				+ std::conj(U.val[2*left])  * lsign 	* (phi.val[2*left] + phi.val[2*left+1])
 				+ std::conj(U.val[2*up+1]) 	* 			  (I_number*phi.val[2*up] + phi.val[2*up+1])
 			);
+			#endif
 		}
 	}		
 }
 
-void D_dagger_phi(const spinor& U, const spinor&  phi, spinor&  Dphi){
+void D_dagger_phi(const GaugeConf& GConf, const spinor&  phi, spinor&  Dphi){
 	using namespace mpi;
 	using namespace sim_params;
 
 	int n, right, down, left, up;
 	double rsign, lsign;
+	const spinor& U = GConf.Conf;
 	//Communicate halos 
 	exchange_halo(phi.val);
 	//exchange_halo(U.val);
@@ -71,6 +93,26 @@ void D_dagger_phi(const spinor& U, const spinor&  phi, spinor&  Dphi){
 			//get coordinates of the neighbors and boundary sign 
 			get_neighbors(x, t,right, down, left, up, rsign, lsign); //check boundary.h for conventions
 
+			#ifdef CLOVER
+			//mu = 0 
+			//1/16=0.0625
+			c_double DeltaQ = std::conj(GConf.Q01[n]-GConf.Q10[n]);
+			Dphi.val[2*n] = (m0 + 2 + I_number*0.0625*csw*DeltaQ ) * phi.val[2*n] -0.5 * ( 
+				std::conj(U.val[2*left]) 		* lsign 	* (phi.val[2*left] - phi.val[2*left+1])
+			+   std::conj(U.val[2*up+1]) 	 	* (phi.val[2*up] + I_number * phi.val[2*up+1])
+			+   U.val[2*n] 						* rsign 		* (phi.val[2*right] + phi.val[2*right+1])
+			+	U.val[2*n+1] 					* (phi.val[2*down] - I_number * phi.val[2*down+1])
+			);
+			//mu = 1
+			Dphi.val[2*n+1] = (m0 + 2 - I_number*0.0625*csw*DeltaQ) * phi.val[2*n+1] -0.5 * ( 
+				std::conj(U.val[2*left]) 		* lsign 	* (-phi.val[2*left] + phi.val[2*left+1])
+			+   std::conj(U.val[2*up+1]) 	 	* (-I_number*phi.val[2*up] + phi.val[2*up+1])
+			+   U.val[2*n] 						* rsign 		* (phi.val[2*right] + phi.val[2*right+1])
+			+	U.val[2*n+1] 	 				* (I_number * phi.val[2*down] + phi.val[2*down+1])
+			);
+			#endif
+
+			#ifndef CLOVER
 			//mu = 0
 			Dphi.val[2*n] = (m0 + 2) * phi.val[2*n] -0.5 * ( 
 				std::conj(U.val[2*left]) 		* lsign 	* (phi.val[2*left] - phi.val[2*left+1])
@@ -85,14 +127,16 @@ void D_dagger_phi(const spinor& U, const spinor&  phi, spinor&  Dphi){
 			+   U.val[2*n] 						* rsign 		* (phi.val[2*right] + phi.val[2*right+1])
 			+	U.val[2*n+1] 	 				* (I_number * phi.val[2*down] + phi.val[2*down+1])
 			);
+			#endif
 		}
+		
 	}	
 }
 
 spinor ddagg_buffer(mpi::maxSizeH);//Note that maxSizeH = 2*(Nx+2)*(Nt+2) by default, so this buffer is quite large ... 
-void D_D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi){
-	D_dagger_phi(U, phi, ddagg_buffer);
-	D_phi(U,  ddagg_buffer, Dphi);
+void D_D_dagger_phi(const GaugeConf& GConf, const spinor& phi, spinor &Dphi){
+	D_dagger_phi(GConf, phi, ddagg_buffer);
+	D_phi(GConf,  ddagg_buffer, Dphi);
 	
 	#ifdef TWISTED_MASS
 	//We add the twisted mass term
@@ -112,11 +156,12 @@ void D_D_dagger_phi(const spinor& U, const spinor& phi, spinor &Dphi){
 
 //2* Re ( left^dag \partial D / \partial omega(z) right )
 //Eqs (37) and (38) of the documentation
-void phi_dag_partialD_phi(const spinor& U, const spinor& left_term,const spinor& right_term,re_field& Dphi){
+void phi_dag_partialD_phi(const GaugeConf& GConf, const spinor& left_term,const spinor& right_term,re_field& Dphi){
 	using namespace mpi;
 
 	int n, right, down, left, up;
 	double rsign, lsign;
+	const spinor& U = GConf.Conf;
 	//Communicate halos 
 	exchange_halo(left_term.val);
 	exchange_halo(right_term.val);

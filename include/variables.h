@@ -76,6 +76,7 @@ namespace sim_params {
     extern int Nsteps;
     extern std::string start_time_str;
     extern double tm; //twisted mass
+    extern double csw; //Sheikholeslami-Wohlert constant
 }
 
 //Flattened spinor

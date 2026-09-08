@@ -4,6 +4,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 project(Schwinger_model VERSION 1.0)
 
 option(TWISTED_MASS "Use twisted mass fermions" OFF)
+option(CLOVER "Use clover term" OFF)
 
 
 
@@ -28,6 +29,10 @@ add_executable("SM_${NS}x${NT}" ${SOURCES})
 
 if(TWISTED_MASS)
     target_compile_definitions("SM_${NS}x${NT}" PRIVATE TWISTED_MASS)
+endif()
+
+if(CLOVER)
+    target_compile_definitions("SM_${NS}x${NT}" PRIVATE CLOVER)
 endif()
 
 target_include_directories("SM_${NS}x${NT}"

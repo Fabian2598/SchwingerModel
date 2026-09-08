@@ -51,6 +51,7 @@ void print_parameters(){
         std::cout << "* Nx = " << LV::Nx << ", Nt = " << LV::Nt << std::endl;
         std::cout << "* m0 = " << m0 << ", kappa = " << 1/(2*(m0+2)) << std::endl;
         std::cout << "* mu (twisted mass) = " << sim_params::tm << std::endl;
+        std::cout << "* csw (clovert term) = " << sim_params::csw << std::endl;
         std::cout << "* beta = " << beta << std::endl;
         std::cout << "* Thermalization confs = " << Ntherm << std::endl;
         std::cout << "* Measurement confs = " << Nmeas << std::endl;

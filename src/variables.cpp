@@ -52,4 +52,5 @@ namespace sim_params {
     int Nsteps = 1;
     std::string start_time_str = "";
     double tm = 0; //twisted mass term (default value)
+    double csw = 0; //clover term (default value)
 }

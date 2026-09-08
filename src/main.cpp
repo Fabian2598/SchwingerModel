@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
     double trajectory_length; //HMC parameters
     int MD_steps;
     double m0; //bare mass
-    double tm;
+    double tm, csw;
 	int saveconf = 0; //Save configurations
 
     //To call the sequential program one has to choose ranks_x = ranks_t = 1
@@ -37,6 +37,10 @@ int main(int argc, char **argv) {
         #ifdef TWISTED_MASS
         std::cerr << "mu (twisted mass): " << std::endl;
         std::cin >> tm;
+        #endif
+        #ifdef CLOVER
+        std::cerr << "csw (clover term constant): " << std::endl;
+        std::cin >> csw;
         #endif
         std::cerr << "Molecular dynamics steps: " << std::endl;
         std::cin >> MD_steps;
@@ -61,6 +65,9 @@ int main(int argc, char **argv) {
     #ifdef TWISTED_MASS
     MPI_Bcast(&tm, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
     #endif
+    #ifdef CLOVER
+    MPI_Bcast(&csw, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
+    #endif
     MPI_Bcast(&MD_steps, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&trajectory_length, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
     MPI_Bcast(&beta, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
@@ -78,6 +85,9 @@ int main(int argc, char **argv) {
     sim_params::Nsteps = Nsteps;
     #ifdef TWISTED_MASS
     sim_params::tm = tm;
+    #endif
+    #ifdef CLOVER
+    sim_params::csw = csw;
     #endif
     
     initializeMPI(); //2D rank topology
@@ -133,6 +143,8 @@ int main(int argc, char **argv) {
         Datfile << std::setprecision(17) << sim_params::m0 << "\n";
         Datfile << "#mu (twisted mass)\n";
         Datfile << std::setprecision(17) << sim_params::tm << "\n";
+        Datfile << "#csw (clover term constant)\n";
+        Datfile << std::setprecision(17) << sim_params::csw << "\n";
         Datfile.close();
     }
     print_parameters();

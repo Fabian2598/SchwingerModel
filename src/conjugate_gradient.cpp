@@ -1,7 +1,7 @@
 #include "conjugate_gradient.h"
 
 
-int conjugate_gradient(const spinor& U, const spinor& phi, spinor &sol){
+int conjugate_gradient(const GaugeConf& GConf, const spinor& phi, spinor &sol){
     using namespace mpi;
     using namespace CG;
     int k = 0; //Iteration number
@@ -15,7 +15,7 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor &sol){
     c_double alpha, beta;
 
 	sol = phi;
-    D_D_dagger_phi(U, sol, Ad); //DD^dagger*x
+    D_D_dagger_phi(GConf, sol, Ad); //DD^dagger*x
     
     int n;
     for(int x = 1; x<=width_x; x++){
@@ -35,7 +35,7 @@ int conjugate_gradient(const spinor& U, const spinor& phi, spinor &sol){
     double phi_norm2 = sqrt(std::real(dot(phi, phi)));
 
     while (k<CG::max_iter) {
-        D_D_dagger_phi(U, d,Ad); //DD^dagger*d 
+        D_D_dagger_phi(GConf, d,Ad); //DD^dagger*d 
         alpha = r_norm2 / dot(d, Ad); //alpha = (r_i,r_i)/(d_i,Ad_i)
         for(int x = 1; x<=width_x; x++){
             for(int t = 1; t<=width_t; t++){
