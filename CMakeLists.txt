@@ -116,4 +116,15 @@ if(BUILD_TESTS)
         Catch2::Catch2WithMain
     )
 
+    #Test HMC
+    add_executable(tests_hmc
+        tests/tests_hmc.cpp
+    )
+
+    target_link_libraries(tests_hmc
+    PRIVATE
+        common_lib
+        Catch2::Catch2WithMain
+    )
+
 endif()

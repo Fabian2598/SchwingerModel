@@ -8,3 +8,6 @@ confs/
 mass_analysis/__pycache__
 mass_analysis/.ipynb_checkpoints
 eig_spectrum/
+build_w/
+build_tm/
+build_csw/

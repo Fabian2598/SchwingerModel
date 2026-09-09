@@ -24,6 +24,8 @@ public:
 		Conf = GConfig.Conf; 
 		Staples = GConfig.Staples; 
 		Plaquette01 = new c_double[mpi::sitesH];
+		Q01 = new c_double[mpi::sitesH];	//Clover
+		Q10 = new c_double[mpi::sitesH];	
         std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + mpi::sitesH, Plaquette01);
 		std::copy(GConfig.Q01, GConfig.Q01 + mpi::sitesH, Q01);
 		std::copy(GConfig.Q10, GConfig.Q10 + mpi::sitesH, Q10);
@@ -38,6 +40,10 @@ public:
 			Staples = GConfig.Staples;
 			delete[] Plaquette01;
 			Plaquette01 = new c_double[mpi::sitesH];
+			delete[] Q01;
+			Q01 = new c_double[mpi::sitesH];	
+			delete[] Q10;
+			Q10 = new c_double[mpi::sitesH];	
 			std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + mpi::sitesH, Plaquette01);
 			std::copy(GConfig.Q01, GConfig.Q01 + mpi::sitesH, Q01);
 			std::copy(GConfig.Q10, GConfig.Q10 + mpi::sitesH, Q10);
