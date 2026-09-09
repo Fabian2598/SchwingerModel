@@ -21,7 +21,7 @@ TEST_CASE("D_phi produces non-zero output", "[dirac_operator]") {
     }
         
     spinor D_phi_output(mpi::maxSizeH);    
-    sim_params::m0 = 0.5;
+
     D_phi(g, phi, D_phi_output);
     
     // Check that output is not all zeros
@@ -60,7 +60,6 @@ TEST_CASE("D_Ddagg_phi produces non-zero output", "[dirac_operator]") {
     }
         
     spinor D_phi_output(mpi::maxSizeH);    
-    sim_params::m0 = 0.5;
     D_dagger_phi(g, phi, D_phi_output);
     
     // Check that output is not all zeros
@@ -103,7 +102,6 @@ TEST_CASE("phi_dag_partialD_phi produces non-zero output", "[dirac_operator]") {
         }
     }
   
-    sim_params::m0 = 0.5;
     phi_dag_partialD_phi(g, left_term,right_term,D_phi_output);
     
     // Check that output is not all zeros
@@ -134,6 +132,9 @@ int main(int argc, char* argv[])
 
     mpi::ranks_t = 2;
     mpi::ranks_x = 2;
+    sim_params::m0 = 0.5;
+    sim_params::tm = 0.1;
+    sim_params::csw = 1;
 
     initializeMPI();
 

@@ -7,6 +7,9 @@ TEST_CASE("CG test convergence", "[CG]") {
     GaugeConf g;
     g.initialization();
     exchange_halo(g.Conf.val);
+    #ifdef CLOVER
+        g.Compute_Q();
+    #endif
     
     // Create input spinor with simple values
     spinor phi(mpi::maxSizeH);
@@ -35,7 +38,10 @@ TEST_CASE("CG converges to the right solution", "[CG sol]") {
     GaugeConf g;
     g.initialization();
     exchange_halo(g.Conf.val);
-    
+
+    #ifdef CLOVER
+        g.Compute_Q();
+    #endif
     // Create input spinor with simple values
     spinor phi(mpi::maxSizeH);
     int n;
@@ -49,9 +55,6 @@ TEST_CASE("CG converges to the right solution", "[CG sol]") {
         
     spinor sol(mpi::maxSizeH);    
     spinor D_D_dagg_sol(mpi::maxSizeH);
-    sim_params::m0 = 0.5;
-    sim_params::tm = 0.1;
-    sim_params::csw = 1;
 
     CG::print_convergence_message = true;
     CG::tol = 1e-15;
@@ -85,6 +88,10 @@ int main(int argc, char* argv[])
     srand((mpi::rank + 1) * time(0));
     mpi::ranks_t = 2;
     mpi::ranks_x = 2;
+
+    sim_params::m0 = 0.5;
+    sim_params::tm = 0.01;
+    sim_params::csw = 1;
 
     if (mpi::size!=4 && mpi::rank == 0){
         std::cerr << "ERROR: This test is meant to be run with 4 ranks" << std::endl;

@@ -13,6 +13,7 @@ TEST_CASE("HMC", "[HMC]") {
     sim_params::Nsteps = 1;
     sim_params::m0 = 1;
     sim_params::tm = 0.5;
+    sim_params::csw = 1;
     using namespace sim_params;
     int saveconf=0;
 

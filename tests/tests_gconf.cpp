@@ -22,43 +22,25 @@ TEST_CASE("GaugeConf plaquette", "[Plaquette]") {
     REQUIRE(u1_vars);
 }
 
-TEST_CASE("GaugeConf Q01", "[Q01]") {
+TEST_CASE("GaugeConf Q01 = Q10^+", "[Q01 and Q10]") {
     // Create a simple gauge configuration (identity links)
     GaugeConf g;
     g.initialization();
     exchange_halo(g.Conf.val);
     g.Compute_Q();
 
-    bool notzero = true; //check that Q01 are not all zero
+    bool notzero = true; //check that Q01 = Q10^+ for all n
     for(int x = 1; x<=mpi::width_x; x++){
 		for(int t = 1; t<=mpi::width_t; t++){
 			int n = x*(mpi::width_t+2)+t;
-            if (std::abs(g.Q01[n]) < 1e-10){
+            
+            if (std::abs( g.Q01[n] - std::conj(g.Q10[n]) ) > 1e-10){
                 notzero = false;
                 break;
             }
-        }
+        }    
     }
-    REQUIRE(notzero);
-}
 
-TEST_CASE("GaugeConf Q10", "[Q10]") {
-    // Create a simple gauge configuration (identity links)
-    GaugeConf g;
-    g.initialization();
-    exchange_halo(g.Conf.val);
-    g.Compute_Q();
-
-    bool notzero = true; //check that Q01 are not all zero
-    for(int x = 1; x<=mpi::width_x; x++){
-		for(int t = 1; t<=mpi::width_t; t++){
-			int n = x*(mpi::width_t+2)+t;
-            if (std::abs(g.Q10[n]) < 1e-10){
-                notzero = false;
-                break;
-            }
-        }
-    }
     REQUIRE(notzero);
 }
 
