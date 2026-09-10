@@ -23,6 +23,7 @@ namespace mpi{
     MPI_Comm cart_comm; //cartesian communicator
     //Datatypes for reading/writing gauge confs and rhs
     MPI_Datatype column_type;
+    MPI_Datatype column_type_vec;
     MPI_Datatype global_conf_type;
     MPI_Datatype global_conf_resized;
     MPI_Datatype local_conf_type;

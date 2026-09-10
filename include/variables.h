@@ -9,6 +9,8 @@
 #include "mpi.h"
 
 constexpr double pi = 3.14159265359;
+constexpr l_8 = 1/8;
+constexpr l_16 = 1/16;
 typedef std::complex<double> c_double;
 const c_double I_number(0,1); //imaginary number
 
@@ -36,6 +38,7 @@ namespace mpi{
     extern MPI_Comm cart_comm; //cartesian communicator
     //Datatypes for reading/writing gauge confs and rhs
     extern MPI_Datatype column_type;
+    extern MPI_Datatype column_type_vec;  //column type for vector halo exchange (no spinor factor)
     extern MPI_Datatype global_conf_type;
     extern MPI_Datatype global_conf_resized;
     extern MPI_Datatype local_conf_type;

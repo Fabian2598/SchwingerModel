@@ -22,9 +22,20 @@ public:
 		Forces = re_field(mpi::maxSizeH); //Forces
 		chi = spinor(mpi::maxSizeH);
 		TEMP = spinor(mpi::maxSizeH); //buffer
-	
+
+		//Needed to compute the fermion force of the clover term
+		J1 = new c_double[mpi::sitesH];	 
+		J2 = new c_double[mpi::sitesH];	
+		J3 = new c_double[mpi::sitesH];	
+		J4 = new c_double[mpi::sitesH];
+
 	}
-	~HMC() {} 
+	~HMC() {
+		delete[] J1;
+		delete[] J2;
+		delete[] J3;
+		delete[] J4;
+	} 
 	
 	void HMC_algorithm();
 	double getEp() { return Ep; }
@@ -55,9 +66,16 @@ private:
 	spinor chi;
 	spinor TEMP;  //buffer
 
+	//For the force of the clover term
+	c_double* J1;
+	c_double* J2;
+	c_double* J3;
+	c_double* J4;
+
 	double Action(GaugeConf& GConfig, const spinor& phi);
 	void Force_G(GaugeConf& GConfig); //force for gauge part
-	void Force(GaugeConf& GConfig, const spinor& phi); //force_G + fermions
+	void Force_Clover(GaugeConf& GConfig,const spinor& left_term, const spinor& right_term); //Clover term contribution
+	void Force(GaugeConf& GConfig, const spinor& phi); //force_G + fermions + Clover
 	void Leapfrog(const spinor& phi );
 	double Hamiltonian(GaugeConf& GConfig, const re_field& Pi, const spinor& phi);
 	void HMC_Update();

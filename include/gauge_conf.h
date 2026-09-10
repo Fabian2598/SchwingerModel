@@ -15,6 +15,10 @@ public:
 		Staples = spinor(mpi::maxSizeH); //Staples
 		Q01 = new c_double[mpi::sitesH];	//Clover
 		Q10 = new c_double[mpi::sitesH];	
+		P1 = new c_double[mpi::sitesH];	//U_01 
+		P2 = new c_double[mpi::sitesH];	//U_{1,-0} 
+		P3 = new c_double[mpi::sitesH];	//U_{-0,-1} 
+		P4 = new c_double[mpi::sitesH];	//U_{-10}
 	}
 
 	/*
@@ -26,9 +30,17 @@ public:
 		Plaquette01 = new c_double[mpi::sitesH];
 		Q01 = new c_double[mpi::sitesH];	//Clover
 		Q10 = new c_double[mpi::sitesH];	
+		P1 = new c_double[mpi::sitesH];	
+		P2 = new c_double[mpi::sitesH];	
+		P3 = new c_double[mpi::sitesH];	
+		P4 = new c_double[mpi::sitesH];	
         std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + mpi::sitesH, Plaquette01);
 		std::copy(GConfig.Q01, GConfig.Q01 + mpi::sitesH, Q01);
 		std::copy(GConfig.Q10, GConfig.Q10 + mpi::sitesH, Q10);
+		std::copy(GConfig.P1, GConfig.P1 + mpi::sitesH, P1);
+		std::copy(GConfig.P2, GConfig.P2 + mpi::sitesH, P2);
+		std::copy(GConfig.P3, GConfig.P3 + mpi::sitesH, P3);
+		std::copy(GConfig.P4, GConfig.P4 + mpi::sitesH, P4);
 	}
 
 	/*
@@ -39,14 +51,26 @@ public:
 			Conf = GConfig.Conf;
 			Staples = GConfig.Staples;
 			delete[] Plaquette01;
-			Plaquette01 = new c_double[mpi::sitesH];
 			delete[] Q01;
-			Q01 = new c_double[mpi::sitesH];	
 			delete[] Q10;
+			delete[] P1;
+			delete[] P2;
+			delete[] P3;
+			delete[] P4;
+			Plaquette01 = new c_double[mpi::sitesH];
+			Q01 = new c_double[mpi::sitesH];	
 			Q10 = new c_double[mpi::sitesH];	
+			P1 = new c_double[mpi::sitesH];	 
+			P2 = new c_double[mpi::sitesH];	
+			P3 = new c_double[mpi::sitesH];	
+			P4 = new c_double[mpi::sitesH];
 			std::copy(GConfig.Plaquette01, GConfig.Plaquette01 + mpi::sitesH, Plaquette01);
 			std::copy(GConfig.Q01, GConfig.Q01 + mpi::sitesH, Q01);
 			std::copy(GConfig.Q10, GConfig.Q10 + mpi::sitesH, Q10);
+			std::copy(GConfig.P1, GConfig.P1 + mpi::sitesH, P1);
+			std::copy(GConfig.P2, GConfig.P2 + mpi::sitesH, P2);
+			std::copy(GConfig.P3, GConfig.P3 + mpi::sitesH, P3);
+			std::copy(GConfig.P4, GConfig.P4 + mpi::sitesH, P4);
 		}
 		return *this;
 	}
@@ -58,6 +82,10 @@ public:
 		delete[] Plaquette01;
 		delete[] Q01;
 		delete[] Q10;
+		delete[] P1;
+		delete[] P2;
+		delete[] P3;
+		delete[] P4;
 	}; 
 
 	/*
@@ -71,6 +99,10 @@ public:
 	c_double* Plaquette01; //Plaquette U_01(x)
 	c_double* Q01; 
 	c_double* Q10; 
+	c_double* P1;
+	c_double* P2;
+	c_double* P3;
+	c_double* P4;
 
 	/*
 		Computes staple

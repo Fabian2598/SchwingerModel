@@ -28,6 +28,7 @@
 
 	int n, right, down, left, up;
 	double rsign, lsign;
+	c_double DeltaQ;
 	const spinor& U = GConf.Conf;
 	//Communicate halos 
 	exchange_halo(phi.val);
@@ -40,15 +41,15 @@
 			
 			#ifdef CLOVER
 			//mu = 0
-			c_double DeltaQ = GConf.Q01[n]-GConf.Q10[n];
-			Dphi.val[2*n] = (m0 + 2 - I_number*0.0625*csw*DeltaQ)  * phi.val[2*n] - 0.5 * ( 
+			DeltaQ = GConf.Q01[n]-std::conj(GConf.Q01[n]);
+			Dphi.val[2*n] = (m0 + 2 - I_number*l_16*csw*DeltaQ)  * phi.val[2*n] - 0.5 * ( 
 					U.val[2*n] 	 			* rsign  	* (phi.val[2*right] - phi.val[2*right+1])
 				+	U.val[2*n+1] 			*  			  (phi.val[2*down] + I_number * phi.val[2*down+1])
 				+ std::conj(U.val[2*left])  * lsign		* (phi.val[2*left] + phi.val[2*left+1])
 				+ std::conj(U.val[2*up+1]) 	*  			  (phi.val[2*up] - I_number*phi.val[2*up+1])
 			);
 			//mu = 1
-			Dphi.val[2*n+1] = (m0 + 2 + I_number*0.0625*csw*DeltaQ) * phi.val[2*n+1] - 0.5 * ( 
+			Dphi.val[2*n+1] = (m0 + 2 + I_number*l_16*csw*DeltaQ) * phi.val[2*n+1] - 0.5 * ( 
 					U.val[2*n] 	 			* rsign 	* (-phi.val[2*right] + phi.val[2*right+1])
 				+	U.val[2*n+1] 			* 			  (-I_number*phi.val[2*down] + phi.val[2*down+1])
 				+ std::conj(U.val[2*left])  * lsign 	* (phi.val[2*left] + phi.val[2*left+1])
@@ -83,6 +84,7 @@ void D_dagger_phi(const GaugeConf& GConf, const spinor&  phi, spinor&  Dphi){
 
 	int n, right, down, left, up;
 	double rsign, lsign;
+	c_double DeltaQ;
 	const spinor& U = GConf.Conf;
 	//Communicate halos 
 	exchange_halo(phi.val);
@@ -96,15 +98,15 @@ void D_dagger_phi(const GaugeConf& GConf, const spinor&  phi, spinor&  Dphi){
 			#ifdef CLOVER
 			//mu = 0 
 			//1/16=0.0625
-			c_double DeltaQ = std::conj(GConf.Q01[n]-GConf.Q10[n]);
-			Dphi.val[2*n] = (m0 + 2 + I_number*0.0625*csw*DeltaQ ) * phi.val[2*n] -0.5 * ( 
+			DeltaQ = GConf.Q01[n]-std::conj(GConf.Q01[n]);
+			Dphi.val[2*n] = (m0 + 2 + I_number*l_16*csw*DeltaQ ) * phi.val[2*n] -0.5 * ( 
 				std::conj(U.val[2*left]) 		* lsign 	* (phi.val[2*left] - phi.val[2*left+1])
 			+   std::conj(U.val[2*up+1]) 	 	* (phi.val[2*up] + I_number * phi.val[2*up+1])
 			+   U.val[2*n] 						* rsign 		* (phi.val[2*right] + phi.val[2*right+1])
 			+	U.val[2*n+1] 					* (phi.val[2*down] - I_number * phi.val[2*down+1])
 			);
 			//mu = 1
-			Dphi.val[2*n+1] = (m0 + 2 - I_number*0.0625*csw*DeltaQ) * phi.val[2*n+1] -0.5 * ( 
+			Dphi.val[2*n+1] = (m0 + 2 - I_number*l_16*csw*DeltaQ) * phi.val[2*n+1] -0.5 * ( 
 				std::conj(U.val[2*left]) 		* lsign 	* (-phi.val[2*left] + phi.val[2*left+1])
 			+   std::conj(U.val[2*up+1]) 	 	* (-I_number*phi.val[2*up] + phi.val[2*up+1])
 			+   U.val[2*n] 						* rsign 		* (phi.val[2*right] + phi.val[2*right+1])
@@ -154,6 +156,7 @@ void D_D_dagger_phi(const GaugeConf& GConf, const spinor& phi, spinor &Dphi){
 }
 
 
+//For the fermion force of the hopping terms
 //2* Re ( left^dag \partial D / \partial omega(z) right )
 //Eqs (37) and (38) of the documentation
 void phi_dag_partialD_phi(const GaugeConf& GConf, const spinor& left_term,const spinor& right_term,re_field& Dphi){

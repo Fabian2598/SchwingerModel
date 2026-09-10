@@ -75,6 +75,49 @@ void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
     Force_G(GConfig); //Gauge force 
 }
 
+void HMC::Force_Clover(const GaugeConf& GConf,const spinor& left_term, const spinor& right_term){
+    for(int x = 1; x<=mpi::width_x; x++){
+		for(int t = 1; t<=mpi::width_t; t++){
+            n = x*(mpi::width_t+2)+t;
+
+            f = I_number * l_8 * sim_params::csw * (std::conj(left_term[2*n]) * right_term[2*n] 
+                                - std::conj(left_term[2*n+1]) * right_term[2*n+1]);
+            J1[n] = f * (GConf.P1[n] + std::conj(GConf.P1[n])); //J1
+            J2[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
+            J3[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
+            J4[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
+        }
+    }
+
+    //Halo exchange including corners 
+    exchange_halo_vec(J1);
+    exchange_halo_vec(J2);
+    exchange_halo_vec(J3);
+    exchange_halo_vec(J4);
+
+    int n, right, down, left, up;
+    double lsign, rsign;
+    int x1_t_1, x_1_t_1, x_1_t1, x1_t1; //n-0+1, n-0-1, n+0-1, n+0+1
+    for(int x = 1; x<=mpi::width_x; x++){
+		for(int t = 1; t<=mpi::width_t; t++){
+            n = x*(mpi::width_t+2)+t;
+            get_neighbors(x, t,right, down, left, up, rsign, lsign); 
+		    Forces.val[2*n]   -= std::imag( J1[n]-J1[up] 
+                                - J2[x_1_t1] + J2[right] 
+                                - J3[right] + J3[x1_t1]
+                                + J4[down] - J4[n]
+                                );
+            Forces.val[2*n+1] -= std::imag(J1[left] - J1[n]
+                                + J2[n] - J2[right]
+                                - J3[x1_t1] - J3[down]
+                                - J4[down] + J4[x1_t_1]
+                                );
+        }
+	}
+
+
+}
+
 //Generates new configuration [U,Pi]
 void HMC::Leapfrog(const spinor& phi){
     double StepSize = trajectory_length / (MD_steps * 1.0);

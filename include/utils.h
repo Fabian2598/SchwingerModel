@@ -16,6 +16,14 @@ inline int idx(int x, int t, int mu) {
     return ((x*(mpi::width_t+2) + t)*2 + mu);
 }
 
+inline int idx_vec(int x, int t){
+    //x ranges from 0 to width_x+1
+    //t ranges from 0 to width_t+1
+    //The physical volume runs from 1 to width_x (or width_t)
+    //mu = 0, 1
+    return (x*(mpi::width_t+2) + t);
+}
+
 /*
 Generate a random U(1) variable
 */
