@@ -156,7 +156,7 @@ void D_D_dagger_phi(const GaugeConf& GConf, const spinor& phi, spinor &Dphi){
 }
 
 
-//For the fermion force of the hopping terms
+//Fermion force of the hopping terms
 //2* Re ( left^dag \partial D / \partial omega(z) right )
 //Eqs (37) and (38) of the documentation
 void phi_dag_partialD_phi(const GaugeConf& GConf, const spinor& left_term,const spinor& right_term,re_field& Dphi){

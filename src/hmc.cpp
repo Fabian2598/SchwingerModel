@@ -87,8 +87,8 @@ void HMC::Force_Clover(const GaugeConf& GConf,const spinor& left_term, const spi
     for(int x = 1; x<=mpi::width_x; x++){
 		for(int t = 1; t<=mpi::width_t; t++){
             n = x*(mpi::width_t+2)+t;
-            f = factor * (std::conj(left_term.val[2*n]) * right_term.val[2*n] 
-                                - std::conj(left_term.val[2*n+1]) * right_term.val[2*n+1]);
+            f = factor * (-std::conj(left_term.val[2*n]) * right_term.val[2*n] 
+                                + std::conj(left_term.val[2*n+1]) * right_term.val[2*n+1]);
             J1[n] = f * (GConf.P1[n] + std::conj(GConf.P1[n])); 
             J2[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
             J3[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
@@ -193,8 +193,6 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
     CG_convergence = conjugate_gradient(GConfig, phi,TEMP);
     action += std::real( dot( TEMP, phi)); 
-
-    //I still need clover contribution ...
   
     return action;
 }
