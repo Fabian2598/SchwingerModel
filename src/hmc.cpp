@@ -114,7 +114,7 @@ void HMC::Force_Clover(const GaugeConf& GConf,const spinor& left_term, const spi
                                 );
             Forces.val[2*n+1] -= std::imag(J1[left] - J1[n]
                                 + J2[n] - J2[right]
-                                - J3[x1_t1] - J3[down]
+                                - J3[x1_t1] + J3[down]
                                 - J4[down] + J4[x1_t_1]
                                 );
         }
