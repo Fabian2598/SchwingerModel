@@ -9,8 +9,8 @@
 #include "mpi.h"
 
 constexpr double pi = 3.14159265359;
-constexpr l_8 = 1/8;
-constexpr l_16 = 1/16;
+constexpr double l_8 = 1/8;
+constexpr double l_16 = 1/16;
 typedef std::complex<double> c_double;
 const c_double I_number(0,1); //imaginary number
 

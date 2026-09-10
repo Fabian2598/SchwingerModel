@@ -52,7 +52,7 @@ void exchange_halo_vec(c_double* v){
     {
         c_double bottom_left = v[idx_vec(width_x,1)];   
         MPI_Send(&bottom_left, 1, MPI_DOUBLE_COMPLEX, mpi::bot_left, 0, mpi::cart_comm);
-        MPI_Recv(&bottom_left, 1, MPI_DOUBLE_COMPLEX, mpi::top_right, 0, mpi::cart_comm, &status);
+        MPI_Recv(&bottom_left, 1, MPI_DOUBLE_COMPLEX, mpi::top_right, 0, mpi::cart_comm, MPI_STATUS_IGNORE);
         v[idx_vec(0,width_t+1)] = bottom_left;  
     }
 
@@ -60,22 +60,22 @@ void exchange_halo_vec(c_double* v){
     {
         c_double top_right = v[idx_vec(1,width_t)];     //U_0(n+1-0)
         MPI_Send(&top_right, 1, MPI_DOUBLE_COMPLEX, mpi::top_right, 1, mpi::cart_comm);
-        MPI_Recv(&top_right, 1, MPI_DOUBLE_COMPLEX, mpi::bot_left, 1 mpi::cart_comm, &status);
+        MPI_Recv(&top_right, 1, MPI_DOUBLE_COMPLEX, mpi::bot_left, 1, mpi::cart_comm, MPI_STATUS_IGNORE);
         v[idx_vec(width_x+1,0)] = top_right;
     }
     //Update top-left corner (needs bot-right corner from diagonal rank)
     {
         c_double bot_right = v[idx_vec(width_x,width_t)];   //U_0(n-1-0)
         MPI_Send(&bot_right, 1, MPI_DOUBLE_COMPLEX, mpi::bot_right, 2, mpi::cart_comm);
-        MPI_Recv(&bot_right, 1, MPI_DOUBLE_COMPLEX, mpi::top_left, 2, mpi::cart_comm, &status);
+        MPI_Recv(&bot_right, 1, MPI_DOUBLE_COMPLEX, mpi::top_left, 2, mpi::cart_comm, MPI_STATUS_IGNORE);
         v[0]   = bot_right;
 
     }
     //Update bottom-right corner (needs top-left corner from diagonal rank)
     {
         c_double top_left = v[idx_vec(1,1)];   //U_(n+1+0)
-        MPI_Send(&top_left, 1, MPI_DOUBLE_COMPLEX, mpi::top_left, 2, mpi::cart_comm);
-        MPI_Recv(&top_left, 1, MPI_DOUBLE_COMPLEX, mpi::bot_right, 2, mpi::cart_comm, &status);
+        MPI_Send(&top_left, 1, MPI_DOUBLE_COMPLEX, mpi::top_left, 3, mpi::cart_comm);
+        MPI_Recv(&top_left, 1, MPI_DOUBLE_COMPLEX, mpi::bot_right, 3, mpi::cart_comm, MPI_STATUS_IGNORE);
         v[idx_vec(width_x+1,width_t+1)]  = top_left;
     }
 

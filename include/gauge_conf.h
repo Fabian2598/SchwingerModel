@@ -120,7 +120,7 @@ public:
 	void Compute_Plaquette01(); 
 
 	/*
-		Compute Q_01(x) and Q_10(x) for the clover term
+		Compute Q_01(x) and Q_10(x) for the clover term and 4-plaquettes on the mv plane at each 
 		Q_mv(x) = U_{m,v}(x) + U_{v,-m}(x) + U_{-m,-v}(x) + U_{-v,m}(x)
 	*/
 	void Compute_Q();

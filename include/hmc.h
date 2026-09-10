@@ -74,7 +74,7 @@ private:
 
 	double Action(GaugeConf& GConfig, const spinor& phi);
 	void Force_G(GaugeConf& GConfig); //force for gauge part
-	void Force_Clover(GaugeConf& GConfig,const spinor& left_term, const spinor& right_term); //Clover term contribution
+	void Force_Clover(const GaugeConf& GConfig,const spinor& left_term, const spinor& right_term); //Clover term contribution
 	void Force(GaugeConf& GConfig, const spinor& phi); //force_G + fermions + Clover
 	void Leapfrog(const spinor& phi );
 	double Hamiltonian(GaugeConf& GConfig, const re_field& Pi, const spinor& phi);

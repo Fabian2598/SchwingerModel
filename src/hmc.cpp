@@ -56,7 +56,7 @@ void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
     spinor psi(mpi::maxSizeH); 
     exchange_halo(GConfig.Conf.val);
     #ifdef CLOVER
-        GConfig.Compute_Q();
+        GConfig.Compute_Q(); 
     #endif
     CG_convergence = conjugate_gradient(GConfig, phi,psi);  //(DD^dagger)^-1 phi
     //Save gauge configuration if CG does not converge
@@ -73,16 +73,23 @@ void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
     D_dagger_phi(GConfig, psi,TEMP);
     phi_dag_partialD_phi(GConfig,psi,TEMP,Forces); //psi^dagger partial D / partial omega(n) D psi
     Force_G(GConfig); //Gauge force 
+    #ifdef CLOVER
+        Force_Clover(GConfig,psi,TEMP); //update clover force
+    #endif
 }
 
 void HMC::Force_Clover(const GaugeConf& GConf,const spinor& left_term, const spinor& right_term){
+    c_double factor = I_number * l_8 * sim_params::csw;
+    int n, right, down, left, up;
+    double lsign, rsign;
+    int x1_t_1, x_1_t_1, x_1_t1, x1_t1; //n-0+1, n-0-1, n+0-1, n+0+1
+    c_double f;
     for(int x = 1; x<=mpi::width_x; x++){
 		for(int t = 1; t<=mpi::width_t; t++){
             n = x*(mpi::width_t+2)+t;
-
-            f = I_number * l_8 * sim_params::csw * (std::conj(left_term[2*n]) * right_term[2*n] 
-                                - std::conj(left_term[2*n+1]) * right_term[2*n+1]);
-            J1[n] = f * (GConf.P1[n] + std::conj(GConf.P1[n])); //J1
+            f = factor * (std::conj(left_term.val[2*n]) * right_term.val[2*n] 
+                                - std::conj(left_term.val[2*n+1]) * right_term.val[2*n+1]);
+            J1[n] = f * (GConf.P1[n] + std::conj(GConf.P1[n])); 
             J2[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
             J3[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
             J4[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
@@ -95,13 +102,11 @@ void HMC::Force_Clover(const GaugeConf& GConf,const spinor& left_term, const spi
     exchange_halo_vec(J3);
     exchange_halo_vec(J4);
 
-    int n, right, down, left, up;
-    double lsign, rsign;
-    int x1_t_1, x_1_t_1, x_1_t1, x1_t1; //n-0+1, n-0-1, n+0-1, n+0+1
     for(int x = 1; x<=mpi::width_x; x++){
 		for(int t = 1; t<=mpi::width_t; t++){
             n = x*(mpi::width_t+2)+t;
             get_neighbors(x, t,right, down, left, up, rsign, lsign); 
+            get_corners(x,t,x1_t_1,x_1_t_1,x_1_t1,x1_t1);
 		    Forces.val[2*n]   -= std::imag( J1[n]-J1[up] 
                                 - J2[x_1_t1] + J2[right] 
                                 - J3[right] + J3[x1_t1]
@@ -188,6 +193,8 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
     CG_convergence = conjugate_gradient(GConfig, phi,TEMP);
     action += std::real( dot( TEMP, phi)); 
+
+    //I still need clover contribution ...
   
     return action;
 }

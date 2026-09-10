@@ -137,7 +137,7 @@ void GaugeConf::Compute_Q() {
 
             Q01[n] = Umv+Uv_m+U_m_v+U_vm;
             
-            //This is only for control ...
+            //This is only for testing, I should get rid of it eventually
             //Q10
             //U_10(n) = U_1(n) U_0(n+1) U*_1(n+0) U*_0(n)
             Umv = Conf.val[2*n+1] * Conf.val[2*down] * std::conj(Conf.val[2*right+1]) * std::conj(Conf.val[2*n]);
