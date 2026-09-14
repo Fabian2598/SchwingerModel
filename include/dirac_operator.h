@@ -8,7 +8,7 @@
 
 /*
 	Dirac operator application D phi
-	U: gauge configuration
+	GConf: gauge configuration
 	phi: spinor to apply the operator to
 	m0: mass parameter
 */
@@ -16,7 +16,7 @@ void D_phi(const GaugeConf& GConf, const spinor&  phi, spinor&  Dphi);
 
 /*
 	Dirac dagger operator application D^+ phi
-	U: gauge configuration
+	GConf: gauge configuration
 	phi: spinor to apply the operator to
 	m0: mass parameter
 */

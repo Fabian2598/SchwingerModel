@@ -8,6 +8,9 @@
 #include <fstream>
 #include <sstream>
 
+/*
+    Linearized index for a spinor
+*/
 inline int idx(int x, int t, int mu) {
     //x ranges from 0 to width_x+1
     //t ranges from 0 to width_t+1
@@ -15,12 +18,10 @@ inline int idx(int x, int t, int mu) {
     //mu = 0, 1
     return ((x*(mpi::width_t+2) + t)*2 + mu);
 }
-
+/*
+    Linearized index for a vector
+*/
 inline int idx_vec(int x, int t){
-    //x ranges from 0 to width_x+1
-    //t ranges from 0 to width_t+1
-    //The physical volume runs from 1 to width_x (or width_t)
-    //mu = 0, 1
     return (x*(mpi::width_t+2) + t);
 }
 
@@ -34,18 +35,6 @@ inline c_double RandomU1() {
 	c_double z(cos(theta), sin(theta));
 	return z;
 }
-
-//Formats decimal numbers
-//Useful for writing m0 and beta on the file name
-/*
-inline std::string format(const double& number) {
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(4) << number;
-    std::string str = oss.str();
-    str.erase(str.find('.'), 1); //Removes decimal dot
-    return str;
-}
-*/
 
 // Converts a double like -0.4568 → "-04568"
 inline std::string format(double val) {
