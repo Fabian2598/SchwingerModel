@@ -8,6 +8,7 @@ int conjugate_gradient(const GaugeConf& GConf, const spinor& phi, spinor &sol){
     double err;
     double err_sqr;
 
+
     spinor r(mpi::maxSizeH);  //r[coordinate][spin] residual
     spinor d(mpi::maxSizeH);  //search direction
     spinor Ad(mpi::maxSizeH); //DD^dagger*d

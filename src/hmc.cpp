@@ -91,8 +91,8 @@ void HMC::Force_Clover(const GaugeConf& GConf,const spinor& left_term, const spi
                                 + std::conj(left_term.val[2*n+1]) * right_term.val[2*n+1]);
             J1[n] = f * (GConf.P1[n] + std::conj(GConf.P1[n])); 
             J2[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
-            J3[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
-            J4[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
+            J3[n] = f * (GConf.P3[n] + std::conj(GConf.P3[n]));
+            J4[n] = f * (GConf.P4[n] + std::conj(GConf.P4[n]));
         }
     }
 

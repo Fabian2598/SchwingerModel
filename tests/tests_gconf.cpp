@@ -33,7 +33,6 @@ TEST_CASE("GaugeConf Q01 = Q10^+", "[Q01 and Q10]") {
     for(int x = 1; x<=mpi::width_x; x++){
 		for(int t = 1; t<=mpi::width_t; t++){
 			int n = x*(mpi::width_t+2)+t;
-            
             if (std::abs( g.Q01[n] - std::conj(g.Q10[n]) ) > 1e-10){
                 notzero = false;
                 break;

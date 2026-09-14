@@ -25,7 +25,6 @@
  void D_phi(const GaugeConf& GConf, const spinor&  phi, spinor&  Dphi){
 	using namespace mpi;
 	using namespace sim_params;
-
 	int n, right, down, left, up;
 	double rsign, lsign;
 	c_double DeltaQ;
