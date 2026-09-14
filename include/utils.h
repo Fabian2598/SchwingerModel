@@ -37,12 +37,25 @@ inline c_double RandomU1() {
 
 //Formats decimal numbers
 //Useful for writing m0 and beta on the file name
+/*
 inline std::string format(const double& number) {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(4) << number;
     std::string str = oss.str();
     str.erase(str.find('.'), 1); //Removes decimal dot
     return str;
+}
+*/
+
+// Converts a double like -0.4568 → "-04568"
+inline std::string format(double val) {
+    char buf[8];
+    int sign    = (val < 0) ? -1 : 1;
+    int digits  = static_cast<int>(std::round(std::abs(val) * 10000));
+    std::snprintf(buf, sizeof(buf), "%s%05d",
+                  (sign < 0 ? "-" : ""),
+                  digits);
+    return buf;
 }
 
 

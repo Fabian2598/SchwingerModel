@@ -112,11 +112,7 @@ int main(int argc, char **argv) {
 
     std::ostringstream NameData;
     NameData << "2D_U1_" << LV::Nx << "x" << LV::Nt << "_m0";
-    {
-        std::ostringstream m0_stream;
-        m0_stream << std::setprecision(4) << sim_params::m0;
-        NameData << m0_stream.str();
-    }
+    NameData << format(sim_params::m0);
     NameData << "_SimData.txt";
     //Metadata file with simulation parameters
     std::ofstream Datfile;
@@ -158,7 +154,7 @@ int main(int argc, char **argv) {
     if (mpi::rank == 0){
         std::cout << "Average plaquette value / volume: Ep = " << hmc.getEp() << " dEp = " << hmc.getdEp() << std::endl;
         std::cout << "Average gauge action / volume: gS = " << hmc.getgS() << " dgS = " << hmc.getdgS() << std::endl;
-        std::cout << "Acceptance rate: " << hmc.getacceptance_rate(Nmeas+Nsteps*Nmeas) << std::endl;
+        std::cout << "Acceptance rate: " << hmc.getacceptance_rate(Nmeas+Nsteps*(Nmeas-1)) << std::endl;
         double elapsed_secs = end - begin;
         std::cout << "Execution time = " << elapsed_secs << " s" << std::endl;
         std::cout << "-------------------------------" << std::endl;
