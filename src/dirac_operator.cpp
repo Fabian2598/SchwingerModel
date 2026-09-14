@@ -98,14 +98,14 @@ void D_dagger_phi(const GaugeConf& GConf, const spinor&  phi, spinor&  Dphi){
 			//mu = 0 
 			//1/16=0.0625
 			DeltaQ = GConf.Q01[n]-std::conj(GConf.Q01[n]);
-			Dphi.val[2*n] = (m0 + 2 + I_number*l_16*csw*DeltaQ ) * phi.val[2*n] -0.5 * ( 
+			Dphi.val[2*n] = (m0 + 2.0 - I_number*l_16*csw*DeltaQ ) * phi.val[2*n] -0.5 * ( 
 				std::conj(U.val[2*left]) 		* lsign 	* (phi.val[2*left] - phi.val[2*left+1])
 			+   std::conj(U.val[2*up+1]) 	 	* (phi.val[2*up] + I_number * phi.val[2*up+1])
 			+   U.val[2*n] 						* rsign 		* (phi.val[2*right] + phi.val[2*right+1])
 			+	U.val[2*n+1] 					* (phi.val[2*down] - I_number * phi.val[2*down+1])
 			);
 			//mu = 1
-			Dphi.val[2*n+1] = (m0 + 2 - I_number*l_16*csw*DeltaQ) * phi.val[2*n+1] -0.5 * ( 
+			Dphi.val[2*n+1] = (m0 + 2.0 + I_number*l_16*csw*DeltaQ) * phi.val[2*n+1] -0.5 * ( 
 				std::conj(U.val[2*left]) 		* lsign 	* (-phi.val[2*left] + phi.val[2*left+1])
 			+   std::conj(U.val[2*up+1]) 	 	* (-I_number*phi.val[2*up] + phi.val[2*up+1])
 			+   U.val[2*n] 						* rsign 		* (phi.val[2*right] + phi.val[2*right+1])
@@ -115,14 +115,14 @@ void D_dagger_phi(const GaugeConf& GConf, const spinor&  phi, spinor&  Dphi){
 
 			#ifndef CLOVER
 			//mu = 0
-			Dphi.val[2*n] = (m0 + 2) * phi.val[2*n] -0.5 * ( 
+			Dphi.val[2*n] = (m0 + 2.0) * phi.val[2*n] -0.5 * ( 
 				std::conj(U.val[2*left]) 		* lsign 	* (phi.val[2*left] - phi.val[2*left+1])
 			+   std::conj(U.val[2*up+1]) 	 	* (phi.val[2*up] + I_number * phi.val[2*up+1])
 			+   U.val[2*n] 						* rsign 		* (phi.val[2*right] + phi.val[2*right+1])
 			+	U.val[2*n+1] 					* (phi.val[2*down] - I_number * phi.val[2*down+1])
 			);
 			//mu = 1
-			Dphi.val[2*n+1] = (m0 + 2) * phi.val[2*n+1] -0.5 * ( 
+			Dphi.val[2*n+1] = (m0 + 2.0) * phi.val[2*n+1] -0.5 * ( 
 				std::conj(U.val[2*left]) 		* lsign 	* (-phi.val[2*left] + phi.val[2*left+1])
 			+   std::conj(U.val[2*up+1]) 	 	* (-I_number*phi.val[2*up] + phi.val[2*up+1])
 			+   U.val[2*n] 						* rsign 		* (phi.val[2*right] + phi.val[2*right+1])

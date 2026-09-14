@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
 
     std::vector<GaugeConf*> Confs; //Vector with the gauge configurations
     int nconf = 0; 
-    double m0, beta; 
+    double m0, beta, csw; 
     std::string listFilePath;
 
     if (mpi::rank == 0){
@@ -72,6 +72,10 @@ int main(int argc, char **argv) {
         std::cin >> mpi::ranks_t;
         std::cerr << "m0: " << std::endl;
         std::cin >> m0;
+        #ifdef CLOVER
+        std::cerr << "csw: " << std::endl;
+        std::cin >> csw;
+        #endif
         std::cerr << "beta: " << std::endl;
         std::cin >> beta;
         std::cerr << "File with list of confs (ls -1 *.ctxt > confFiles.txt): ";
@@ -82,8 +86,10 @@ int main(int argc, char **argv) {
     MPI_Bcast(&mpi::ranks_t, 1, MPI_INT,  0, MPI_COMM_WORLD);
     MPI_Bcast(&m0, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
     MPI_Bcast(&beta, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
+    MPI_Bcast(&csw, 1, MPI_DOUBLE,  0, MPI_COMM_WORLD);
     sim_params::m0 = m0;
     sim_params::beta = beta;
+    sim_params::csw = csw;
 
     initializeMPI(); //initialize 2d communicator and MPI datatypes 
 
@@ -203,6 +209,7 @@ int main(int argc, char **argv) {
             std::cout << "--------Computing correlators for conf " << confID << "--------" << std::endl; 
         //We only need two sources, equivalent to extracting the first two columns of D^-1
         exchange_halo(Confs[confID]->Conf.val);
+        Confs[confID]->Compute_Q(); 
         bi_cgstab(*Confs[confID], source1, x0, Dcol1); //D^-1 source = D^-1((nx,nt),(0,0))_alf,0
         bi_cgstab(*Confs[confID], source2, x0, Dcol2); //D^-1 source = D^-1((nx,nt),(0,0)_alf,1
 

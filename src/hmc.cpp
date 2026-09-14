@@ -66,7 +66,7 @@ void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
                  << "_b" << format(beta)
                  << "_m" << format(m0)
                  << "_illConf" << illConfId << ".ctxt";
-        GConf.SaveConf(NameData.str());
+        //GConf.SaveConf(NameData.str());
         illConfId += 1;
     } 
    
