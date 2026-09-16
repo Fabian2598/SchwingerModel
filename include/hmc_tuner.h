@@ -26,6 +26,8 @@
 
 namespace hmc {
 
+
+
 // Inverse complementary error function by bisection (plenty fast, called once).
 inline double erfc_inv(double y) {
     if (y <= 0.0) return 10.0;
@@ -45,6 +47,8 @@ inline double target_dH(double p_acc) {
     return 2.0 * x * x;
 }
 
+//We don't use this rescaling for eps, instead we implement dual averaging. This  
+//still works fine without the clover term.
 // New step size from a measured <dH> at step size eps_old.
 // order = 2 for leapfrog / Omelyan (<dH> ~ eps^4), 4 for a 4th order
 // integrator (<dH> ~ eps^8).
@@ -58,7 +62,7 @@ inline double rescale_eps(double eps_old, double dH_measured, double p_target,
 }
 
 // ---------------------------------------------------------------------------
-
+//This is what we actually use for tunning the acceptance rate
 class HMCTuner {
 public:
     // tau        : trajectory length to keep fixed (set <= 0 to let tau float
@@ -88,8 +92,6 @@ public:
     void record(double dH) {
         if (frozen_) return;
 
-        // Rao-Blackwellised acceptance: uses the actual dH, not the coin flip,
-        // so it carries ~10x more information per trajectory.
         double a = std::min(1.0, std::exp(-dH));
         if (!std::isfinite(a)) a = 0.0;
 
@@ -132,19 +134,6 @@ public:
     }
 
 
-
-    // Optional: randomise the trajectory length each update (breaks
-    // resonances with periodic modes and improves ergodicity).  Call this
-    // *before* each trajectory and pass the result to the integrator;
-    // n must be drawn independently of the current configuration.
-    template <class RNG>
-    int random_n_steps(RNG& rng, double spread = 0.25) const {
-        int lo = std::max(1, static_cast<int>(std::floor(n_steps_ * (1.0 - spread))));
-        int hi = std::max(lo, static_cast<int>(std::ceil(n_steps_ * (1.0 + spread))));
-        std::uniform_int_distribution<int> d(lo, hi);
-        return d(rng);
-    }
-
 private:
     void set_eps(double e) {
         e = std::min(std::max(e, 1e-4), 1.0);   // sanity bounds
@@ -170,26 +159,3 @@ private:
 }  // namespace hmc
 
 #endif  // HMC_TUNER_H
-
-// ---------------------------------------------------------------------------
-// Usage sketch
-// ---------------------------------------------------------------------------
-//
-//   hmc::HMCTuner tuner(/*tau=*/1.0, /*n_steps0=*/10, /*p_target=*/0.78,
-//                       /*n_warmup=*/300);
-//
-//   for (int i = 0; i < n_therm + n_meas; ++i) {
-//       double dH = do_trajectory(tuner.n_steps(), tuner.eps());
-//       if (tuner.adapting()) tuner.record(dH);
-//       if (i == n_therm - 1 && tuner.adapting()) tuner.freeze();
-//       if (i >= n_therm) measure();
-//   }
-//
-// Or the cheap one-shot version if you just want a good starting point:
-//
-//   double eps = tau / n0, sum = 0.0;
-//   for (int i = 0; i < 30; ++i) sum += do_trajectory(std::lround(tau/eps), eps);
-//   eps = hmc::rescale_eps(eps, sum / 30.0, 0.78);
-//   int n = std::lround(tau / eps);  eps = tau / n;
-//
-// ---------------------------------------------------------------------------
