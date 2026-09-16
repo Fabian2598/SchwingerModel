@@ -130,9 +130,6 @@ int main(int argc, char **argv) {
         Datfile << "#beta     #Ntherm     #Nmeas     #Nsteps\n";
         Datfile <<  std::setprecision(17) << sim_params::beta << std::setw(11) 
         << sim_params::Ntherm << std::setw(11) << sim_params::Nmeas << std::setw(11) << sim_params::Nsteps << "\n";
-        Datfile << "#trajectory_length     #MD_steps\n";
-        Datfile << std::setprecision(17) << sim_params::trajectory_length << std::setw(30)
-         << sim_params::MD_steps << "\n";
         Datfile << "#CG max iterations     #CG relative tolerance\n";
         Datfile << CG::max_iter << std::setw(30) << std::setprecision(17) << CG::tol << "\n";
         Datfile << "#m0\n";
@@ -160,6 +157,9 @@ int main(int argc, char **argv) {
         std::cout << "Execution time = " << elapsed_secs << " s" << std::endl;
         std::cout << "-------------------------------" << std::endl;
         Datfile.open(NameData.str(),std::ios::app);
+        Datfile << "#trajectory_length     #MD_steps\n";
+        Datfile << std::setprecision(17) << sim_params::trajectory_length << std::setw(30)
+         << sim_params::MD_steps << "\n";
         Datfile << "#Ep                           #dEp\n";
         Datfile << std::setprecision(17) << hmc.getEp() << std::setw(30) << hmc.getdEp() << "\n";
         Datfile << "#gS                           #dgS\n";
