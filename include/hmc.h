@@ -3,6 +3,7 @@
 
 #include "gauge_conf.h"
 #include "conjugate_gradient.h"
+#include "hmc_tuner.h"
 
 
 class HMC {
@@ -38,6 +39,12 @@ public:
 	} 
 	
 	void HMC_algorithm();
+	//Enable automatic tuning of MD_steps during thermalization.
+	//p_acc_target: 0.65 is cost-optimal in theory, 0.75-0.80 is safer with clover.
+	void enableTuning(double p_acc_target = 0.78) { tune_MD = true; p_target = p_acc_target; }
+	double getDeltaH() const { return deltaH; }
+	int getMDsteps() const { return MD_steps; }
+
 	double getEp() { return Ep; }
 	double getdEp() { return dEp; }
 	double getgS() { return gS; }
@@ -58,6 +65,9 @@ private:
 	int CG_convergence; //1->converge, 0->not converged
 	int illConfId;
 	bool therm = false;
+	double deltaH = 0.0;     //dH of the most recent trajectory
+	bool   tune_MD = false;  //adapt MD_steps during thermalization
+	double p_target = 0.78;  //target acceptance rate
 	re_field PConf; //Momenta PI
 	re_field PConf_copy; //Momenta PI copy
 	re_field Forces; //Forces

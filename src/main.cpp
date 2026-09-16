@@ -146,7 +146,8 @@ int main(int argc, char **argv) {
     print_parameters();
 
     GaugeConf GConf = GaugeConf();  //Initial gauge configuration         
-    HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, LV::Nx, LV::Nt, m0,saveconf);   
+    HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, LV::Nx, LV::Nt, m0,saveconf);  
+    hmc.enableTuning(0.78); //auto-tune MD_steps during thermalization 
     double begin = MPI_Wtime();
     hmc.HMC_algorithm();
     double end = MPI_Wtime();

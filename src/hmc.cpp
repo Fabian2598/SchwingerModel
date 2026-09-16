@@ -232,7 +232,7 @@ void HMC::HMC_Update() {
     #endif
     D_phi(GConf, chi,phi);
     Leapfrog(phi); //Evolve [Pi] and [U] GConf is copied to GConf_copy inside leapfrog
-    double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
+    deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
     double r;
     
     //Same random number for all ranks
@@ -257,14 +257,41 @@ void HMC::HMC_algorithm(){
     std::vector<double> SpVector(Nmeas);
     std::vector<double> gAction(Nmeas);
 	GConf.initialization(); //Initialize the gauge configuration randomly
-    for(int i = 0; i < Ntherm; i++) {
+
+
+    //Adapt MD_steps at fixed trajectory_length to hit p_target acceptance.
+    //Adaptation must stop before the measurement phase: while MD_steps keeps
+    //changing the transition kernel changes too and detailed balance fails.
+    hmc::HMCTuner tuner(trajectory_length, MD_steps, p_target,
+                        std::max(1, static_cast<int>(0.8 * Ntherm)));
+    tuner.set_verbose(mpi::rank == 0);
+
+     for(int i = 0; i < Ntherm; i++) {
         HMC_Update();
+        if (tune_MD && tuner.adapting()) {
+            tuner.record(deltaH);
+            MD_steps = tuner.n_steps();
+            //deltaH is already MPI_Allreduce'd so every rank agrees, but keep
+           //this as a cheap guard against any rank drifting out of sync.
+            MPI_Bcast(&MD_steps, 1, MPI_INT, 0, mpi::cart_comm);
+        }
         if (i%100 == 0 && mpi::rank == 0)
-            std::cout << "Conf " << i << " out of " << Ntherm << " for thermalization" << std::endl;
+            std::cout << "Conf " << i << " out of " << Ntherm << " for thermalization"
+                      << " (MD_steps = " << MD_steps
+                      << ", eps = " << trajectory_length/MD_steps
+                      << ", dH = " << deltaH << ")" << std::endl;
     } //Thermalization
-    therm = true; //Set the flag to true
+
+    if (tune_MD) {
+        tuner.freeze();
+        MD_steps = tuner.n_steps();
+        MPI_Bcast(&MD_steps, 1, MPI_INT, 0, mpi::cart_comm);
+        sim_params::MD_steps = MD_steps; //so the metadata file records the tuned value
+    }
+     therm = true; //Set the flag to true
     if (mpi::rank == 0)
-        std::cout << "Thermalization done" <<std::endl; 
+         std::cout << "Thermalization done" <<std::endl; 
+
     conf_i = 0;
     for(int i = 0; i < Nmeas; i++) {
         conf_i += 1;
