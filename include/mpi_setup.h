@@ -118,9 +118,13 @@ inline void defineDataTypes(){
     MPI_Type_commit(&mpi::global_conf_resized);
 
 
-    //Datatype for the halo exchange
+    //Datatype for the halo exchange (spinor: 2 components per site)
     MPI_Type_vector(mpi::width_x, 2, 2*(mpi::width_t+2), MPI_DOUBLE_COMPLEX, &mpi::column_type);
     MPI_Type_commit(&mpi::column_type);
+
+    //Datatype for the halo exchange of vectors (1 component per site, no spinor factor)
+    MPI_Type_vector(mpi::width_x, 1, (mpi::width_t+2), MPI_DOUBLE_COMPLEX, &mpi::column_type_vec);
+    MPI_Type_commit(&mpi::column_type_vec);
 }
 
 inline void initializeMPI(){

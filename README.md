@@ -2,6 +2,8 @@
 
 This project implements an MPI-parallel Monte Carlo simulation of the two-flavor Schwinger model using a Hybrid Monte Carlo (HMC) algorithm. The simulation uses Wilson fermions, pseudofermions, and iterative solvers for the fermion operator. For an OpenMP implementation, check the OpenMP branch.
 
+The number of leapfrog steps is tuned automatically during thermalization to reach a target acceptance rate, at fixed trajectory length. See the "Automatic step-size tuning" section below.
+
 Gauge configurations are written in binary format with records of the form:
 
 $$
@@ -41,10 +43,27 @@ set(NT "64")
 Change `NS` and `NT` before configuring if a different lattice is required. The build produces `SM_${NS}x${NT}` for the HMC simulation and `mass_${NS}x${NT}` for correlator computation. On Windows, the executables have an `.exe` suffix.
 
 ### Twisted mass
+
 Twisted mass is also implemented in the code. To compile the twisted mass version build:
 
 ```bash
 cmake -S . -B build -DTWISTED_MASS=ON
+cmake --build build
+```
+
+### Clover term
+
+The clover (Sheikholeslami-Wohlert) term is also implemented. To compile with the clover term enabled:
+
+```bash
+cmake -S . -B build -DCLOVER=ON
+cmake --build build
+```
+
+Compiling with `-DCLOVER=ON` adds an extra runtime prompt for `csw`, the Sheikholeslami-Wohlert constant (see the parameter list below). `-DCLOVER=ON` and `-DTWISTED_MASS=ON` can be combined:
+
+```bash
+cmake -S . -B build -DCLOVER=ON -DTWISTED_MASS=ON
 cmake --build build
 ```
 
@@ -76,26 +95,34 @@ Step (sweeps between measurements): 10
 Save configurations yes/no (1 or 0): 1
 ```
 
-In case the program was compiled for the twisted mass operator, an extra parameter (the twisted mass) will be requested.
+In case the program was compiled for the twisted mass operator (`-DTWISTED_MASS=ON`), an extra parameter (`mu0`, prompted as "mu (twisted mass)") will be requested. In case it was compiled with the clover term (`-DCLOVER=ON`), an extra parameter (`csw`) will be requested.
 
 ### Parameter descriptions
 
 - `ranks_x` and `ranks_t`: number of MPI ranks in the $x$ and $t$ directions. The total number of processes is `ranks_x * ranks_t`.
 - The lattice dimensions must be divisible by the corresponding rank count, so the workload is balanced across processes.
 - `m0`: bare mass parameter.
-- `Molecular dynamics steps`: number of leapfrog integration steps.
-- `Trajectory length`: integration length in lattice units.
+- `mu0` (only if compiled with `-DTWISTED_MASS=ON`): twisted mass parameter. Prompted as "mu (twisted mass)".
+- `csw` (only if compiled with `-DCLOVER=ON`): Sheikholeslami-Wohlert constant for the clover term.
+- `Molecular dynamics steps`: initial number of leapfrog integration steps. This value is only a starting guess: it is adjusted automatically during thermalization (see below), and the tuned value is the one actually used for the measurement phase.
+- `Trajectory length`: integration length in lattice units. Unlike the number of molecular dynamics steps, this value is kept fixed throughout the run.
 - `beta`: inverse gauge coupling.
-- `Thermalization`: number of configurations discarded before measurements begin.
+- `Thermalization`: number of configurations discarded before measurements begin. This also sets how many trajectories are available for tuning the number of molecular dynamics steps, so it should not be too small (a few hundred at least) for the tuning to converge.
 - `Measurements`: number of configurations used for measurements.
 - `Step`: number of sweeps discarded between saved measurements.
 - `Save configurations`: set to `1` to write configurations to disk, or `0` to skip writing them.
+
+### Automatic step-size tuning
+
+At fixed trajectory length, the number of molecular dynamics steps controls the acceptance rate. Rather than choosing it by hand for every set of parameters, the code tunes it automatically during thermalization, targeting an acceptance rate of 0.78. The tuning uses dual averaging and runs in three phases within the thermalization loop: an initial burn-in with adaptation enabled, so that the chain can move away from the random initial configuration; a reset of the averaging statistics once the chain is no longer at its initial hot start; and a final adaptation phase before the number of molecular dynamics steps is frozen for the remaining thermalization and measurement trajectories. The implementation is in `include/hmc_tuner.h`.
+
+Because the tuner needs a reasonable number of trajectories to converge, `Thermalization` should be at least a few hundred for the tuned acceptance rate to be close to the target. With a very small `Thermalization` (for example, in a quick test run) the reported number of molecular dynamics steps may not have converged.
 
 The script `run.sh` edits the lattice dimensions, configures the build if needed, builds the HMC executable, supplies a sample parameter set, and runs it. Review its variables before use. It currently moves the executable into the repository root and writes output there.
 
 ## Critical mass values
 
-The bare mass parameter must remain above the critical mass to avoid unphysical configurations. The following values are useful guides:
+The bare mass parameter must remain above the critical mass to avoid unphysical configurations. The following values are useful guides. They are valid for `csw = 0` (i.e. without the clover term, or with `-DCLOVER=ON` and `csw` set to 0); the critical mass shifts when the clover term is switched on with `csw != 0`.
 
 | $\beta$ | $-m_{\mathrm{crit}}$ |
 | :-----: | :------------------: |
@@ -176,7 +203,7 @@ Use the same `NS` and `NT` values when building the simulation, building the mas
 
 ### Low acceptance rate
 
-Reduce the trajectory length or increase the number of molecular-dynamics steps.
+The number of molecular dynamics steps is tuned automatically during thermalization (see "Automatic step-size tuning" above), so this should not normally require manual intervention. If the acceptance rate at the end of thermalization is still far from the target, increase `Thermalization` so that the tuner has more trajectories to converge, or check that the trajectory length is reasonable (values much shorter than 1 lattice unit lead to poor decorrelation between measurements even once the acceptance rate is on target).
 
 ### Missing output
 
@@ -184,4 +211,4 @@ Set `Save configurations` to `1` and verify that the process can write to the wo
 
 ## References
 
-For background on the physics and algorithm, see [HMC_doc.pdf](HMC_doc.pdf) and the scaling-test reference cited above.
+For background on the physics and algorithm, see [HMC_doc.pdf](HMC_doc.pdf) and the scaling-test reference cited above. Check [results.pdf](mass_analysis/results.pdf) for some results.

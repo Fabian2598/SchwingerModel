@@ -8,12 +8,21 @@
 #include <fstream>
 #include <sstream>
 
+/*
+    Linearized index for a spinor
+*/
 inline int idx(int x, int t, int mu) {
     //x ranges from 0 to width_x+1
     //t ranges from 0 to width_t+1
     //The physical volume runs from 1 to width_x (or width_t)
     //mu = 0, 1
     return ((x*(mpi::width_t+2) + t)*2 + mu);
+}
+/*
+    Linearized index for a vector
+*/
+inline int idx_vec(int x, int t){
+    return (x*(mpi::width_t+2) + t);
 }
 
 /*
@@ -27,14 +36,15 @@ inline c_double RandomU1() {
 	return z;
 }
 
-//Formats decimal numbers
-//Useful for writing m0 and beta on the file name
-inline std::string format(const double& number) {
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(4) << number;
-    std::string str = oss.str();
-    str.erase(str.find('.'), 1); //Removes decimal dot
-    return str;
+// Converts a double like -0.4568 → "-04568"
+inline std::string format(double val) {
+    char buf[8];
+    int sign    = (val < 0) ? -1 : 1;
+    int digits  = static_cast<int>(std::round(std::abs(val) * 10000));
+    std::snprintf(buf, sizeof(buf), "%s%05d",
+                  (sign < 0 ? "-" : ""),
+                  digits);
+    return buf;
 }
 
 
@@ -78,9 +88,8 @@ inline double rand_range(double a, double b){
 }
 
 //----------Jackknife---------//
-std::vector<double> samples_mean(std::vector<double> dat, int bin); 
-double Jackknife_error(std::vector<double> dat, int bin); 
-double Jackknife(std::vector<double> dat, std::vector<int> bins); 
+ std::vector<double> samples_mean(std::vector<double> dat, int bin);
+ double Jackknife_error(std::vector<double> dat, int bin);
 
 //---------------Linspace (similar to python)----------------------//
 template <typename T>

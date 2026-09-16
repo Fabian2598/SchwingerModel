@@ -5,11 +5,11 @@
 
 /*
     Bi-CGstab method for inveting D x = phi.
-    U: Gauge conf
+    GConf: Gauge conf
     phi: right-hand side
     x0: initial solution
     x: solution buffer
 */
-int bi_cgstab(const spinor& U, const spinor& phi, const spinor& x0, spinor& x);
+int bi_cgstab(const GaugeConf& Gconf, const spinor& phi, const spinor& x0, spinor& x);
 
 #endif

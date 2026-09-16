@@ -51,6 +51,113 @@ void GaugeConf::Compute_Plaquette01() {
    
 }
 
+//mu = 0 time direction, mu = 1 space direction
+void GaugeConf::Compute_Q() {
+    MPI_Status status;
+    //Halo must be communicated externally
+    //Corners we have to communicate manually 
+    //Update top-right corner (needs bottom-left corner from diagonal rank)
+    {
+        int x0 = mpi::width_x, t0 = 1;
+        int n0 = x0*(mpi::width_t+2)+t0;
+        c_double bottom_left_s0 = Conf.val[2*n0];   //U_0(n-1+0)
+        c_double bottom_left_s1 = Conf.val[2*n0+1]; //U_1(n-1+0)
+        MPI_Send(&bottom_left_s0, 1, MPI_DOUBLE_COMPLEX, mpi::bot_left, 0, mpi::cart_comm);
+        MPI_Recv(&bottom_left_s0, 1, MPI_DOUBLE_COMPLEX, mpi::top_right, 0, mpi::cart_comm, &status);
+
+        MPI_Send(&bottom_left_s1, 1, MPI_DOUBLE_COMPLEX, mpi::bot_left, 1, mpi::cart_comm);
+        MPI_Recv(&bottom_left_s1, 1, MPI_DOUBLE_COMPLEX, mpi::top_right, 1, mpi::cart_comm, &status);
+        n0 = mpi::width_t+1; 
+        Conf.val[2*n0] = bottom_left_s0;  
+        Conf.val[2*n0+1] = bottom_left_s1;    
+    }
+
+    //Update bottom-left corner (needs top-right corner from diagonal rank)
+    {
+        int x0 = 1, t0 = mpi::width_t;
+        int n0 = x0*(mpi::width_t+2)+t0;
+        c_double top_right_s0 = Conf.val[2*n0];     //U_0(n+1-0)
+        c_double top_right_s1 = Conf.val[2*n0+1];   //U_0(n+1-0)
+        MPI_Send(&top_right_s0, 1, MPI_DOUBLE_COMPLEX, mpi::top_right, 2, mpi::cart_comm);
+        MPI_Recv(&top_right_s0, 1, MPI_DOUBLE_COMPLEX, mpi::bot_left, 2, mpi::cart_comm, &status);
+
+        MPI_Send(&top_right_s1, 1, MPI_DOUBLE_COMPLEX, mpi::top_right, 3, mpi::cart_comm);
+        MPI_Recv(&top_right_s1, 1, MPI_DOUBLE_COMPLEX, mpi::bot_left, 3, mpi::cart_comm, &status);
+
+        x0 = mpi::width_x+1; t0 = 0;
+        n0 = x0*(mpi::width_t+2)+t0;
+        Conf.val[2*n0] = top_right_s0;
+        Conf.val[2*n0+1] = top_right_s1;
+    }
+    //Update top-left corner (needs bot-right corner from diagonal rank)
+    {
+        int x0 = mpi::width_x, t0 = mpi::width_t;
+        int n0 = x0*(mpi::width_t+2)+t0;
+        c_double bot_right_s0 = Conf.val[2*n0];   //U_0(n-1-0)
+        c_double bot_right_s1 = Conf.val[2*n0+1]; //U_1(n-1-0)
+        MPI_Send(&bot_right_s0, 1, MPI_DOUBLE_COMPLEX, mpi::bot_right, 4, mpi::cart_comm);
+        MPI_Recv(&bot_right_s0, 1, MPI_DOUBLE_COMPLEX, mpi::top_left, 4, mpi::cart_comm, &status);
+
+        MPI_Send(&bot_right_s1, 1, MPI_DOUBLE_COMPLEX, mpi::bot_right, 5, mpi::cart_comm);
+        MPI_Recv(&bot_right_s1, 1, MPI_DOUBLE_COMPLEX, mpi::top_left, 5, mpi::cart_comm, &status);
+
+        n0 = 0;
+        Conf.val[2*n0]   = bot_right_s0;
+        Conf.val[2*n0+1] = bot_right_s1;
+    }
+
+
+    int n, right, down, left, up;
+    double lsign, rsign;
+    int x1_t_1, x_1_t_1, x_1_t1, x1_t1; //n-0+1, n-0-1, n+0-1, n+0+1
+    c_double Umv, Uv_m, U_m_v, U_vm;  //U_{m,v}(n) + U_{v,-m}(n) + U_{-m,-v}(n) + U_{-v,m}(n)
+    for(int x = 1; x<=mpi::width_x; x++){
+		for(int t = 1; t<=mpi::width_t; t++){
+			n = x*(mpi::width_t+2)+t;
+			get_neighbors(x, t,right, down, left, up, rsign, lsign); 
+            get_corners(x,t,x1_t_1,x_1_t_1,x_1_t1,x1_t1);
+
+            //Q01
+
+            //U_01(n) = U_0(n) U_1(n+0) U*_0(n+1) U*_1(n)
+            Umv = Conf.val[2*n] * Conf.val[2*right+1] * std::conj(Conf.val[2*down]) * std::conj(Conf.val[2*n+1]);
+            P1[n] = Umv;
+
+            //U_{1-0}(n) = U_1(n) U*_0(n-0+1) U*_1(n-0) U_0(n-0)
+            Uv_m = Conf.val[2*n+1] * std::conj(Conf.val[2*x1_t_1]) * std::conj(Conf.val[2*left+1]) * Conf.val[2*left];
+            P2[n] = Uv_m;
+
+            //U_{-0,-1}(n) = U*_0(n-0) U*_1(n-0-1) U_0(n-0-1) U_1(n-1)
+            U_m_v = std::conj(Conf.val[2*left]) * std::conj(Conf.val[2*x_1_t_1+1]) * Conf.val[2*x_1_t_1] * Conf.val[2*up+1];
+            P3[n] = U_m_v;
+
+            //U_{-10}(n) = U*_1(n-1) U_0(n-1) U_1(n+0-1) U*_0(n)
+            U_vm = std::conj(Conf.val[2*up+1]) * Conf.val[2*up] * Conf.val[2*x_1_t1+1] * std::conj(Conf.val[2*n]);
+            P4[n] = U_vm;
+
+            Q01[n] = Umv+Uv_m+U_m_v+U_vm;
+            
+            //This is only for testing, I should get rid of it eventually
+            //Q10
+            //U_10(n) = U_1(n) U_0(n+1) U*_1(n+0) U*_0(n)
+            Umv = Conf.val[2*n+1] * Conf.val[2*down] * std::conj(Conf.val[2*right+1]) * std::conj(Conf.val[2*n]);
+
+            //U_{0-1}(n) = U_0(n) U*_1(n-1+0) U*_0(n-1) U_1(n-1)
+            Uv_m = Conf.val[2*n] * std::conj(Conf.val[2*x_1_t1+1]) * std::conj(Conf.val[2*up]) * Conf.val[2*up+1];
+
+            //U_{-1,-0}(n) = U*_1(n-1) U*_0(n-0-1) U_1(n-0-1) U_0(n-0)
+            U_m_v = std::conj(Conf.val[2*up+1]) * std::conj(Conf.val[2*x_1_t_1]) * Conf.val[2*x_1_t_1+1] * Conf.val[2*left];
+
+            //U_{-01}(n) = U*_0(n-0) U_1(n-0) U_0(n+1-0) U*_1(n)
+            U_vm = std::conj(Conf.val[2*left]) * Conf.val[2*left+1] * Conf.val[2*x1_t_1] * std::conj(Conf.val[2*n+1]);
+
+            Q10[n] = Umv+Uv_m+U_m_v+U_vm;
+        }
+    }
+   
+}
+
+
 //Compute staple at coordinate (x,t) in the mu-direction
 void GaugeConf::Compute_Staple() {
     MPI_Status status;

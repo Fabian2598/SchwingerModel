@@ -17,8 +17,8 @@ NSTEPS=10 #Decorrelation steps between measurements
 SAVE=1 #0 do not save confs, 1 save confs
 
 
-sed -i "17s/set(NS \".*\")/set(NS \"${NX}\")/" "$CMAKELISTS"
-sed -i "18s/set(NT \".*\")/set(NT \"${NT}\")/" "$CMAKELISTS"
+sed -i "10s/set(NS \".*\")/set(NS \"${NX}\")/" "$CMAKELISTS"
+sed -i "11s/set(NT \".*\")/set(NT \"${NT}\")/" "$CMAKELISTS"
 
 DIR="build"
 if [ ! -d "$DIR" ]; then
@@ -29,10 +29,9 @@ if [ ! -d "$DIR" ]; then
 fi
 
 echo "--------Compiling for Nx=${NX}, Nt=${NT}--------"
-cd build
-cmake --build .
-mv SM_${NX}x${NT} ../
-cd ../
+cmake -S . -B build -DTWISTED_MASS=OFF -DCLOVER=OFF -DBUILD_TESTS=OFF
+cmake --build build
+mv build/SM_${NX}x${NT} . 
 printf "${RANKS_X}\n${RANKS_T}\n${M0}\n${MD_STEPS}\n${TAU}\n${BETA}\n${NTHERM}\n${NMEAS}\n${NSTEPS}\n${SAVE}" >> parameters
 mpirun -n ${RANKS} SM_${NX}x${NT} < parameters
 rm parameters

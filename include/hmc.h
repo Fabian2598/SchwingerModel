@@ -3,6 +3,7 @@
 
 #include "gauge_conf.h"
 #include "conjugate_gradient.h"
+#include "hmc_tuner.h"
 
 
 class HMC {
@@ -22,11 +23,28 @@ public:
 		Forces = re_field(mpi::maxSizeH); //Forces
 		chi = spinor(mpi::maxSizeH);
 		TEMP = spinor(mpi::maxSizeH); //buffer
-	
+
+		//Needed to compute the fermion force of the clover term
+		J1 = new c_double[mpi::sitesH];	 
+		J2 = new c_double[mpi::sitesH];	
+		J3 = new c_double[mpi::sitesH];	
+		J4 = new c_double[mpi::sitesH];
+
 	}
-	~HMC() {} 
+	~HMC() {
+		delete[] J1;
+		delete[] J2;
+		delete[] J3;
+		delete[] J4;
+	} 
 	
 	void HMC_algorithm();
+	//Enable automatic tuning of MD_steps during thermalization.
+	//p_acc_target: 0.65 is cost-optimal in theory, 0.75-0.80 is safer with clover.
+	void enableTuning(double p_acc_target = 0.78) { tune_MD = true; p_target = p_acc_target; }
+	double getDeltaH() const { return deltaH; }
+	int getMDsteps() const { return MD_steps; }
+
 	double getEp() { return Ep; }
 	double getdEp() { return dEp; }
 	double getgS() { return gS; }
@@ -47,6 +65,9 @@ private:
 	int CG_convergence; //1->converge, 0->not converged
 	int illConfId;
 	bool therm = false;
+	double deltaH = 0.0;     //dH of the most recent trajectory
+	bool   tune_MD = false;  //adapt MD_steps during thermalization
+	double p_target = 0.78;  //target acceptance rate
 	re_field PConf; //Momenta PI
 	re_field PConf_copy; //Momenta PI copy
 	re_field Forces; //Forces
@@ -55,9 +76,16 @@ private:
 	spinor chi;
 	spinor TEMP;  //buffer
 
+	//For the force of the clover term
+	c_double* J1;
+	c_double* J2;
+	c_double* J3;
+	c_double* J4;
+
 	double Action(GaugeConf& GConfig, const spinor& phi);
 	void Force_G(GaugeConf& GConfig); //force for gauge part
-	void Force(GaugeConf& GConfig, const spinor& phi); //force_G + fermions
+	void Force_Clover(const GaugeConf& GConfig,const spinor& left_term, const spinor& right_term); //Clover term contribution
+	void Force(GaugeConf& GConfig, const spinor& phi); //force_G + fermions + Clover
 	void Leapfrog(const spinor& phi );
 	double Hamiltonian(GaugeConf& GConfig, const re_field& Pi, const spinor& phi);
 	void HMC_Update();

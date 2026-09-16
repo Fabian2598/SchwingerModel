@@ -55,7 +55,10 @@ void HMC::Force_G(GaugeConf& GConfig) {
 void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
     spinor psi(mpi::maxSizeH); 
     exchange_halo(GConfig.Conf.val);
-    CG_convergence = conjugate_gradient(GConfig.Conf, phi,psi);  //(DD^dagger)^-1 phi
+    #ifdef CLOVER
+        GConfig.Compute_Q(); 
+    #endif
+    CG_convergence = conjugate_gradient(GConfig, phi,psi);  //(DD^dagger)^-1 phi
     //Save gauge configuration if CG does not converge
     if (CG_convergence == 0){
         std::ostringstream NameData;
@@ -63,13 +66,61 @@ void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
                  << "_b" << format(beta)
                  << "_m" << format(m0)
                  << "_illConf" << illConfId << ".ctxt";
-        GConf.SaveConf(NameData.str());
+        //GConf.SaveConf(NameData.str());
         illConfId += 1;
     } 
    
-    D_dagger_phi(GConfig.Conf, psi,TEMP);
-    phi_dag_partialD_phi(GConfig.Conf,psi,TEMP,Forces); //psi^dagger partial D / partial omega(n) D psi
+    D_dagger_phi(GConfig, psi,TEMP);
+    phi_dag_partialD_phi(GConfig,psi,TEMP,Forces); //psi^dagger partial D / partial omega(n) D psi
     Force_G(GConfig); //Gauge force 
+    #ifdef CLOVER
+        Force_Clover(GConfig,psi,TEMP); //update clover force
+    #endif
+}
+
+void HMC::Force_Clover(const GaugeConf& GConf,const spinor& left_term, const spinor& right_term){
+    c_double factor = I_number * l_8 * sim_params::csw;
+    int n, right, down, left, up;
+    double lsign, rsign;
+    int x1_t_1, x_1_t_1, x_1_t1, x1_t1; //n-0+1, n-0-1, n+0-1, n+0+1
+    c_double f;
+    for(int x = 1; x<=mpi::width_x; x++){
+		for(int t = 1; t<=mpi::width_t; t++){
+            n = x*(mpi::width_t+2)+t;
+            f = factor * (-std::conj(left_term.val[2*n]) * right_term.val[2*n] 
+                                + std::conj(left_term.val[2*n+1]) * right_term.val[2*n+1]);
+            J1[n] = f * (GConf.P1[n] + std::conj(GConf.P1[n])); 
+            J2[n] = f * (GConf.P2[n] + std::conj(GConf.P2[n]));
+            J3[n] = f * (GConf.P3[n] + std::conj(GConf.P3[n]));
+            J4[n] = f * (GConf.P4[n] + std::conj(GConf.P4[n]));
+        }
+    }
+
+    //Halo exchange including corners 
+    exchange_halo_vec(J1);
+    exchange_halo_vec(J2);
+    exchange_halo_vec(J3);
+    exchange_halo_vec(J4);
+
+    for(int x = 1; x<=mpi::width_x; x++){
+		for(int t = 1; t<=mpi::width_t; t++){
+            n = x*(mpi::width_t+2)+t;
+            get_neighbors(x, t,right, down, left, up, rsign, lsign); 
+            get_corners(x,t,x1_t_1,x_1_t_1,x_1_t1,x1_t1);
+		    Forces.val[2*n]   -= std::imag( J1[n]-J1[up] 
+                                - J2[x_1_t1] + J2[right] 
+                                - J3[right] + J3[x1_t1]
+                                + J4[down] - J4[n]
+                                );
+            Forces.val[2*n+1] -= std::imag(J1[left] - J1[n]
+                                + J2[n] - J2[right]
+                                - J3[x1_t1] + J3[down]
+                                - J4[down] + J4[x1_t_1]
+                                );
+        }
+	}
+
+
 }
 
 //Generates new configuration [U,Pi]
@@ -89,7 +140,7 @@ void HMC::Leapfrog(const spinor& phi){
 
 	Force(GConf_copy,phi); 
 
-    for (int step = 1; step < MD_steps - 1; step++) {
+    for (int step = 1; step < MD_steps; step++) {
         //PConf_copy += StepSize*force
         //Conf_copy *= exp(i * StepSize * PConf_copy)
         for(int x = 1; x<=mpi::width_x; x++){
@@ -140,7 +191,7 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     MPI_Allreduce(&local_action, &action, 1, MPI_DOUBLE, MPI_SUM, mpi::cart_comm);
     //Fermions contribution
     //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
-    CG_convergence = conjugate_gradient(GConfig.Conf, phi,TEMP);
+    CG_convergence = conjugate_gradient(GConfig, phi,TEMP);
     action += std::real( dot( TEMP, phi)); 
   
     return action;
@@ -176,9 +227,12 @@ void HMC::HMC_Update() {
     spinor phi(mpi::maxSizeH);
 
     exchange_halo(GConf.Conf.val);
-    D_phi(GConf.Conf, chi,phi);
-    Leapfrog(phi); //Evolve [Pi] and [U] 
-    double deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
+    #ifdef CLOVER
+        GConf.Compute_Q(); //Terms needed for clover
+    #endif
+    D_phi(GConf, chi,phi);
+    Leapfrog(phi); //Evolve [Pi] and [U] GConf is copied to GConf_copy inside leapfrog
+    deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
     double r;
     
     //Same random number for all ranks
@@ -203,14 +257,53 @@ void HMC::HMC_algorithm(){
     std::vector<double> SpVector(Nmeas);
     std::vector<double> gAction(Nmeas);
 	GConf.initialization(); //Initialize the gauge configuration randomly
+
+    const int adapt_begin = static_cast<int>(0.2 * Ntherm);
+    const int adapt_end   = static_cast<int>(0.8 * Ntherm);
+    //Adapt from the very first trajectory so the chain can actually move, then
+    //throw away the hot-start statistics at adapt_begin and average only over
+    //equilibrated trajectories. Freeze at adapt_end so the remaining
+    //thermalization trajectories run the exact kernel used for measurement.
+    hmc::HMCTuner tuner(trajectory_length, MD_steps, p_target, adapt_end);
+    tuner.set_verbose(mpi::rank == 0);
     for(int i = 0; i < Ntherm; i++) {
+        const int    md_used  = MD_steps;
+        const double eps_used = trajectory_length / MD_steps;
+
         HMC_Update();
-        if (i%100 == 0 && mpi::rank == 0)
-            std::cout << "Conf " << i << " out of " << Ntherm << " for thermalization" << std::endl;
-    } //Thermalization
-    therm = true; //Set the flag to true
-    if (mpi::rank == 0)
-        std::cout << "Thermalization done" <<std::endl; 
+        if (tune_MD && i < adapt_end) {
+             tuner.record(deltaH);
+             MD_steps = tuner.n_steps();
+             MPI_Bcast(&MD_steps, 1, MPI_INT, 0, mpi::cart_comm);
+         }
+
+        if (tune_MD && i == adapt_begin) tuner.reset(adapt_end - adapt_begin);
+        if (tune_MD && i == adapt_end) {
+            tuner.freeze();
+            MD_steps = tuner.n_steps();
+            MPI_Bcast(&MD_steps, 1, MPI_INT, 0, mpi::cart_comm);
+            sim_params::MD_steps = MD_steps;
+        }
+
+        if ((i+1) % 100 == 0 && mpi::rank == 0) {
+            const char* phase = !tune_MD          ? "fixed"
+                              : (i <  adapt_begin) ? "burn "
+                              : (i <  adapt_end)   ? "adapt"
+                                                   : "froze";
+            std::cout << "therm " << std::setw(6) << i+1 << "/" << Ntherm
+                      << "  [" << phase << "]"
+                      << "  MD_steps = " << std::setw(4) << md_used
+                      << "  eps = "      << std::setw(9) << eps_used
+                      << "  dH = "     << std::setw(9) << deltaH;
+            std::cout << std::endl;
+        }
+     } //Thermalization
+
+    therm = true;
+     if (mpi::rank == 0)
+        std::cout << "Thermalization done" <<std::endl;
+
+
     conf_i = 0;
     for(int i = 0; i < Nmeas; i++) {
         conf_i += 1;

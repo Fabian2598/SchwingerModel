@@ -23,6 +23,7 @@ namespace mpi{
     MPI_Comm cart_comm; //cartesian communicator
     //Datatypes for reading/writing gauge confs and rhs
     MPI_Datatype column_type;
+    MPI_Datatype column_type_vec;
     MPI_Datatype global_conf_type;
     MPI_Datatype global_conf_resized;
     MPI_Datatype local_conf_type;
@@ -37,7 +38,7 @@ namespace CG{
 }
 
 namespace BiCG{
-	int max_iter = 10000; //Maximum number of iterations for the bi-cgstab method
+	int max_iter = 15000; //Maximum number of iterations for the bi-cgstab method
 	double tol = 1e-10;   //Tolerance for convergence
     bool print_convergence_message = false; //printing convergence message, useful for testing
 }
@@ -52,4 +53,5 @@ namespace sim_params {
     int Nsteps = 1;
     std::string start_time_str = "";
     double tm = 0; //twisted mass term (default value)
+    double csw = 0; //clover term (default value)
 }
