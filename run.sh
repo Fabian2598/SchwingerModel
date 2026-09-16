@@ -17,8 +17,8 @@ NSTEPS=10 #Decorrelation steps between measurements
 SAVE=1 #0 do not save confs, 1 save confs
 
 
-sed -i "17s/set(NS \".*\")/set(NS \"${NX}\")/" "$CMAKELISTS"
-sed -i "18s/set(NT \".*\")/set(NT \"${NT}\")/" "$CMAKELISTS"
+sed -i "10s/set(NS \".*\")/set(NS \"${NX}\")/" "$CMAKELISTS"
+sed -i "11s/set(NT \".*\")/set(NT \"${NT}\")/" "$CMAKELISTS"
 
 DIR="build"
 if [ ! -d "$DIR" ]; then
