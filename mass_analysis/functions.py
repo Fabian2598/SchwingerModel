@@ -307,6 +307,11 @@ def mpi_vs_mpcac(correlator_dir,masses,beta,Nx,Nt,mean_ranges,save=False):
     g = 1/np.sqrt(beta)
     y = 2.008*(x**2*g)**(1/3)
     plt.plot(x,y,label=r"Smilga prediction $m_\pi=2.008 \left( m^2 g\right)^{1/3}$")
+    #Semiclassical prediction
+    x = np.linspace(x0,x1,500)
+    g = 1/np.sqrt(beta)
+    y = 2.1633*(x**2*g)**(1/3)
+    plt.plot(x,y,label=r"Semiclassical prediction $m_\pi=2.1633 \left( m^2 g\right)^{1/3}$")
     plt.legend()
     plt.tight_layout()
     plt.show()

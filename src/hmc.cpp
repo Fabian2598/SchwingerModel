@@ -140,7 +140,7 @@ void HMC::Leapfrog(const spinor& phi){
 
 	Force(GConf_copy,phi); 
 
-    for (int step = 1; step < MD_steps - 1; step++) {
+    for (int step = 1; step < MD_steps; step++) {
         //PConf_copy += StepSize*force
         //Conf_copy *= exp(i * StepSize * PConf_copy)
         for(int x = 1; x<=mpi::width_x; x++){
