@@ -88,9 +88,8 @@ inline double rand_range(double a, double b){
 }
 
 //----------Jackknife---------//
-std::vector<double> samples_mean(std::vector<double> dat, int bin); 
-double Jackknife_error(std::vector<double> dat, int bin); 
-double Jackknife(std::vector<double> dat, std::vector<int> bins); 
+ std::vector<double> samples_mean(std::vector<double> dat, int bin);
+ double Jackknife_error(std::vector<double> dat, int bin);
 
 //---------------Linspace (similar to python)----------------------//
 template <typename T>

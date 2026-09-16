@@ -108,12 +108,30 @@ public:
 
     // Switch to the averaged step size and stop adapting.
     void freeze() {
+        if (frozen_) return;   //idempotent: safe to call twice
         set_eps(std::exp(log_eps_bar_));
         frozen_ = true;
         if (verbose_)
             std::printf("# HMCTuner: frozen at eps = %.6f, n_steps = %d, tau = %.4f\n",
                         eps_, n_steps_, eps_ * n_steps_);
     }
+
+    // Discard all accumulated statistics and restart dual averaging from the
+    // CURRENT step size. Use this once the chain has equilibrated, so that the
+    // averaged step size is not contaminated by the hot-start phase (where the
+   // forces are unrepresentative) while still letting the tuner supply a
+    // usable step size during that phase.
+    void reset(int n_warmup) {
+        mu_          = std::log(10.0 * eps_);
+        log_eps_     = std::log(eps_);
+        log_eps_bar_ = log_eps_;
+        Hbar_        = 0.0;
+        m_           = 0;
+        n_warmup_    = n_warmup;
+        frozen_      = false;
+    }
+
+
 
     // Optional: randomise the trajectory length each update (breaks
     // resonances with periodic modes and improves ergodicity).  Call this

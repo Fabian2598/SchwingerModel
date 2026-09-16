@@ -258,39 +258,51 @@ void HMC::HMC_algorithm(){
     std::vector<double> gAction(Nmeas);
 	GConf.initialization(); //Initialize the gauge configuration randomly
 
-
-    //Adapt MD_steps at fixed trajectory_length to hit p_target acceptance.
-    //Adaptation must stop before the measurement phase: while MD_steps keeps
-    //changing the transition kernel changes too and detailed balance fails.
-    hmc::HMCTuner tuner(trajectory_length, MD_steps, p_target,
-                        std::max(1, static_cast<int>(0.8 * Ntherm)));
+    const int adapt_begin = static_cast<int>(0.2 * Ntherm);
+    const int adapt_end   = static_cast<int>(0.8 * Ntherm);
+    //Adapt from the very first trajectory so the chain can actually move, then
+    //throw away the hot-start statistics at adapt_begin and average only over
+    //equilibrated trajectories. Freeze at adapt_end so the remaining
+    //thermalization trajectories run the exact kernel used for measurement.
+    hmc::HMCTuner tuner(trajectory_length, MD_steps, p_target, adapt_end);
     tuner.set_verbose(mpi::rank == 0);
+    for(int i = 0; i < Ntherm; i++) {
+        const int    md_used  = MD_steps;
+        const double eps_used = trajectory_length / MD_steps;
 
-     for(int i = 0; i < Ntherm; i++) {
         HMC_Update();
-        if (tune_MD && tuner.adapting()) {
-            tuner.record(deltaH);
-            MD_steps = tuner.n_steps();
-            //deltaH is already MPI_Allreduce'd so every rank agrees, but keep
-           //this as a cheap guard against any rank drifting out of sync.
-            MPI_Bcast(&MD_steps, 1, MPI_INT, 0, mpi::cart_comm);
-        }
-        if (i%100 == 0 && mpi::rank == 0)
-            std::cout << "Conf " << i << " out of " << Ntherm << " for thermalization"
-                      << " (MD_steps = " << MD_steps
-                      << ", eps = " << trajectory_length/MD_steps
-                      << ", dH = " << deltaH << ")" << std::endl;
-    } //Thermalization
+        if (tune_MD && i < adapt_end) {
+             tuner.record(deltaH);
+             MD_steps = tuner.n_steps();
+             MPI_Bcast(&MD_steps, 1, MPI_INT, 0, mpi::cart_comm);
+         }
 
-    if (tune_MD) {
-        tuner.freeze();
-        MD_steps = tuner.n_steps();
-        MPI_Bcast(&MD_steps, 1, MPI_INT, 0, mpi::cart_comm);
-        sim_params::MD_steps = MD_steps; //so the metadata file records the tuned value
-    }
-     therm = true; //Set the flag to true
-    if (mpi::rank == 0)
-         std::cout << "Thermalization done" <<std::endl; 
+        if (tune_MD && i == adapt_begin) tuner.reset(adapt_end - adapt_begin);
+        if (tune_MD && i == adapt_end) {
+            tuner.freeze();
+            MD_steps = tuner.n_steps();
+            MPI_Bcast(&MD_steps, 1, MPI_INT, 0, mpi::cart_comm);
+            sim_params::MD_steps = MD_steps;
+        }
+
+        if ((i+1) % 100 == 0 && mpi::rank == 0) {
+            const char* phase = !tune_MD          ? "fixed"
+                              : (i <  adapt_begin) ? "burn "
+                              : (i <  adapt_end)   ? "adapt"
+                                                   : "froze";
+            std::cout << "therm " << std::setw(6) << i+1 << "/" << Ntherm
+                      << "  [" << phase << "]"
+                      << "  MD_steps = " << std::setw(4) << md_used
+                      << "  eps = "      << std::setw(9) << eps_used
+                      << "  dH = "     << std::setw(9) << deltaH;
+            std::cout << std::endl;
+        }
+     } //Thermalization
+
+    therm = true;
+     if (mpi::rank == 0)
+        std::cout << "Thermalization done" <<std::endl;
+
 
     conf_i = 0;
     for(int i = 0; i < Nmeas; i++) {
