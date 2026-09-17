@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
 
     std::vector<GaugeConf*> Confs; //Vector with the gauge configurations
     int nconf = 0; 
-    double m0, beta, csw; 
+    double m0, beta, csw=0; 
     std::string listFilePath;
 
     if (mpi::rank == 0){
@@ -99,6 +99,7 @@ int main(int argc, char **argv) {
         std::cout << "*                              PARAMETERS" << std::endl;
         std::cout << "* Nx = " << LV::Nx << ", Nt = " << LV::Nt << std::endl;
         std::cout << "* m0 = " << sim_params::m0 << ", kappa = " << 1/(2*(sim_params::m0 +2)) << std::endl;
+        std::cout << "* csw (clover term constant) = " << sim_params::csw << std::endl;
         std::cout << "* beta = " << sim_params::beta << std::endl;
         std::cout << "* Number of ranks on x = " << mpi::ranks_x << ", Number of ranks on t = "  << mpi::ranks_t << std::endl;
         std::cout << "* Total number of MPI ranks = " << mpi::size << std::endl;

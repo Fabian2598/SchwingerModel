@@ -366,3 +366,47 @@ def critical_mass(correlator_dir,masses,beta,Nx,Nt,mean_ranges,save=False):
     
     if save == True:
         fig.savefig("critical_mass_plot_b{0}_{1}x{2}.pdf".format(beta,Nx,Nt))
+
+
+
+def mpi_vs_mpcac_csw_and_w(correlator_dirs,masses,beta,Nx,Nt,mean_ranges,save=False):
+    """
+    m_pi vs mpcac comparison for clover and wilson fermions
+    correlator_dirs = [correlator_dir_wilson,correlator_dir_clover]
+    masses = [masses_wilson,masses_clover]
+    """
+
+    fig = plt.figure(dpi=100)
+    plt.title(r'$N_x$={0}, $N_t={1}$, $\beta$={2}'.format(Nx, Nt, beta),size=15)
+    plt.ylabel(r'$m_{\pi}$',size=15)
+    plt.xlabel(r"$m_{\mathrm{PCAC}}$",size=15)
+    x0, x1 = 0, 0.16
+    plt.xlim([x0,x1])
+    plt.ylim([0,0.5])
+
+    
+    t0, t1 = mean_ranges
+    Mpi, dMpi = compute_mpi(correlator_dirs[0],masses[0],beta,Nx,Nt,mean_ranges)
+    Mpcac, dMpcac = compute_pcac(correlator_dirs[0], masses[0], beta, Nx, Nt,mean_ranges)
+    plt.errorbar(Mpcac,Mpi,xerr=dMpcac,yerr=dMpi,fmt='*',markersize=5,elinewidth=0.5,solid_capstyle='projecting',capsize=1.5,label='Wilson fermions')
+
+    t0, t1 = mean_ranges
+    Mpi, dMpi = compute_mpi(correlator_dirs[1],masses[1],beta,Nx,Nt,mean_ranges)
+    Mpcac, dMpcac = compute_pcac(correlator_dirs[1], masses[1], beta, Nx, Nt,mean_ranges)
+    plt.errorbar(Mpcac,Mpi,xerr=dMpcac,yerr=dMpi,fmt='p',markersize=5,elinewidth=0.5,solid_capstyle='projecting',capsize=1.5,label='Wilson-clover fermions')
+
+    #Prediction by Smilga
+    x = np.linspace(x0,x1,500)
+    g = 1/np.sqrt(beta)
+    y = 2.008*(x**2*g)**(1/3)
+    plt.plot(x,y,label=r"Smilga prediction $m_\pi=2.008 \left( m^2 g\right)^{1/3}$")
+    #Semiclassical prediction
+    x = np.linspace(x0,x1,500)
+    g = 1/np.sqrt(beta)
+    y = 2.1633*(x**2*g)**(1/3)
+    plt.plot(x,y,label=r"Semiclassical prediction $m_\pi=2.1633 \left( m^2 g\right)^{1/3}$")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    if save == True:
+        fig.savefig("mpi_mpcac_b{0}_{1}x{2}_csw.pdf".format(beta,Nx,Nt))
