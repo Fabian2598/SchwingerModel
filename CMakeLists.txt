@@ -7,8 +7,8 @@ option(TWISTED_MASS "Use twisted mass fermions" OFF)
 option(CLOVER "Use clover term" OFF)
 option(BUILD_TESTS "Build unit tests" OFF)
 
-set(NS "32")   #Lattice dimension x
-set(NT "32")   #Lattice dimension t
+set(NS "64")   #Lattice dimension x
+set(NT "64")   #Lattice dimension t
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
 
 find_package(MPI REQUIRED)

@@ -38,7 +38,7 @@ namespace CG{
 }
 
 namespace BiCG{
-	int max_iter = 15000; //Maximum number of iterations for the bi-cgstab method
+	int max_iter = 30000; //Maximum number of iterations for the bi-cgstab method
 	double tol = 1e-10;   //Tolerance for convergence
     bool print_convergence_message = false; //printing convergence message, useful for testing
 }
