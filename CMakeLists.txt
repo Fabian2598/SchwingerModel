@@ -6,7 +6,7 @@ project(Schwinger_model VERSION 1.0)
 option(TWISTED_MASS "Use twisted mass fermions" OFF)
 option(CLOVER "Use clover term" OFF)
 option(BUILD_TESTS "Build unit tests" OFF)
-
+option(FOUR_FLAVORS "Four degenerate flavors of Wilson fermions (two pseudofermion fields)" OFF)
 set(NS "64")   #Lattice dimension x
 set(NT "64")   #Lattice dimension t
 configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h)
@@ -46,6 +46,14 @@ endif()
 
 if(CLOVER)
     target_compile_definitions(common_lib PUBLIC CLOVER)
+endif()
+
+#Four flavors are only implemented for plain Wilson fermions
+if(FOUR_FLAVORS)
+    if(TWISTED_MASS OR CLOVER)
+        message(FATAL_ERROR "FOUR_FLAVORS can only be used with Wilson fermions. Configure with -DTWISTED_MASS=OFF -DCLOVER=OFF")
+    endif()
+    target_compile_definitions(common_lib PUBLIC FOUR_FLAVORS)
 endif()
 
 
@@ -122,6 +130,17 @@ if(BUILD_TESTS)
     )
 
     target_link_libraries(tests_hmc
+    PRIVATE
+        common_lib
+        Catch2::Catch2WithMain
+    )
+
+    #Test pseudofermion heatbath and force (F = -dS/domega)
+    add_executable(tests_force
+        tests/tests_force.cpp
+    )
+
+    target_link_libraries(tests_force
     PRIVATE
         common_lib
         Catch2::Catch2WithMain

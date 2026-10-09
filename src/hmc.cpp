@@ -35,7 +35,7 @@ void HMC::RandomCHI() {
 }
 
 //Pure gauge force
-//NOTE: phi_dag_partialD_phi HAS TO BE CALLED FIRST
+//NOTE: It is added to Forces, so the fermion force HAS TO BE COMPUTED FIRST
 void HMC::Force_G(GaugeConf& GConfig) {
     GConfig.Compute_Staple(); //Computes staples
 
@@ -51,31 +51,43 @@ void HMC::Force_G(GaugeConf& GConfig) {
 }
 
 //Fermions force
-//2* Re[ Psi^dagger partial D / partial omega(n) D Psi], where Psi = (DD^dagger)^(-1)phi, phi = D chi
-void HMC::Force(GaugeConf& GConfig,const spinor& phi) {
+//sum_k 2* Re[ Psi_k^dagger partial D / partial omega(n) D^dagger Psi_k], where Psi_k = (DD^dagger)^(-1)phi_k, phi_k = D chi_k
+//k runs over the N_pf pseudofermion fields
+void HMC::Force(GaugeConf& GConfig,const std::vector<spinor>& phi) {
     spinor psi(mpi::maxSizeH); 
     exchange_halo(GConfig.Conf.val);
     #ifdef CLOVER
         GConfig.Compute_Q(); 
     #endif
-    CG_convergence = conjugate_gradient(GConfig, phi,psi);  //(DD^dagger)^-1 phi
-    //Save gauge configuration if CG does not converge
-    if (CG_convergence == 0){
-        std::ostringstream NameData;
-        NameData << "2D_U1_" << Nx << "x" << Nt
-                 << "_b" << format(beta)
-                 << "_m" << format(m0)
-                 << "_illConf" << illConfId << ".ctxt";
-        //GConf.SaveConf(NameData.str());
-        illConfId += 1;
-    } 
-   
-    D_dagger_phi(GConfig, psi,TEMP);
-    phi_dag_partialD_phi(GConfig,psi,TEMP,Forces); //psi^dagger partial D / partial omega(n) D psi
-    Force_G(GConfig); //Gauge force 
-    #ifdef CLOVER
-        Force_Clover(GConfig,psi,TEMP); //update clover force
-    #endif
+    Forces.clearBuffer();
+    int n;
+    for(int k = 0; k < N_pf; k++){
+        CG_convergence = conjugate_gradient(GConfig, phi[k],psi);  //(DD^dagger)^-1 phi_k
+        //Save gauge configuration if CG does not converge
+        if (CG_convergence == 0){
+            std::ostringstream NameData;
+            NameData << "2D_U1_" << Nx << "x" << Nt
+                     << "_b" << format(beta)
+                     << "_m" << format(m0)
+                     << "_illConf" << illConfId << ".ctxt";
+            //GConf.SaveConf(NameData.str());
+            illConfId += 1;
+        }
+
+        D_dagger_phi(GConfig, psi,TEMP);
+        phi_dag_partialD_phi(GConfig,psi,TEMP,Forces_pf); //psi^dagger partial D / partial omega(n) D^dagger psi
+        for(int x = 1; x<=mpi::width_x; x++){
+            for(int t = 1; t<=mpi::width_t; t++){
+                n = x*(mpi::width_t+2)+t;
+                Forces.val[2*n]   += Forces_pf.val[2*n];
+                Forces.val[2*n+1] += Forces_pf.val[2*n+1];
+            }
+        }
+        #ifdef CLOVER
+            Force_Clover(GConfig,psi,TEMP); //update clover force
+        #endif
+    }
+    Force_G(GConfig); //Gauge force
 }
 
 void HMC::Force_Clover(const GaugeConf& GConf,const spinor& left_term, const spinor& right_term){
@@ -124,7 +136,7 @@ void HMC::Force_Clover(const GaugeConf& GConf,const spinor& left_term, const spi
 }
 
 //Generates new configuration [U,Pi]
-void HMC::Leapfrog(const spinor& phi){
+void HMC::Leapfrog(const std::vector<spinor>& phi){
     double StepSize = trajectory_length / (MD_steps * 1.0);
     PConf_copy = PConf;
 	GConf_copy = GConf; //Copy of the gauge configuration
@@ -174,7 +186,7 @@ void HMC::Leapfrog(const spinor& phi){
     }
 }
 
-double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
+double HMC::Action(GaugeConf& GConfig, const std::vector<spinor>& phi) {
     double local_action = 0.0;
     double action;
     exchange_halo(GConfig.Conf.val);
@@ -189,15 +201,17 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
 	}
 
     MPI_Allreduce(&local_action, &action, 1, MPI_DOUBLE, MPI_SUM, mpi::cart_comm);
-    //Fermions contribution
-    //Phi^dagger (DD^dagger)^-1 Phi = dot(Phi,(DD^dagger)^-1 Phi) (the dot function takes into account the dagger)
-    CG_convergence = conjugate_gradient(GConfig, phi,TEMP);
-    action += std::real( dot( TEMP, phi)); 
-  
+    //Fermions contribution, one term for each pseudofermion field
+    //Phi_k^dagger (DD^dagger)^-1 Phi_k = dot(Phi_k,(DD^dagger)^-1 Phi_k) (the dot function takes into account the dagger)
+    for(int k = 0; k < N_pf; k++){
+        CG_convergence = conjugate_gradient(GConfig, phi[k],TEMP);
+        action += std::real( dot( TEMP, phi[k]));
+    }
+
     return action;
 }
 
-double HMC::Hamiltonian(GaugeConf& GConfig, const re_field& Pi,const spinor& phi) {
+double HMC::Hamiltonian(GaugeConf& GConfig, const re_field& Pi,const std::vector<spinor>& phi) {
     double local_H = 0;
     //Momentum contribution
     int n;
@@ -220,17 +234,18 @@ void HMC::HMC_Update() {
    
 	//PConf = RandomMomentum(); //random momentum conf sampled from a normal distribution
     RandomPI(); 
-    //pseudofermions phi = D chi, where chi is normaly sampled
-    //spinor chi = RandomChi();
-    RandomCHI();
-
-    spinor phi(mpi::maxSizeH);
+    //pseudofermions phi_k = D chi_k, where chi_k is normaly sampled.
+    //There is one independent field for each pair of degenerate flavors.
+    std::vector<spinor> phi(N_pf, spinor(mpi::maxSizeH));
 
     exchange_halo(GConf.Conf.val);
     #ifdef CLOVER
         GConf.Compute_Q(); //Terms needed for clover
     #endif
-    D_phi(GConf, chi,phi);
+    for(int k = 0; k < N_pf; k++){
+        RandomCHI();
+        D_phi(GConf, chi,phi[k]);
+    }
     Leapfrog(phi); //Evolve [Pi] and [U] GConf is copied to GConf_copy inside leapfrog
     deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
     double r;

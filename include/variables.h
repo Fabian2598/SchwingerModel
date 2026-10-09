@@ -14,6 +14,17 @@ constexpr double l_16 = 1.0/16.0;
 typedef std::complex<double> c_double;
 const c_double I_number(0,1); //imaginary number
 
+//Number of degenerate flavors. Each pseudofermion field accounts for a pair of them, since det(D)^2 = det(DD^dagger)
+#ifdef FOUR_FLAVORS
+    #if defined(CLOVER) || defined(TWISTED_MASS)
+        #error "FOUR_FLAVORS can only be used with Wilson fermions (no CLOVER or TWISTED_MASS)"
+    #endif
+constexpr int Nf = 4;
+#else
+constexpr int Nf = 2;
+#endif
+constexpr int N_pf = Nf/2; //Number of pseudofermion fields
+
 namespace mpi{
     extern int rank;     //rank ID
     extern int size;     //number of ranks
@@ -90,7 +101,8 @@ struct spinor_template{
 
     explicit spinor_template(int N = LV::Ntot) : size(N), val(new T[N]()) {}
 
-    spinor_template(const spinor_template& other) : size(other.size), val(new T[size]) {
+    //val is declared before size, so it is initialized first and must not read the member size
+    spinor_template(const spinor_template& other) : size(other.size), val(new T[other.size]) {
         std::copy(other.val, other.val + size, val);
     }
 

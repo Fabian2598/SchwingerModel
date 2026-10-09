@@ -29,7 +29,7 @@ if [ ! -d "$DIR" ]; then
 fi
 
 echo "--------Compiling for Nx=${NX}, Nt=${NT}--------"
-cmake -S . -B build -DTWISTED_MASS=OFF -DCLOVER=OFF -DBUILD_TESTS=OFF
+cmake -S . -B build -DTWISTED_MASS=OFF -DCLOVER=OFF -DFOUR_FLAVORS=OFF -DBUILD_TESTS=OFF
 cmake --build build
 mv build/SM_${NX}x${NT} . 
 #If compiled with twisted mass or clover, the parameters file must be updated accordingly

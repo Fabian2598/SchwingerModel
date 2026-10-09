@@ -21,6 +21,7 @@ public:
 		PConf = re_field(mpi::maxSizeH); //Momenta PI
 		PConf_copy = re_field(mpi::maxSizeH); //Momenta PI copy
 		Forces = re_field(mpi::maxSizeH); //Forces
+		Forces_pf = re_field(mpi::maxSizeH); //Fermion force of a single pseudofermion field
 		chi = spinor(mpi::maxSizeH);
 		TEMP = spinor(mpi::maxSizeH); //buffer
 
@@ -52,6 +53,7 @@ public:
 	double getacceptance_rate(int conf_number) { return acceptance_rate/((conf_number)*1.0); }
 
 private:
+	friend struct HMC_test_access; //Gives the programs in tests/ access to the private members
 	int Nx, Nt, Ntot;
 	int MD_steps, Ntherm, Nmeas, Nsteps;
 	int saveconf;
@@ -71,6 +73,7 @@ private:
 	re_field PConf; //Momenta PI
 	re_field PConf_copy; //Momenta PI copy
 	re_field Forces; //Forces
+	re_field Forces_pf; //Fermion force of a single pseudofermion field
 	GaugeConf GConf; //Gauge configuration
 	GaugeConf GConf_copy; //Copy of the gauge configuration
 	spinor chi;
@@ -82,12 +85,13 @@ private:
 	c_double* J3;
 	c_double* J4;
 
-	double Action(GaugeConf& GConfig, const spinor& phi);
+	//phi holds the N_pf pseudofermion fields, one for each pair of degenerate flavors
+	double Action(GaugeConf& GConfig, const std::vector<spinor>& phi);
 	void Force_G(GaugeConf& GConfig); //force for gauge part
 	void Force_Clover(const GaugeConf& GConfig,const spinor& left_term, const spinor& right_term); //Clover term contribution
-	void Force(GaugeConf& GConfig, const spinor& phi); //force_G + fermions + Clover
-	void Leapfrog(const spinor& phi );
-	double Hamiltonian(GaugeConf& GConfig, const re_field& Pi, const spinor& phi);
+	void Force(GaugeConf& GConfig, const std::vector<spinor>& phi); //force_G + fermions + Clover
+	void Leapfrog(const std::vector<spinor>& phi);
+	double Hamiltonian(GaugeConf& GConfig, const re_field& Pi, const std::vector<spinor>& phi);
 	void HMC_Update();
 
 	void RandomPI();

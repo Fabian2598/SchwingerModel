@@ -1,0 +1,456 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{HMC implementation, $N_f=4$}
+\cfoot{\thepage}
+\setlength{\headheight}{14pt}
+
+%Ruled float for pseudocode (does not depend on the algorithm/algorithmicx packages)
+\floatstyle{ruled}
+\newfloat{algorithm}{tbp}{loa}
+\floatname{algorithm}{Algorithm}
+
+\newcommand{\n}{\mathbf{n}}
+\newcommand{\z}{\mathbf{z}}
+\newcommand{\Nf}{N_f}
+\newcommand{\Npf}{N_{\mathrm{pf}}}
+\newcommand{\NMD}{N_{\mathrm{MD}}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\hmcdoc}{\texttt{HMC\_doc.pdf}}
+
+\title{\textbf{DOCUMENTATION}\\[0.8em]
+\normalsize\emph{Hybrid Monte Carlo implementation for the four-flavor Schwinger model}}
+\author{JFN Castellanos}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent
+This document describes the extension of the Hybrid Monte Carlo (HMC) code to four degenerate flavors of
+Wilson fermions. It is a supplement to the documentation of the two-flavor code, \hmcdoc, and equation numbers
+written as (H.$n$) refer to equation ($n$) of that document. All conventions are unchanged: the lattice and the
+link variables, the $\gamma$ matrices of eq.~(H.15), the Wilson operator of eq.~(H.14), the antiperiodic boundary
+conditions of the fermion fields in the time direction, and the definition of the derivative with respect to a link,
+eq.~(H.23). Section~\ref{sec:action} derives the effective action, Sections~\ref{sec:heatbath}--\ref{sec:force}
+give the pseudofermion heatbath, the Hamiltonian and the force, Section~\ref{sec:cost} discusses the cost and
+alternative formulations, Section~\ref{sec:code} maps the equations onto the code, Section~\ref{sec:measurements}
+comments on the measurements, and Section~\ref{sec:validation} reports the tests of the implementation.
+
+The four-flavor version is selected at compile time,
+\begin{verbatim}
+    cmake -S . -B build -DFOUR_FLAVORS=ON
+    cmake --build build
+\end{verbatim}
+and is only available for Wilson fermions: CMake stops with an error if \code{-DFOUR\_FLAVORS=ON} is combined with
+\code{-DCLOVER=ON} or \code{-DTWISTED\_MASS=ON}. The runtime input parameters are the same as for the two-flavor
+Wilson build.
+
+%----------------------------------------------------------------------------------------------------------
+\section{Effective action for four degenerate flavors}
+\label{sec:action}
+
+For $\Nf$ degenerate flavors without any flavor-mixing term, the Dirac operator in flavor space is
+$\mathbb{1}_{\Nf}\otimes D$, with $D$ the Wilson operator of eq.~(H.14), and the partition function is
+\begin{equation}
+    Z = \int \mathcal{D}[U]\, e^{-S_G[U]}\, \bigl[\det(D)\bigr]^{\Nf},
+    \qquad
+    S_G[U] = \beta \sum_{\n} \mathrm{Re}\bigl(1-U_{01}(\n)\bigr).
+    \label{eq:Z}
+\end{equation}
+The Wilson operator is $\gamma_5$-hermitian, $D^\dagger = \gamma_5 D \gamma_5$, eq.~(H.19). This implies
+$\det(D) = \det(D^\dagger) = \det(D)^*$, i.e.\ the determinant is real (but not necessarily positive). For
+$\Nf = 4$ we can therefore write
+\begin{equation}
+    \bigl[\det(D)\bigr]^4 = \bigl[\det(D)\det(D^\dagger)\bigr]^2 = \bigl[\det(DD^\dagger)\bigr]^2 \geq 0,
+    \label{eq:det4}
+\end{equation}
+so the four-flavor weight is the square of the two-flavor weight and has no sign problem. Each factor
+$\det(DD^\dagger)$ is represented by a Gaussian integral over a complex pseudofermion field, as in eq.~(H.18).
+With two independent fields $\Phi_1$ and $\Phi_2$,
+\begin{equation}
+    \bigl[\det(DD^\dagger)\bigr]^2
+    = \pi^{-2N} \int \mathcal{D}[\Phi_{1,R}]\,\mathcal{D}[\Phi_{1,I}]\,\mathcal{D}[\Phi_{2,R}]\,\mathcal{D}[\Phi_{2,I}]\,
+      \exp\Bigl(-\sum_{k=1}^{2} \Phi_k^\dagger \bigl(DD^\dagger\bigr)^{-1} \Phi_k\Bigr),
+    \label{eq:pf}
+\end{equation}
+where $N = 2N_xN_t$ is the number of complex components of each field. The effective action that replaces
+eq.~(H.20) is therefore
+\begin{equation}
+    S[U,\Phi_1,\Phi_2] = \beta \sum_{\n} \mathrm{Re}\bigl(1-U_{01}(\n)\bigr)
+    + \sum_{k=1}^{2} \sum_{\n,\n'} \sum_{\alpha,\beta=0}^{1}
+      \Phi_{k,\alpha}^*(\n') \bigl[(DD^\dagger)^{-1}\bigr]^{\alpha\beta}_{\n',\n} \Phi_{k,\beta}(\n).
+    \label{eq:S}
+\end{equation}
+Each pseudofermion field accounts for one pair of degenerate flavors. More generally, $\Nf = 2\Npf$ flavors are
+simulated with $\Npf$ pseudofermion fields, and this is how the code is written: the number of fields is the
+compile-time constant \code{N\_pf = Nf/2}, with \code{Nf = 4} if the code is compiled with \code{FOUR\_FLAVORS}
+and \code{Nf = 2} otherwise. For $\Npf = 1$ all the expressions below reduce exactly to those of Section~2 of
+\hmcdoc.
+
+%----------------------------------------------------------------------------------------------------------
+\section{Pseudofermion heatbath}
+\label{sec:heatbath}
+
+At the beginning of every trajectory both pseudofermion fields are generated anew. For $k = 1,2$ we draw a
+complex field $\chi_k$ with probability $P[\chi_k] \propto \exp(-\chi_k^\dagger\chi_k)$, i.e.\ the real and
+imaginary parts of every component are independent normal variables with zero mean and variance $1/2$, and set
+\begin{equation}
+    \Phi_k = D\,\chi_k, \qquad k = 1,2.
+    \label{eq:heatbath}
+\end{equation}
+Since $\chi_k^\dagger\chi_k = \Phi_k^\dagger (D^\dagger)^{-1} D^{-1}\Phi_k = \Phi_k^\dagger (DD^\dagger)^{-1}\Phi_k$
+and the Jacobian of the change of variables depends on $U$ only, at fixed $U$ the field $\Phi_k$ is distributed
+according to $\exp\bigl(-\Phi_k^\dagger(DD^\dagger)^{-1}\Phi_k\bigr)$, as required by eq.~\eqref{eq:pf}. On the
+configuration where they are generated, the fields satisfy
+\begin{equation}
+    \Phi_k^\dagger (DD^\dagger)^{-1}\Phi_k = \chi_k^\dagger\chi_k ,
+    \label{eq:identity}
+\end{equation}
+which is a convenient check of the operators and of the solver.
+
+The two fields must be drawn independently. If the same $\chi$ were used for both, then $\Phi_1 = \Phi_2 = \Phi$
+and the fermion action would be $2\Phi^\dagger(DD^\dagger)^{-1}\Phi$. The Gaussian integral of this action is
+proportional to $\det(DD^\dagger)$, i.e.\ to the \emph{two}-flavor weight. The simulation would then sample the
+wrong theory while the force would still be the exact derivative of the action, so the error would not show up in
+the energy violation or in the acceptance rate. In the code, a new $\chi_k$ is drawn for each $k$.
+
+%----------------------------------------------------------------------------------------------------------
+\section{Hamiltonian and molecular dynamics}
+\label{sec:md}
+
+The Hamiltonian is
+\begin{equation}
+    H[\pi,U] = \frac{1}{2}\pi^2 + S_G[U] + \sum_{k=1}^{2} \Phi_k^\dagger \bigl(DD^\dagger\bigr)^{-1} \Phi_k ,
+    \label{eq:H}
+\end{equation}
+with $\pi^2$ as in eq.~(H.3). The pseudofermion fields are kept fixed along the trajectory, so they act as
+external fields for the molecular dynamics. The leapfrog integrator (Algorithm~2 of \hmcdoc), the
+accept/reject step with probability $\min[1,\exp(-\Delta H)]$, and the automatic tuning of the number of
+molecular dynamics steps (Section~6 of \hmcdoc) are unchanged. Both $H[\pi',U']$ and $H[\pi,U]$ in
+$\Delta H$ are evaluated with the same $\Phi_1$ and $\Phi_2$.
+
+%----------------------------------------------------------------------------------------------------------
+\section{The fermion force}
+\label{sec:force}
+
+The force is defined as in eq.~(H.24),
+\begin{equation}
+    F_\mu(\n) \equiv -\left.\frac{\partial S[U,\Phi_1,\Phi_2]}{\partial\omega_\mu(\n)}\right|_{\omega_\mu(\n)=0}
+    = F_\mu^{\mathrm{gauge}}(\n)
+    - \sum_{k=1}^{2} \Phi_k^\dagger\,
+      \left.\frac{\partial (DD^\dagger)^{-1}}{\partial\omega_\mu(\n)}\right|_{\omega_\mu(\n)=0}\Phi_k ,
+    \label{eq:F_def}
+\end{equation}
+where the gauge force is the one of eq.~(H.10),
+\begin{equation}
+    F_\mu^{\mathrm{gauge}}(\n) = -\beta\,\mathrm{Im}\bigl[U_\mu(\n)K_\mu^\dagger(\n)\bigr],
+\end{equation}
+with the staples $K_\mu(\n)$ of eq.~(H.11). The action~\eqref{eq:S} is a sum over the pseudofermion fields, so
+the fermionic part of the force is the sum of the forces of the individual fields. Each term is handled exactly as
+in eqs.~(H.25)--(H.29),
+\begin{equation}
+    \Phi_k^\dagger\,\frac{\partial (DD^\dagger)^{-1}}{\partial\omega_\mu(\n)}\,\Phi_k
+    = -2\,\mathrm{Re}\left[\psi_k^\dagger\,\frac{\partial D}{\partial\omega_\mu(\n)}\,D^\dagger\psi_k\right],
+    \qquad
+    \psi_k = \bigl(DD^\dagger\bigr)^{-1}\Phi_k .
+    \label{eq:F_k}
+\end{equation}
+Inserting the derivative of the Wilson operator, eqs.~(H.30) and (H.31), and defining
+\begin{equation}
+    \eta_k = D^\dagger\psi_k ,
+    \label{eq:eta}
+\end{equation}
+we obtain the generalization of eq.~(H.32),
+\begin{equation}
+    \boxed{
+    \begin{aligned}
+    F_\mu(\n) = F_\mu^{\mathrm{gauge}}(\n)
+    + \sum_{k=1}^{2} \mathrm{Im}\biggl(\sum_{\alpha\beta}\Bigl[
+      &\psi_{k,\alpha}^*(\n)\,(1-\gamma_\mu)^{\alpha\beta}\,U_\mu(\n)\,\eta_{k,\beta}(\n+\hat\mu) \\
+    - &\psi_{k,\alpha}^*(\n+\hat\mu)\,(1+\gamma_\mu)^{\alpha\beta}\,U_\mu^\dagger(\n)\,\eta_{k,\beta}(\n)
+    \Bigr]\biggr).
+    \end{aligned}
+    }
+    \label{eq:F}
+\end{equation}
+The gauge force enters once, while the fermionic term is the two-flavor expression evaluated once for each
+pseudofermion field. Note that the field $\eta_k$ of eq.~\eqref{eq:eta} plays the role of the field called $\chi$ in
+eq.~(H.32); we use a different symbol to avoid confusion with the heatbath field of eq.~\eqref{eq:heatbath}.
+(On the configuration where the pseudofermions are generated, the two coincide:
+$D^\dagger(DD^\dagger)^{-1}D\chi_k = \chi_k$.)
+
+With the $\gamma$ matrices of eq.~(H.15) the spin sums can be unrolled. Writing $\psi_{k,\alpha}^*$ for the complex
+conjugate of the component $\alpha$ of $\psi_k$, eqs.~(H.37) and (H.38) become
+\begin{align}
+    F_0(\n) - F_0^{\mathrm{gauge}}(\n) = \sum_{k=1}^{2} \mathrm{Im}\Bigl[\,
+      &U_0(\n)\bigl(\psi_{k,0}^*(\n)-\psi_{k,1}^*(\n)\bigr)\bigl(\eta_{k,0}(\n+\hat0)-\eta_{k,1}(\n+\hat0)\bigr)
+      \nonumber\\
+    - &U_0^\dagger(\n)\bigl(\psi_{k,0}^*(\n+\hat0)+\psi_{k,1}^*(\n+\hat0)\bigr)\bigl(\eta_{k,0}(\n)+\eta_{k,1}(\n)\bigr)
+      \Bigr],
+    \label{eq:F0}
+    \\[0.5em]
+    F_1(\n) - F_1^{\mathrm{gauge}}(\n) = \sum_{k=1}^{2} \mathrm{Im}\Bigl[\,
+      &U_1(\n)\bigl(\psi_{k,0}^*(\n)-i\,\psi_{k,1}^*(\n)\bigr)\bigl(\eta_{k,0}(\n+\hat1)+i\,\eta_{k,1}(\n+\hat1)\bigr)
+      \nonumber\\
+    - &U_1^\dagger(\n)\bigl(\psi_{k,0}^*(\n+\hat1)+i\,\psi_{k,1}^*(\n+\hat1)\bigr)\bigl(\eta_{k,0}(\n)-i\,\eta_{k,1}(\n)\bigr)
+      \Bigr].
+    \label{eq:F1}
+\end{align}
+Because of the antiperiodic boundary conditions, both terms of $F_0(\n)$ are multiplied by $-1$ when $\n$ lies on
+the last time slice, since they couple $\n$ to its neighbor $\n+\hat0$ across the time boundary. In the code this is
+the factor \code{rsign} returned by \code{get\_neighbors}, exactly as in the two-flavor case.
+
+%----------------------------------------------------------------------------------------------------------
+\section{Cost and alternative formulations}
+\label{sec:cost}
+
+\paragraph{Cost.}
+Every evaluation of the force requires one solution of $(DD^\dagger)\psi_k = \Phi_k$ with conjugate gradient for
+each pseudofermion field, followed by one application of $D^\dagger$ and one evaluation of eq.~\eqref{eq:F}. In the
+leapfrog of \hmcdoc\ the force is evaluated $\NMD$ times per trajectory, and the action is evaluated twice for
+$\Delta H$ (at the initial and final configurations). The number of conjugate gradient solves per trajectory is
+therefore
+\begin{equation}
+    \Npf\,(\NMD + 2),
+\end{equation}
+twice as many as for two flavors at the same $\NMD$. The conjugate gradient solver itself is unchanged.
+
+\paragraph{Step size.}
+The fermion force of eq.~\eqref{eq:F} is the sum of two independent stochastic contributions, and the four-flavor
+weight changes the typical gauge fields, so the integration error at a given step size differs from the two-flavor
+case and $\NMD$ has to be tuned again. No manual intervention is needed: the automatic tuning of Section~6 of
+\hmcdoc\ adjusts $\NMD$ during thermalization with the same target acceptance. In the test of
+Section~\ref{sec:validation} ($32\times32$, $\beta=4$, $m_0=0.2$) the tuner chose the same $\NMD$ for two and four
+flavors, so the cost per trajectory was dominated by the doubled number of solves.
+
+\paragraph{Alternatives (not implemented).}
+The same weight $[\det(DD^\dagger)]^2$ can be obtained with a single pseudofermion field and the action
+$\Phi^\dagger(DD^\dagger)^{-2}\Phi$, generated by $\Phi = DD^\dagger\chi$. Writing $\psi = (DD^\dagger)^{-1}\Phi$
+and $\xi = (DD^\dagger)^{-1}\psi$, its fermion force is
+\begin{equation}
+    2\,\mathrm{Re}\left[\xi^\dagger\,\frac{\partial D}{\partial\omega_\mu(\n)}\,D^\dagger\psi
+    + \psi^\dagger\,\frac{\partial D}{\partial\omega_\mu(\n)}\,D^\dagger\xi\right].
+\end{equation}
+This also costs two conjugate gradient solves per force evaluation, but the kernel $(DD^\dagger)^{-2}$ has the
+square of the condition number of $DD^\dagger$, which produces larger forces and requires a smaller step size.
+Two pseudofermion fields with the kernel $(DD^\dagger)^{-1}$ are therefore preferable. Further improvements, such as
+mass preconditioning~\cite{Hasenbusch2001} or the rational HMC with several pseudofermion
+fields~\cite{ClarkKennedy2007} (which would also allow an odd number of flavors), would require more extensive
+changes and are not part of this implementation.
+
+%----------------------------------------------------------------------------------------------------------
+\section{Implementation}
+\label{sec:code}
+
+Only the action, the force and the pseudofermion generation of the HMC depend on the number of flavors. The
+Dirac operator, the conjugate gradient solver, the gauge force, the leapfrog integrator, the step-size tuner,
+the halo exchange and the input/output of configurations are shared with the two-flavor code without
+modification. Table~\ref{tab:code} lists the changes. Algorithm~\ref{alg:traj} summarizes one trajectory.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{0.24\textwidth}p{0.70\textwidth}}
+\toprule
+File & Change \\
+\midrule
+\code{CMakeLists.txt} &
+New option \code{FOUR\_FLAVORS} (default \code{OFF}), which defines the macro \code{FOUR\_FLAVORS}. Configuration
+fails if it is combined with \code{CLOVER} or \code{TWISTED\_MASS}. \\
+\code{include/variables.h} &
+Compile-time constants \code{Nf} (4 or 2) and \code{N\_pf = Nf/2}, with an \code{\#error} if \code{FOUR\_FLAVORS} is
+combined with \code{CLOVER} or \code{TWISTED\_MASS}. Fix of the copy constructor of \code{spinor\_template} (see
+below). \\
+\code{include/hmc.h}, \code{src/hmc.cpp} &
+The pseudofermions are a \code{std::vector<spinor>} with \code{N\_pf} entries, passed to \code{Leapfrog},
+\code{Force}, \code{Action} and \code{Hamiltonian}. \code{HMC\_Update} draws an independent $\chi_k$ for each field,
+eq.~\eqref{eq:heatbath}. \code{Action} sums eq.~\eqref{eq:H} over the fields. \code{Force} clears the force array,
+accumulates eq.~\eqref{eq:F} field by field (using the new buffer \code{Forces\_pf}), and finally adds the gauge
+force. The class declares \code{HMC\_test\_access} as friend, so that the tests can call its private members. \\
+\code{src/main.cpp}, \code{src/utils.cpp} &
+The banner, the parameter printout and the \code{\_SimData.txt} metadata file report the number of flavors. \\
+\code{run.sh}, \code{README.md} &
+\code{run.sh} passes \code{-DFOUR\_FLAVORS=OFF} explicitly, like the other options, so that a cached
+\code{FOUR\_FLAVORS=ON} cannot silently produce a four-flavor executable. The \code{README} describes the new build
+option. \\
+\code{tests/tests\_force.cpp} \newline \code{tests/reweighting/} &
+Tests of Section~\ref{sec:validation}. \code{tests\_force} is a new target of the \code{BUILD\_TESTS} block of
+\code{CMakeLists.txt}. \\
+\bottomrule
+\end{tabular}
+\caption{Changes in the code for the four-flavor build.}
+\label{tab:code}
+\end{table}
+
+The function \code{phi\_dag\_partialD\_phi}, which evaluates the fermionic term of eq.~\eqref{eq:F} for a single
+field, overwrites its output array. For this reason \code{HMC::Force} writes the contribution of each field into
+the buffer \code{Forces\_pf} and adds it to \code{Forces}. If the code is compiled with the clover term (only possible
+with two flavors), the clover force is added inside the same loop, since it is also a per-field contribution.
+
+The copy constructor of \code{spinor\_template} allocated its buffer with the member \code{size} before that member
+was initialized (members are initialized in declaration order, and \code{val} is declared before \code{size}). This
+did not affect the two-flavor code, which never copy-constructed a spinor, but it is triggered by the
+\code{std::vector<spinor>} of pseudofermions and was fixed by allocating \code{other.size} elements.
+
+\begin{algorithm}[h]
+\caption{One HMC trajectory with $\Npf$ pseudofermion fields ($\Npf = 2$ for four flavors)}
+\label{alg:traj}
+\begin{tabbing}
+\hspace*{1.5em}\=\hspace*{1.5em}\=\hspace*{1.5em}\=\kill
+Draw $\pi_\mu(\n)$ from $\exp(-\pi^2/2)$ \quad$\triangleright$~\code{RandomPI} \\
+\textbf{for} $k = 1,\dots,\Npf$ \textbf{do} \\
+\> Draw $\chi_k$ from $\exp(-\chi_k^\dagger\chi_k)$ and set $\Phi_k = D[U]\,\chi_k$
+ \quad$\triangleright$~\code{RandomCHI}, \code{D\_phi} \\
+\textbf{end for} \\
+Integrate $[\pi,U]\to[\pi',U']$ with leapfrog (Algorithm 2 of \hmcdoc), where every force evaluation is \\
+\> $F \leftarrow 0$ \\
+\> \textbf{for} $k = 1,\dots,\Npf$ \textbf{do} \\
+\>\> $\psi_k = (DD^\dagger)^{-1}\Phi_k$, \quad $\eta_k = D^\dagger\psi_k$ \quad$\triangleright$~\code{conjugate\_gradient}, \code{D\_dagger\_phi} \\
+\>\> $F \mathrel{+}=$ fermionic term of eq.~\eqref{eq:F} with $\psi_k$, $\eta_k$ \quad$\triangleright$~\code{phi\_dag\_partialD\_phi} \\
+\> \textbf{end for} \\
+\> $F \mathrel{+}= F^{\mathrm{gauge}}$ \quad$\triangleright$~\code{Force\_G} \\
+$\Delta H = H[\pi',U'] - H[\pi,U]$ with eq.~\eqref{eq:H}, using the same $\Phi_1,\dots,\Phi_{\Npf}$ \quad$\triangleright$~\code{Hamiltonian} \\
+Accept $U'$ with probability $\min[1,\exp(-\Delta H)]$
+\end{tabbing}
+\end{algorithm}
+
+%----------------------------------------------------------------------------------------------------------
+\section{Measurements}
+\label{sec:measurements}
+
+The program \code{mass\_NSxNT}, which computes the pion and PCAC correlators, does not depend on the number of
+flavors and is unchanged. The pion correlator used there is that of a flavor non-singlet operator such as
+$\bar d\gamma_5 u$. For degenerate flavors its Wick contraction contains only the connected diagram for any $\Nf$,
+so the same expression applies to the four-flavor ensembles, where there are $\Nf^2-1 = 15$ degenerate pions. The
+same holds for the PCAC mass. The \code{mass\_NSxNT} executable produced by the four-flavor build is identical to
+the one of the two-flavor Wilson build, and either of them can be used to analyze the four-flavor configurations.
+
+Two physical differences with respect to two flavors are worth keeping in mind when analyzing the results. First,
+the critical bare mass is different. The values quoted in the \code{README} are for two flavors and must be
+determined anew for $\Nf = 4$. Second, in the continuum massive $\Nf$-flavor Schwinger model the mass of the
+flavor-singlet boson is $\mu^2 = \Nf g^2/\pi$, while the mass of the light non-singlet mesons scales with the
+fermion mass as $m^{\Nf/(\Nf+1)}$~\cite{Coleman1976,Hetrick1995}: $m^{2/3}$ for two flavors and $m^{4/5}$ for four
+flavors.
+
+%----------------------------------------------------------------------------------------------------------
+\section{Validation}
+\label{sec:validation}
+
+The implementation was tested as described below. The heatbath and force tests are in \code{tests/tests\_force.cpp}
+(built with \code{-DBUILD\_TESTS=ON} and run with 4 MPI ranks). They apply to every build option. The reweighting test
+is run by the script \texttt{\nolinkurl{tests/reweighting/run_reweighting_test.sh}}, which builds two- and four-flavor versions of the code on
+a $4\times4$ lattice in a temporary directory.
+
+\paragraph{Heatbath identity.}
+On a random $64\times64$ gauge field, eq.~\eqref{eq:identity} holds to a relative precision of $10^{-15}$ for both
+builds, with one and with $2\times2$ MPI ranks.
+
+\paragraph{Force versus action.}
+The force computed by \code{HMC::Force} was compared with a central finite difference of the action computed by
+\code{HMC::Action},
+\begin{equation}
+    F_\mu(\n) \simeq -\frac{S\bigl[e^{i\epsilon}U_\mu(\n)\bigr] - S\bigl[e^{-i\epsilon}U_\mu(\n)\bigr]}{2\epsilon},
+    \qquad \epsilon = 10^{-5},
+\end{equation}
+at fixed pseudofermion fields, on a random $64\times64$ gauge field with $\beta = 2$, $m_0 = 0.5$ and a conjugate
+gradient tolerance of $10^{-14}$. Twelve links were tested, in both directions, including links on the last time
+slice (antiperiodic boundary) and links at the boundaries between MPI subdomains. With one rank and with
+$2\times2$ ranks, the largest absolute deviation is $3\times10^{-6}$, for forces of order one, which is consistent
+with the solver tolerance and the rounding error of the finite difference. For comparison, the contribution of the
+second pseudofermion field alone has an average magnitude of $0.85$ on the tested links, so omitting it would
+be detected by more than five orders of magnitude.
+
+\paragraph{Energy conservation.}
+For an exact HMC, $\langle e^{-\Delta H}\rangle = 1$, eq.~(63) of \hmcdoc. In the runs of the next paragraph,
+$\langle e^{-\Delta H}\rangle = 1.00003(16)$ and $0.99987(9)$ for four flavors, and $0.99990(10)$ and $1.00000(7)$
+for two flavors.
+
+\paragraph{Exact reweighting.}
+The first three tests check the internal consistency of the force and the action, but they would not detect a wrong
+weight, for instance the use of the same $\chi$ for both pseudofermion fields (Section~\ref{sec:heatbath}). The
+weight itself is tested by the exact relation
+\begin{equation}
+    \langle O\rangle_{\Nf=4} = \frac{\bigl\langle O\,[\det(D)]^2\bigr\rangle_{\Nf=2}}{\bigl\langle [\det(D)]^2\bigr\rangle_{\Nf=2}},
+    \label{eq:rw}
+\end{equation}
+which follows from eq.~\eqref{eq:Z}. On a $4\times4$ lattice, where $\det(D)$ can be computed exactly from the dense
+$32\times32$ Wilson matrix, we generated $4\times10^5$ trajectories (four independent chains, $\NMD = 10$, trajectory
+length 1) with each build, and compared the direct four-flavor averages with the right-hand side of
+eq.~\eqref{eq:rw}. Table~\ref{tab:rw} shows the results for the average plaquette and for $\log|\det(D)|$, with
+jackknife errors (100 blocks). The direct and reweighted averages agree within $1.1\,\sigma$, while the two- and
+four-flavor values differ by more than $100\,\sigma$. In all configurations $\det(D)$ was real to machine precision,
+as expected from $\gamma_5$-hermiticity. The script uses the same parameters with $2\times10^5$ trajectories per
+build by default. It reports a failure if a direct and a reweighted average differ by more than $3\,\sigma$, if
+$\langle e^{-\Delta H}\rangle$ differs from one by more than $3\,\sigma$, or if the two- and four-flavor averages are
+not separated by at least $5\,\sigma$ (in which case the test would have no power).
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{cccccc}
+\toprule
+$(\beta, m_0)$ & Observable & $\Nf=2$ direct & $\Nf=4$ direct & $\Nf=2$ reweighted to $\Nf=4$ & Deviation \\
+\midrule
+$(2.0,\,0.0)$ & plaquette       & 0.73895(25) & 0.77673(21) & 0.77674(23) & $0.0\,\sigma$ \\
+              & $\log|\det D|$  & 23.1934(12) & 23.4692(10) & 23.4703(9)  & $0.9\,\sigma$ \\
+$(1.0,\,0.1)$ & plaquette       & 0.48303(33) & 0.53341(33) & 0.53397(38) & $1.1\,\sigma$ \\
+              & $\log|\det D|$  & 24.1582(6)  & 24.3482(8)  & 24.3494(8)  & $1.1\,\sigma$ \\
+\bottomrule
+\end{tabular}
+\caption{Reweighting test on a $4\times4$ lattice. The last column is the difference between the direct and the
+reweighted four-flavor averages in units of the combined error.}
+\label{tab:rw}
+\end{table}
+
+\paragraph{End-to-end run.}
+Finally, the executables \code{SM\_32x32} of both builds were run through the standard input on $2\times2$ MPI ranks,
+with $\beta = 4$, $m_0 = 0.2$, trajectory length 1, initial $\NMD = 10$, 500 thermalization trajectories with
+step-size tuning and 200 measurements. Table~\ref{tab:run32} summarizes the output. The ratio of execution times,
+1.8, is close to the factor 2 in the number of conjugate gradient solves at equal $\NMD$.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{cccccc}
+\toprule
+$\Nf$ & Tuned $\NMD$ & Acceptance & Plaquette & Gauge action / volume & Execution time \\
+\midrule
+2 & 16 & 0.82 & 0.86693(48) & 0.5323(19) & 111 s \\
+4 & 16 & 0.81 & 0.87117(49) & 0.5153(20) & 202 s \\
+\bottomrule
+\end{tabular}
+\caption{Short runs on a $32\times32$ lattice with $\beta = 4$ and $m_0 = 0.2$ ($2\times2$ MPI ranks). The errors are the
+jackknife errors (20 blocks) printed by the program; with 200 measurements they are only indicative.}
+\label{tab:run32}
+\end{table}
+
+%----------------------------------------------------------------------------------------------------------
+\begin{thebibliography}{9}
+
+\bibitem{Hasenbusch2001}
+M.~Hasenbusch, \emph{Speeding up the Hybrid Monte Carlo algorithm for dynamical fermions},
+Phys.\ Lett.\ B \textbf{519} (2001) 177.
+
+\bibitem{ClarkKennedy2007}
+M.~A.~Clark and A.~D.~Kennedy, \emph{Accelerating dynamical fermion computations using the rational hybrid Monte
+Carlo (RHMC) algorithm with multiple pseudofermion fields}, Phys.\ Rev.\ Lett.\ \textbf{98} (2007) 051601.
+
+\bibitem{Coleman1976}
+S.~Coleman, \emph{More about the massive Schwinger model}, Ann.\ Phys.\ \textbf{101} (1976) 239.
+
+\bibitem{Hetrick1995}
+J.~E.~Hetrick, Y.~Hosotani and S.~Iso, \emph{The massive multi-flavor Schwinger model},
+Phys.\ Lett.\ B \textbf{350} (1995) 92.
+
+\end{thebibliography}
+
+\end{document}

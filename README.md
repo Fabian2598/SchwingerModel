@@ -1,6 +1,6 @@
 # HMC for the Schwinger model
 
-This project implements an MPI-parallel Monte Carlo simulation of the two-flavor Schwinger model using a Hybrid Monte Carlo (HMC) algorithm. The simulation uses Wilson fermions, pseudofermions, and iterative solvers for the fermion operator. For an OpenMP implementation, check the OpenMP branch.
+This project implements an MPI-parallel Monte Carlo simulation of the two-flavor Schwinger model using a Hybrid Monte Carlo (HMC) algorithm. A four-flavor version with Wilson fermions can be compiled separately (see "Four flavors" below). The simulation uses Wilson fermions, pseudofermions, and iterative solvers for the fermion operator. For an OpenMP implementation, check the OpenMP branch.
 
 The number of leapfrog steps is tuned automatically during thermalization to reach a target acceptance rate, at fixed trajectory length. See the "Automatic step-size tuning" section below.
 
@@ -67,6 +67,17 @@ cmake -S . -B build -DCLOVER=ON -DTWISTED_MASS=ON
 cmake --build build
 ```
 
+### Four flavors
+
+The code can also simulate four degenerate flavors of Wilson fermions. The fermion determinant $\det(D)^4 = \det(DD^\dagger)^2$ is represented by two independent pseudofermion fields, each of them with the same action as in the two-flavor case. To compile the four-flavor version:
+
+```bash
+cmake -S . -B build -DFOUR_FLAVORS=ON
+cmake --build build
+```
+
+The runtime parameters are the same as for the two-flavor Wilson build. `-DFOUR_FLAVORS=ON` cannot be combined with `-DCLOVER=ON` or `-DTWISTED_MASS=ON`, and CMake stops with an error if this is attempted. Since the CMake options are cached, use a separate build directory (or pass `-DFOUR_FLAVORS=OFF` explicitly) when switching back to two flavors. The implementation is documented in [HMC_4flavors_doc.tex](HMC_4flavors_doc.tex).
+
 ## Run the simulation
 
 For the default lattice, run the HMC executable with MPI:
@@ -122,7 +133,7 @@ The script `run.sh` edits the lattice dimensions, configures the build if needed
 
 ## Critical mass values
 
-The bare mass parameter must remain above the critical mass to avoid unphysical configurations. The following values are useful guides. They are valid for `csw = 0` (i.e. without the clover term, or with `-DCLOVER=ON` and `csw` set to 0); the critical mass shifts when the clover term is switched on with `csw != 0`.
+The bare mass parameter must remain above the critical mass to avoid unphysical configurations. The following values are useful guides. They are valid for two flavors and `csw = 0` (i.e. without the clover term, or with `-DCLOVER=ON` and `csw` set to 0); the critical mass shifts when the clover term is switched on with `csw != 0`, and it has to be determined anew for the four-flavor theory.
 
 | $\beta$ | $-m_{\mathrm{crit}}$ |
 | :-----: | :------------------: |
@@ -190,6 +201,26 @@ ls -1 -v *.ctxt > confFiles.txt
 ```
 
 in the directory with the configurations. The output of the program are two .txt files with the correlators for the pion and PCAC. The corresponding names are `2D_U1_${NX}x${NT}"_b${BETA}_m${M0}_corr.txt` and `2D_U1_${NX}x${NT}"_b${BETA}_m${M0}_corrPCAC.txt`. This files are used in the Python program to calculate $m_\pi$ and $m_{\mathrm{PCAC}}$.
+
+## Tests
+
+The unit tests use Catch2, which CMake downloads when the tests are enabled. They are meant to be run with 4 MPI ranks:
+
+```bash
+cmake -S . -B build -DBUILD_TESTS=ON
+cmake --build build
+mpirun -n 4 ./build/tests_force
+```
+
+The test executables are `tests_D`, `tests_CG`, `tests_gconf`, `tests_hmc` and `tests_force`. `tests_force` checks the pseudofermion heatbath, $\Phi^\dagger(DD^\dagger)^{-1}\Phi = \chi^\dagger\chi$ for $\Phi = D\chi$, and compares the HMC force with a finite-difference derivative of the HMC action, including links on the time boundary and on the boundaries between ranks. It applies to every build option.
+
+The four-flavor HMC is tested exactly by
+
+```bash
+tests/reweighting/run_reweighting_test.sh
+```
+
+which runs two- and four-flavor chains on a $4\times4$ lattice and checks that the four-flavor averages agree with the two-flavor averages reweighted by $\det(D)^2$, computed from the dense Dirac matrix. The script builds its own copies of the code in a temporary directory, so the lattice size in `CMakeLists.txt` is not modified, and it requires Python 3 with NumPy. With the default settings it takes a few minutes; see the header of the script for the options.
 
 ## Troubleshooting
 

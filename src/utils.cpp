@@ -41,6 +41,7 @@ void print_parameters(){
         std::cout << "**********************************************************************" << std::endl;
         std::cout << "*                              PARAMETERS" << std::endl;
         std::cout << "* Nx = " << LV::Nx << ", Nt = " << LV::Nt << std::endl;
+        std::cout << "* Nf = " << Nf << " degenerate flavors (" << N_pf << " pseudofermion field" << (N_pf > 1 ? "s" : "") << ")" << std::endl;
         std::cout << "* m0 = " << m0 << ", kappa = " << 1/(2*(m0+2)) << std::endl;
         std::cout << "* mu (twisted mass) = " << sim_params::tm << std::endl;
         std::cout << "* csw (clover term constant) = " << sim_params::csw << std::endl;

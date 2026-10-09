@@ -24,7 +24,11 @@ int main(int argc, char **argv) {
     if (mpi::rank == 0){
          //---Input data---//
         std::cerr << "  -----------------------------" << std::endl;
+        #ifdef FOUR_FLAVORS
+        std::cerr << "|  Four-flavor Schwinger model  |" << std::endl;
+        #else
         std::cerr << "|  Two-flavor Schwinger model   |" << std::endl;
+        #endif
         std::cerr << "| Hybrid Monte Carlo simulation |" << std::endl;
         std::cerr << "  -----------------------------" << std::endl;
         std::cerr << "Nx " << LV::Nx << " Nt " << LV::Nt << std::endl;
@@ -138,6 +142,8 @@ int main(int argc, char **argv) {
         Datfile << std::setprecision(17) << sim_params::tm << "\n";
         Datfile << "#csw (clover term constant)\n";
         Datfile << std::setprecision(17) << sim_params::csw << "\n";
+        Datfile << "#Nf (number of degenerate flavors)\n";
+        Datfile << Nf << "\n";
         Datfile.close();
     }
     print_parameters();
