@@ -104,7 +104,8 @@ int main(int argc, char **argv) {
         std::cout << "* Number of ranks on x = " << mpi::ranks_x << ", Number of ranks on t = "  << mpi::ranks_t << std::endl;
         std::cout << "* Total number of MPI ranks = " << mpi::size << std::endl;
         std::cout << "* Each rank has " << mpi::width_x*mpi::width_t << " lattice sites" << std::endl;
-        std::cout << "* Host: " << std::getenv("HOSTNAME") << std::endl;
+        const char* hostname = std::getenv("HOSTNAME");
+        std::cout << "* Host: " << (hostname ? hostname : "unknown") << std::endl;
         std::cout << "**********************************************************************" << std::endl;
     }
     
