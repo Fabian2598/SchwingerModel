@@ -178,6 +178,9 @@ double HMC::Action(GaugeConf& GConfig, const spinor& phi) {
     double local_action = 0.0;
     double action;
     exchange_halo(GConfig.Conf.val);
+    #ifdef CLOVER
+        GConfig.Compute_Q(); //The clover term has to be computed with the links of GConfig, not with the ones of the last force evaluation
+    #endif
     GConfig.Compute_Plaquette01();
     //Gauge contribution
     int n;
@@ -231,6 +234,18 @@ void HMC::HMC_Update() {
         GConf.Compute_Q(); //Terms needed for clover
     #endif
     D_phi(GConf, chi,phi);
+    #ifdef TWISTED_MASS
+        //phi = (D + i mu gamma_5) chi, with gamma_5 = diag(-1,1), since (D + i mu gamma_5)(D + i mu gamma_5)^dagger = DD^dagger + mu^2.
+        //Then phi is distributed according to exp(-phi^dagger (DD^dagger + mu^2)^-1 phi), as required by the action.
+        int n;
+        for(int x = 1; x<=mpi::width_x; x++){
+            for(int t = 1; t<=mpi::width_t; t++){
+                n = x*(mpi::width_t+2)+t;
+                phi.val[2*n]   -= I_number * sim_params::tm * chi.val[2*n];
+                phi.val[2*n+1] += I_number * sim_params::tm * chi.val[2*n+1];
+            }
+        }
+    #endif
     Leapfrog(phi); //Evolve [Pi] and [U] GConf is copied to GConf_copy inside leapfrog
     deltaH = Hamiltonian(GConf_copy, PConf_copy, phi) - Hamiltonian(GConf, PConf, phi); //deltaH = Hamiltonian[U'][Pi'] - [U][Pi]
     double r;
