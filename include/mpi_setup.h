@@ -99,8 +99,8 @@ inline void defineDataTypes(){
     MPI_Type_vector(mpi::width_x,mpi::width_t*2,2*(mpi::width_t+2),MPI_DOUBLE_COMPLEX, &mpi::local_conf_type);
     MPI_Type_commit(&mpi::local_conf_type);
 
-    //The displacement of local_domain_resized is in units of std::complex<double>
-    MPI_Type_create_resized(mpi::local_conf_type, 0, sizeof(std::complex<double>), &mpi::local_conf_resized);
+    //The displacement of local_domain_resized is in units of c_double
+    MPI_Type_create_resized(mpi::local_conf_type, 0, sizeof(c_double), &mpi::local_conf_resized);
     MPI_Type_commit(&mpi::local_conf_resized);
 
     // Gather inner domains from all ranks in the coarse communicator
@@ -114,23 +114,17 @@ inline void defineDataTypes(){
     MPI_Type_commit(&mpi::global_conf_type);
 
     // Resize type so displacements are specified in units of one complex element
-    MPI_Type_create_resized(mpi::global_conf_type, 0, sizeof(std::complex<double>), &mpi::global_conf_resized);
+    MPI_Type_create_resized(mpi::global_conf_type, 0, sizeof(c_double), &mpi::global_conf_resized);
     MPI_Type_commit(&mpi::global_conf_resized);
 
-
-    //Datatype for the halo exchange (spinor: 2 components per site)
-    MPI_Type_vector(mpi::width_x, 2, 2*(mpi::width_t+2), MPI_DOUBLE_COMPLEX, &mpi::column_type);
-    MPI_Type_commit(&mpi::column_type);
-
-    //Datatype for the halo exchange of vectors (1 component per site, no spinor factor)
-    MPI_Type_vector(mpi::width_x, 1, (mpi::width_t+2), MPI_DOUBLE_COMPLEX, &mpi::column_type_vec);
-    MPI_Type_commit(&mpi::column_type_vec);
+    //The halo exchange does not need datatypes: halos are packed into contiguous buffers (see halo_exchange.cpp)
 }
 
 inline void initializeMPI(){
     assignWidth();
     buildCartesianTopology();
     defineDataTypes();
+    backend::init(); //Selects the GPU of this rank (CUDA version). It has to be called before creating any field.
 }
 
 

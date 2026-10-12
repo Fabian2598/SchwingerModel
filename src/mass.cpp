@@ -25,17 +25,6 @@
 
 constexpr int blocks = 20; //Jackknife blocks (change this accordingly to the number of confs you have)
 
-//Read configurations from a list of files
-//Confs is passed by reference so we can fill the caller's buffers.
-void read_confs_from_list(const int nconf, std::vector<GaugeConf*>& Confs, const std::vector<std::string>& filePaths){
-    GaugeConf GConf;
-    for(int conf=0; conf<nconf; conf++){
-        GConf.ReadConf(filePaths[conf]);
-        // Copy the read configuration into the pre-allocated spinor buffer
-        *Confs[conf] = GConf;
-    }
-}
-
 //Write pion correlator to disk
 void write_correlator(const std::vector<double>& data,const std::vector<double>& error, std::string Name){
     std::ofstream Datfile;
@@ -55,7 +44,6 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &mpi::size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi::rank);
 
-    std::vector<GaugeConf*> Confs; //Vector with the gauge configurations
     int nconf = 0; 
     double m0, beta, csw=0; 
     std::string listFilePath;
@@ -104,7 +92,9 @@ int main(int argc, char **argv) {
         std::cout << "* Number of ranks on x = " << mpi::ranks_x << ", Number of ranks on t = "  << mpi::ranks_t << std::endl;
         std::cout << "* Total number of MPI ranks = " << mpi::size << std::endl;
         std::cout << "* Each rank has " << mpi::width_x*mpi::width_t << " lattice sites" << std::endl;
-        std::cout << "* Host: " << std::getenv("HOSTNAME") << std::endl;
+        std::cout << "* Backend: " << backend::description() << std::endl;
+        const char* hostname = std::getenv("HOSTNAME");
+        std::cout << "* Host: " << (hostname ? hostname : "unknown") << std::endl;
         std::cout << "**********************************************************************" << std::endl;
     }
     
@@ -145,13 +135,6 @@ int main(int argc, char **argv) {
     if (mpi::rank2d == 0)
         std::cout << "#" << nconf <<  " confs in " << listFilePath << std::endl;
     
-    for(int confID = 0; confID<nconf; confID++){
-        GaugeConf* temp = new GaugeConf();
-        Confs.push_back(temp);
-    }
-
-
-    
     std::vector<std::vector<double>> CorrMatPi; //Correlation function for each conf.
     std::vector<std::vector<double>> CorrMatAP; 
     std::vector<std::vector<double>> CorrMatPCAC; 
@@ -159,12 +142,11 @@ int main(int argc, char **argv) {
         CorrMatPi.resize(LV::Nt, std::vector<double>(nconf, 0)); // Resize CorrMatPi
         CorrMatAP.resize(LV::Nt, std::vector<double>(nconf, 0));
         CorrMatPCAC.resize(LV::Nt, std::vector<double>(nconf, 0)); 
-        std::cout << "Reading configurations from list ...";
     }
-    read_confs_from_list(nconf, Confs, filePaths); //Read configurations and store them in Confs
-    if (mpi::rank2d == 0) std::cout << " Done!" << std::endl;
-    
-   
+
+    //The configurations are read one at a time, right before computing their correlators,
+    //so that only one of them has to fit in the (GPU) memory.
+    GaugeConf GConf;
 
     //Buffers
     spinor source1(mpi::maxSizeH), source2(mpi::maxSizeH); //source vector
@@ -174,8 +156,8 @@ int main(int argc, char **argv) {
     //------------------------//
     //We need this part for gathering the vectors to the root rank and compute the correlator once 
     //the matrix is inverted 
-    int counts[mpi::size];
-    int displs[mpi::size];
+    std::vector<int> counts(mpi::size);
+    std::vector<int> displs(mpi::size);
     for (int r = 0; r < mpi::size; ++r) {
         counts[r] = 1;
         int rx = r / mpi::ranks_t;
@@ -186,33 +168,39 @@ int main(int argc, char **argv) {
     }
     // index of first inner element (skip halo) in local Conf.val
     int input_ini_local = 2 * (mpi::width_t + 2 + 1); // 2*(1*(width_t+2) + 1) -> 2*(width_t+3)
-    spinor GlobalDcol1((LV::Nt+2)*(LV::Nx+2)*2);
-    spinor GlobalDcol2((LV::Nt+2)*(LV::Nx+2)*2);
+    std::vector<c_double> GlobalDcol1((LV::Nt+2)*(LV::Nx+2)*2);
+    std::vector<c_double> GlobalDcol2((LV::Nt+2)*(LV::Nx+2)*2);
     //-------------------------//
 
-    //Fill initial solution with ones.
+    //Fill initial solution with ones (on the CPU, then copied to the GPU).
+    std::vector<c_double> x0_host(x0.size);
     for(int nx = 1; nx<=mpi::width_x; nx++)
         for(int nt = 1; nt<=mpi::width_t; nt++)
             for(int mu=0; mu<2; mu++)
-                x0.val[idx(nx,nt,mu)]=1;
+                x0_host[idx(nx,nt,mu)]=1;
+    x0.fromHost(x0_host);
 
+    std::vector<c_double> source1_host(source1.size), source2_host(source2.size);
     if (mpi::rank2d == 0){
         int nx = 1, nt = 1;
         int n0 = nx*(mpi::width_t+2) + nt;
-        source1.val[2*n0]   = 1; //First lattice site with mu=0
-        source2.val[2*n0+1] = 1; //First lattice site with mu=1
+        source1_host[2*n0]   = 1; //First lattice site with mu=0
+        source2_host[2*n0+1] = 1; //First lattice site with mu=1
     }
+    source1.fromHost(source1_host);
+    source2.fromHost(source2_host);
 
     
     //--------     Compute correlation functions  --------//
     for(int confID = 0; confID<nconf; confID++){
         if (confID % 100 == 0 && mpi::rank2d == 0)
             std::cout << "--------Computing correlators for conf " << confID << "--------" << std::endl; 
+        GConf.ReadConf(filePaths[confID]);
         //We only need two sources, equivalent to extracting the first two columns of D^-1
-        exchange_halo(Confs[confID]->Conf.val);
-        Confs[confID]->Compute_Q(); 
-        bi_cgstab(*Confs[confID], source1, x0, Dcol1); //D^-1 source = D^-1((nx,nt),(0,0))_alf,0
-        bi_cgstab(*Confs[confID], source2, x0, Dcol2); //D^-1 source = D^-1((nx,nt),(0,0)_alf,1
+        exchange_halo_gauge(GConf.Conf.val);
+        GConf.Compute_Q(); 
+        bi_cgstab(GConf, source1, x0, Dcol1); //D^-1 source = D^-1((nx,nt),(0,0))_alf,0
+        bi_cgstab(GConf, source2, x0, Dcol2); //D^-1 source = D^-1((nx,nt),(0,0)_alf,1
 
         /*
         Note: The proper way of parallelizing the following part is by communicating only among those ranks 
@@ -220,12 +208,14 @@ int main(int argc, char **argv) {
             in different rows that communicate among themselves. The amount of effort for this case is not worth it, so I will just
             gather everything on the root rank and evaluate the correlator there.
         */
-        //Gather local inner blocks into GlobalConf at root
-        MPI_Gatherv(&Dcol1.val[input_ini_local], 1, mpi::local_conf_resized,
-                &GlobalDcol1.val[0], counts, displs, mpi::global_conf_resized,
+        //Copy the solutions to the CPU and gather local inner blocks into GlobalConf at root
+        std::vector<c_double> LocalDcol1 = Dcol1.toHost();
+        std::vector<c_double> LocalDcol2 = Dcol2.toHost();
+        MPI_Gatherv(&LocalDcol1[input_ini_local], 1, mpi::local_conf_resized,
+                GlobalDcol1.data(), counts.data(), displs.data(), mpi::global_conf_resized,
                 0, mpi::cart_comm);
-        MPI_Gatherv(&Dcol2.val[input_ini_local], 1, mpi::local_conf_resized,
-                &GlobalDcol2.val[0], counts, displs, mpi::global_conf_resized,
+        MPI_Gatherv(&LocalDcol2[input_ini_local], 1, mpi::local_conf_resized,
+                GlobalDcol2.data(), counts.data(), displs.data(), mpi::global_conf_resized,
                 0, mpi::cart_comm);
         if (mpi::rank2d == 0){
             int n;
@@ -235,10 +225,10 @@ int main(int argc, char **argv) {
                 double correlator = 0;
                 for(int x=1; x<=LV::Nx; x++){
                     n = x*(LV::Nt+2)+t;
-                    correlator += std::real(GlobalDcol1.val[2*n] * std::conj(GlobalDcol1.val[2*n]))
-                    + std::real(GlobalDcol1.val[2*n+1]    * std::conj(GlobalDcol1.val[2*n+1]))  
-                    + std::real(GlobalDcol2.val[2*n]      * std::conj(GlobalDcol2.val[2*n]))
-                    + std::real(GlobalDcol2.val[2*n+1]    * std::conj(GlobalDcol2.val[2*n+1])); 
+                    correlator += real(GlobalDcol1[2*n] * conj(GlobalDcol1[2*n]))
+                    + real(GlobalDcol1[2*n+1]    * conj(GlobalDcol1[2*n+1]))  
+                    + real(GlobalDcol2[2*n]      * conj(GlobalDcol2[2*n]))
+                    + real(GlobalDcol2[2*n+1]    * conj(GlobalDcol2[2*n+1])); 
                 }
                 correlator *= 1.0/std::sqrt(LV::Nx); //Average over spatial coordinates
                 CorrMatPi[t-1][confID] = correlator;
@@ -250,11 +240,11 @@ int main(int argc, char **argv) {
                 double correlator = 0;
                 for(int x=1; x<=LV::Nx; x++){
                     n = x*(LV::Nt+2)+t;
-                    correlator += std::real(
-                                  GlobalDcol1.val[2*n+1] * std::conj(GlobalDcol1.val[2*n])
-                                + GlobalDcol2.val[2*n+1] * std::conj(GlobalDcol2.val[2*n])
-                                + GlobalDcol1.val[2*n] * std::conj(GlobalDcol1.val[2*n+1])
-                                + GlobalDcol2.val[2*n] * std::conj(GlobalDcol2.val[2*n+1])
+                    correlator += real(
+                                  GlobalDcol1[2*n+1] * conj(GlobalDcol1[2*n])
+                                + GlobalDcol2[2*n+1] * conj(GlobalDcol2[2*n])
+                                + GlobalDcol1[2*n] * conj(GlobalDcol1[2*n+1])
+                                + GlobalDcol2[2*n] * conj(GlobalDcol2[2*n+1])
                                 );
                         //Let us define D^{-1}((x,t)|(0,0))_{alf,bet} := M_{alf,bet}. We are implementing
                         //correlator += M_{1,0} M*_{0,0} + M_{1,1} M*_{0,1} + M_{0,0} M*_{1,0} + M_{0,1} M*_{1,1}
@@ -294,8 +284,6 @@ int main(int argc, char **argv) {
         NameCorrPCAC << "2D_U1_" << LV::Nx << "x" << LV::Nt << "_b" << beta << "_m" << format(m0) << "_" << "corrPCAC" << ".txt";
         write_correlator(CorrPCAC, dCorrPCAC, NameCorrPCAC.str());
     }
-    
-    for (auto ptr : Confs) delete ptr;
     
 
     MPI_Finalize();

@@ -15,10 +15,11 @@ NTHERM=100 #Thermalization
 NMEAS=100 #Measurements
 NSTEPS=1 #Decorrelation steps between measurements
 SAVE=1 #0 do not save confs, 1 save confs
+USE_CUDA=OFF #ON to run on NVIDIA GPUs (one GPU per rank)
 
 
-sed -i "10s/set(NS \".*\")/set(NS \"${NX}\")/" "$CMAKELISTS"
-sed -i "11s/set(NT \".*\")/set(NT \"${NT}\")/" "$CMAKELISTS"
+sed -i "s/set(NS \".*\")/set(NS \"${NX}\")/" "$CMAKELISTS"
+sed -i "s/set(NT \".*\")/set(NT \"${NT}\")/" "$CMAKELISTS"
 
 DIR="build"
 if [ ! -d "$DIR" ]; then
@@ -29,7 +30,7 @@ if [ ! -d "$DIR" ]; then
 fi
 
 echo "--------Compiling for Nx=${NX}, Nt=${NT}--------"
-cmake -S . -B build -DTWISTED_MASS=OFF -DCLOVER=OFF -DBUILD_TESTS=OFF
+cmake -S . -B build -DTWISTED_MASS=OFF -DCLOVER=OFF -DBUILD_TESTS=OFF -DUSE_CUDA=${USE_CUDA}
 cmake --build build
 mv build/SM_${NX}x${NT} . 
 #If compiled with twisted mass or clover, the parameters file must be updated accordingly

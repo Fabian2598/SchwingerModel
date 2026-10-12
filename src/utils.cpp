@@ -1,5 +1,14 @@
 #include "utils.h"
 
+c_double dot(const spinor& X, const spinor& Y) {
+    const c_double* x = X.val;
+    const c_double* y = Y.val;
+    //reduction over all lattice points and spin components
+    return lattice_sum<c_double>([=] HOST_DEVICE (int n){
+        return x[2*n] * conj(y[2*n]) + x[2*n+1] * conj(y[2*n+1]);
+    });
+}
+
  //----------Jackknife---------//
  std::vector<double> samples_mean(std::vector<double> dat, int bin) {
     if (bin < 2 || static_cast<int>(dat.size()) < 2 * bin) {
@@ -54,6 +63,7 @@ void print_parameters(){
         std::cout << "* Number of ranks on x = " << mpi::ranks_x << ", Number of ranks on t = "  << mpi::ranks_t << std::endl;
         std::cout << "* Total number of MPI ranks = " << mpi::size << std::endl;
         std::cout << "* Each rank has " << mpi::width_x*mpi::width_t << " lattice sites" << std::endl;
+        std::cout << "* Backend: " << backend::description() << std::endl;
         const char* hostname = std::getenv("HOSTNAME");
         std::cout << "* Host: " << (hostname ? hostname : "unknown") << std::endl;
         std::cout << "* Start time: " << start_time_str << std::endl;

@@ -2,11 +2,48 @@
 #include <catch2/catch_test_macros.hpp>
 #include "conjugate_gradient.h"
 
+//Spinor with random U(1) entries (generated on the CPU and copied to the GPU)
+spinor random_spinor(){
+    spinor phi(mpi::maxSizeH);
+    std::vector<c_double> phi_host(phi.size);
+    int n;
+	for (int x = 1; x <= mpi::width_x; x++) {
+        for (int t = 1; t <= mpi::width_t; t++) {
+            n = x*(mpi::width_t+2)+t;
+            phi_host[2*n] = RandomU1();
+            phi_host[2*n+1] = RandomU1();
+        }
+    }
+    phi.fromHost(phi_host);
+    return phi;
+}
+
+//Checks on all ranks that two spinors are equal up to tol
+bool equal_spinors(const spinor& a, const spinor& b, const double tol){
+    std::vector<c_double> a_host = a.toHost();
+    std::vector<c_double> b_host = b.toHost();
+    int equal = 1;
+    int n;
+    for (int x = 1; x <= mpi::width_x; x++) {
+        for (int t = 1; t <= mpi::width_t; t++) {
+            n = x*(mpi::width_t+2)+t;
+            for(int mu = 0; mu<2; mu++){
+                if (abs(a_host[2*n+mu]-b_host[2*n+mu]) > tol) {
+                    equal = 0;
+                }
+            }
+        }
+    }
+    int global_equal;
+    MPI_Allreduce(&equal, &global_equal, 1, MPI_INT, MPI_LAND, mpi::cart_comm);
+    return global_equal == 1;
+}
+
 TEST_CASE("CG test convergence", "[CG]") {
     // Create a simple gauge configuration (identity links)
     GaugeConf g;
     g.initialization();
-    exchange_halo(g.Conf.val);
+    exchange_halo_gauge(g.Conf.val);
     #ifdef CLOVER
         g.Compute_Q();
     #endif
@@ -14,17 +51,8 @@ TEST_CASE("CG test convergence", "[CG]") {
     sim_params::tm = 0.01;
     sim_params::csw = 1;
     // Create input spinor with simple values
-    spinor phi(mpi::maxSizeH);
-    int n;
-	for (int x = 1; x <= mpi::width_x; x++) {
-        for (int t = 1; t <= mpi::width_t; t++) {
-            n = x*(mpi::width_t+2)+t;
-            phi.val[2*n] = RandomU1();
-            phi.val[2*n+1] = RandomU1();
-        }
-    }
-        
-    spinor D_phi_output(mpi::maxSizeH);    
+    spinor phi = random_spinor();
+    spinor D_phi_output(mpi::maxSizeH);
 
     CG::print_convergence_message = false;
     int it = conjugate_gradient(g,phi,D_phi_output);
@@ -36,23 +64,14 @@ TEST_CASE("CG converges to the right solution", "[CG sol]") {
     // Create a simple gauge configuration (identity links)
     GaugeConf g;
     g.initialization();
-    exchange_halo(g.Conf.val);
+    exchange_halo_gauge(g.Conf.val);
 
     #ifdef CLOVER
         g.Compute_Q();
     #endif
     // Create input spinor with simple values
-    spinor phi(mpi::maxSizeH);
-    int n;
-	for (int x = 1; x <= mpi::width_x; x++) {
-        for (int t = 1; t <= mpi::width_t; t++) {
-            n = x*(mpi::width_t+2)+t;
-            phi.val[2*n] = RandomU1();
-            phi.val[2*n+1] = RandomU1();
-        }
-    }
-        
-    spinor sol(mpi::maxSizeH);    
+    spinor phi = random_spinor();
+    spinor sol(mpi::maxSizeH);
     spinor D_D_dagg_sol(mpi::maxSizeH);
 
     sim_params::m0 = 0.5;
@@ -62,47 +81,25 @@ TEST_CASE("CG converges to the right solution", "[CG sol]") {
     CG::print_convergence_message = false;
     CG::tol = 1e-12;
     int it = conjugate_gradient(g,phi,sol);
-    
+
 
     D_D_dagger_phi(g,sol,D_D_dagg_sol);
 
-    bool equal = true;
-    for (int x = 1; x <= mpi::width_x; x++) {
-        for (int t = 1; t <= mpi::width_t; t++) {
-            n = x*(mpi::width_t+2)+t;
-            for(int mu = 0; mu<2; mu++){
-                if (std::abs(phi.val[2*n+mu]-D_D_dagg_sol.val[2*n+mu]) > 1e-10) {
-                    equal = false;
-                    break;
-                }
-            }
-        }
-    }
-    
-    REQUIRE(equal);
+    REQUIRE(equal_spinors(phi, D_D_dagg_sol, 1e-10));
 }
 
 TEST_CASE("Clover vs No Clover", "[CG clover and no clover]") {
     // Create a simple gauge configuration (identity links)
     GaugeConf g;
     g.initialization();
-    exchange_halo(g.Conf.val);
+    exchange_halo_gauge(g.Conf.val);
 
     #ifdef CLOVER
         g.Compute_Q();
     #endif
     // Create input spinor with simple values
-    spinor phi(mpi::maxSizeH);
-    int n;
-	for (int x = 1; x <= mpi::width_x; x++) {
-        for (int t = 1; t <= mpi::width_t; t++) {
-            n = x*(mpi::width_t+2)+t;
-            phi.val[2*n] = RandomU1();
-            phi.val[2*n+1] = RandomU1();
-        }
-    }
-        
-    spinor sol(mpi::maxSizeH);    
+    spinor phi = random_spinor();
+    spinor sol(mpi::maxSizeH);
     spinor D_D_dagg_sol(mpi::maxSizeH);
 
     sim_params::m0 = 0.5;
@@ -117,44 +114,18 @@ TEST_CASE("Clover vs No Clover", "[CG clover and no clover]") {
 
     D_D_dagger_phi(g,sol,D_D_dagg_sol);
 
-    bool equal = true;
-    for (int x = 1; x <= mpi::width_x; x++) {
-        for (int t = 1; t <= mpi::width_t; t++) {
-            n = x*(mpi::width_t+2)+t;
-            for(int mu = 0; mu<2; mu++){
-                if (std::abs(phi.val[2*n+mu]-D_D_dagg_sol.val[2*n+mu]) > 1e-10) {
-                    equal = false;
-                    break;
-                }
-            }
-        }
-    }
-    
-    REQUIRE(equal);
+    REQUIRE(equal_spinors(phi, D_D_dagg_sol, 1e-10));
 
     sim_params::csw = 0;
 
-    spinor sol_no_clover(mpi::maxSizeH);  
-    spinor D_D_dagg_sol_no_clover(mpi::maxSizeH);  
+    spinor sol_no_clover(mpi::maxSizeH);
+    spinor D_D_dagg_sol_no_clover(mpi::maxSizeH);
     it = conjugate_gradient(g,phi,sol_no_clover);
     if (mpi::rank == 0)
         std::cout << "Test with no clover converged in " << it << " iterations\n";
     D_D_dagger_phi(g,sol_no_clover,D_D_dagg_sol_no_clover);
 
-    equal = true;
-    for (int x = 1; x <= mpi::width_x; x++) {
-        for (int t = 1; t <= mpi::width_t; t++) {
-            n = x*(mpi::width_t+2)+t;
-            for(int mu = 0; mu<2; mu++){
-                if (std::abs(phi.val[2*n+mu]-D_D_dagg_sol_no_clover.val[2*n+mu]) > 1e-10) {
-                    equal = false;
-                    break;
-                }
-            }
-        }
-    }
-    
-    REQUIRE(equal);
+    REQUIRE(equal_spinors(phi, D_D_dagg_sol_no_clover, 1e-10));
 }
 
 

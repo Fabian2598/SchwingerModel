@@ -9,7 +9,7 @@ TEST_CASE("HMC", "[HMC]") {
     sim_params::trajectory_length = 1;
     sim_params::MD_steps = 5;
     sim_params::Ntherm = 1;
-    sim_params::Nmeas = 1;
+    sim_params::Nmeas = 40; //HMC_algorithm computes jackknife errors with 20 bins, which needs at least 40 measurements
     sim_params::Nsteps = 1;
     sim_params::m0 = 1;
     sim_params::tm = 0.5;
@@ -19,11 +19,12 @@ TEST_CASE("HMC", "[HMC]") {
 
     GaugeConf GConf = GaugeConf();  //Initial gauge configuration         
     HMC hmc = HMC(GConf,MD_steps, trajectory_length, Ntherm, Nmeas, Nsteps, beta, LV::Nx, LV::Nt, m0,saveconf);   
-    double begin = MPI_Wtime();
     hmc.HMC_algorithm();
-    double end = MPI_Wtime();
 
-    REQUIRE(true);
+    //Average plaquette and gauge action per site have to be finite, Re U_01 is in [-1,1]
+    REQUIRE(std::isfinite(hmc.getEp()));
+    REQUIRE(std::isfinite(hmc.getgS()));
+    REQUIRE(std::abs(hmc.getEp()) <= 1.0);
 
 }
 

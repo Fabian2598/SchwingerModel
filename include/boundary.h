@@ -3,57 +3,62 @@
 
 #include "mpi_setup.h"
 
+/*
+    Geometry of the local lattice of this rank. Global variables cannot be read on the GPU, so the kernels
+    capture a copy of this struct (see local_lattice() below) to find neighbors and boundary signs.
+*/
+struct LocalLattice {
+    int width_x;  //number of lattice sites on x (no halo)
+    int width_t;  //number of lattice sites on t (no halo)
+    bool first_t; //the rank holds the first time slice of the global lattice (antiperiodic boundary in time)
+    bool last_t;  //the rank holds the last time slice of the global lattice
+};
+
+inline LocalLattice local_lattice(){
+    LocalLattice lat;
+    lat.width_x = mpi::width_x;
+    lat.width_t = mpi::width_t;
+    lat.first_t = (mpi::rank2d % mpi::ranks_t == 0);
+    lat.last_t  = ((mpi::rank2d+1) % mpi::ranks_t == 0);
+    return lat;
+}
 
 /*
 mu = 0 -> t
 mu = 1 -> x
-                    t                    
-    0  +--------------------------+  Nt   
+                    t
+    0  +--------------------------+  Nt
        |                          |
        |            up    		    |
        |                          |
-    x  |    left    n  right      |   
+    x  |    left    n  right      |
        |                          |
        |           down           |
        |                          |
-    Nx +--------------------------+ Nt  
+    Nx +--------------------------+ Nt
+
+    n = x * (width_t+2) + t is the local index of the site (x,t), halo included
 */
-inline void get_neighbors(const int x, const int t, int& right, int& down, int& left, int& up, double &rsign, double &lsign){
-   int xp = x+1;
-   int xm = x-1;
-   int tp = t+1;
-   int tm = t-1;
-   int n = x * (mpi::width_t+2) + t;
+HOST_DEVICE inline void get_neighbors(const LocalLattice& lat, const int n, int& right, int& down, int& left, int& up, double &rsign, double &lsign){
+   const int t = n % (lat.width_t+2);
 
    //Periodic boundary is already considered in the halo exchange due to the rank topology
    //Neighbor coordinates
-   right   = x*(mpi::width_t+2)+tp;    //Right
-   down    = xp*(mpi::width_t+2)+t;    //Down
-   left    = x*(mpi::width_t+2)+tm;    //Left
-   up      = xm*(mpi::width_t+2)+t;    //Up
+   right   = n+1;                //Right (x,t+1)
+   down    = n+(lat.width_t+2);  //Down  (x+1,t)
+   left    = n-1;                //Left  (x,t-1)
+   up      = n-(lat.width_t+2);  //Up    (x-1,t)
 
-   rsign = 1;
-   lsign = 1;
-
-	if ((mpi::rank2d+1) % mpi::ranks_t == 0){
-		rsign = (t == mpi::width_t) ? -1 : 1;  //sign for the right boundary in time
-	} 
-	if (mpi::rank2d % mpi::ranks_t == 0){
-		lsign = (t == 1) ? -1 : 1;             //sign for the left boundary in time	
-	}
+   rsign = (lat.last_t  && t == lat.width_t) ? -1 : 1;  //sign for the right boundary in time
+   lsign = (lat.first_t && t == 1) ? -1 : 1;            //sign for the left boundary in time
 }
 
-inline void get_corners(const int x, const int t, int& x1_t_1, int& x_1_t_1,int& x_1_t1, int& x1_t1){
-   int xp = x+1;
-   int xm = x-1;
-   int tp = t+1;
-   int tm = t-1;
-
-   x1_t_1 = xp*(mpi::width_t+2)+tm;//(x+1,t-1)
-   x_1_t_1 = xm*(mpi::width_t+2)+tm; //(x-1,t-1)
-   x_1_t1 = xm*(mpi::width_t+2)+tp; //(x-1,t+1)
-   x1_t1 = xp*(mpi::width_t+2)+tp; //(x+1,t+1)
-
+HOST_DEVICE inline void get_corners(const LocalLattice& lat, const int n, int& x1_t_1, int& x_1_t_1,int& x_1_t1, int& x1_t1){
+   const int row = lat.width_t+2;
+   x1_t_1  = n+row-1; //(x+1,t-1)
+   x_1_t_1 = n-row-1; //(x-1,t-1)
+   x_1_t1  = n-row+1; //(x-1,t+1)
+   x1_t1   = n+row+1; //(x+1,t+1)
 }
 
 #endif

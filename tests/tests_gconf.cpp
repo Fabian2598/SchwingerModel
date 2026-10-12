@@ -6,41 +6,45 @@ TEST_CASE("GaugeConf plaquette", "[Plaquette]") {
     // Create a simple gauge configuration (identity links)
     GaugeConf g;
     g.initialization();
-    exchange_halo(g.Conf.val);
+    exchange_halo_gauge(g.Conf.val);
     g.Compute_Plaquette01();
 
-    bool u1_vars = true; //we check that the plaquettes are U1 vars
+    std::vector<c_double> plaquette = g.Plaquette01.toHost();
+    int u1_vars = 1; //we check that the plaquettes are U1 vars
     for(int x = 1; x<=mpi::width_x; x++){
 		for(int t = 1; t<=mpi::width_t; t++){
 			int n = x*(mpi::width_t+2)+t;
-            if (std::abs(g.Plaquette01[n] * std::conj(g.Plaquette01[n]) - 1.0) > 1e-10){
-                u1_vars = false;
-                break;
+            if (abs(plaquette[n] * conj(plaquette[n]) - 1.0) > 1e-10){
+                u1_vars = 0;
             }
         }
     }
-    REQUIRE(u1_vars);
+    int global_u1_vars;
+    MPI_Allreduce(&u1_vars, &global_u1_vars, 1, MPI_INT, MPI_LAND, mpi::cart_comm);
+    REQUIRE(global_u1_vars == 1);
 }
 
 TEST_CASE("GaugeConf Q01 = Q10^+", "[Q01 and Q10]") {
     // Create a simple gauge configuration (identity links)
     GaugeConf g;
     g.initialization();
-    exchange_halo(g.Conf.val);
+    exchange_halo_gauge(g.Conf.val);
     g.Compute_Q();
 
-    bool notzero = true; //check that Q01 = Q10^+ for all n
+    std::vector<c_double> Q01 = g.Q01.toHost();
+    std::vector<c_double> Q10 = g.Q10.toHost();
+    int notzero = 1; //check that Q01 = Q10^+ for all n
     for(int x = 1; x<=mpi::width_x; x++){
 		for(int t = 1; t<=mpi::width_t; t++){
 			int n = x*(mpi::width_t+2)+t;
-            if (std::abs( g.Q01[n] - std::conj(g.Q10[n]) ) > 1e-10){
-                notzero = false;
-                break;
+            if (abs( Q01[n] - conj(Q10[n]) ) > 1e-10){
+                notzero = 0;
             }
-        }    
+        }
     }
-
-    REQUIRE(notzero);
+    int global_notzero;
+    MPI_Allreduce(&notzero, &global_notzero, 1, MPI_INT, MPI_LAND, mpi::cart_comm);
+    REQUIRE(global_notzero == 1);
 }
 
 
@@ -61,7 +65,7 @@ int main(int argc, char* argv[])
         return 0;
     }
     initializeMPI();
-    
+
     int result = Catch::Session().run(argc, argv);
     MPI_Finalize();
 

@@ -7,6 +7,7 @@
 #include <random>
 #include <fstream>
 #include <sstream>
+#include <type_traits>
 
 /*
     Linearized index for a spinor
@@ -23,6 +24,31 @@ inline int idx(int x, int t, int mu) {
 */
 inline int idx_vec(int x, int t){
     return (x*(mpi::width_t+2) + t);
+}
+
+/*
+    Executes f(n) for every site n = x*(width_t+2)+t of the local lattice (halo excluded).
+    With CUDA this is a GPU kernel with one thread per lattice site, check backend.h for the rules
+    the lambda f has to follow. Usage:
+        for_each_site([=] HOST_DEVICE (int n){ ... });
+*/
+template <typename F>
+inline void for_each_site(F f){
+    backend::for_sites(mpi::width_x, mpi::width_t, f);
+}
+
+/*
+    Sum of f(n) over all the lattice sites of all the ranks, T = double or c_double.
+    f can also update fields at site n, which fuses vector updates and reductions in one kernel.
+        double s = lattice_sum<double>([=] HOST_DEVICE (int n){ return ...; });
+*/
+template <typename T, typename F>
+inline T lattice_sum(F f){
+    T local_sum = backend::sum_sites<T>(mpi::width_x, mpi::width_t, f);
+    T sum;
+    MPI_Allreduce(&local_sum, &sum, 1, std::is_same_v<T, double> ? MPI_DOUBLE : MPI_DOUBLE_COMPLEX,
+                  MPI_SUM, mpi::cart_comm);
+    return sum;
 }
 
 /*
@@ -52,21 +78,7 @@ inline std::string format(double val) {
     dot product between two spinors
     A.B = sum_i A_i conj(B_i) 
 */
-inline c_double dot(const spinor& X, const spinor& Y) {
-    c_double local_z = 0;
-    //reduction over all lattice points and spin components
-    int n;
-    for(int x = 1; x<=mpi::width_x; x++){
-        for(int t = 1; t<=mpi::width_t; t++){
-            n = x*(mpi::width_t+2)+t;
-            local_z += X.val[2*n]   * std::conj(Y.val[2*n]);
-            local_z += X.val[2*n+1] * std::conj(Y.val[2*n+1]);
-        }
-    }
-    c_double z;
-    MPI_Allreduce(&local_z, &z, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, mpi::cart_comm);
-    return z;
-}
+c_double dot(const spinor& X, const spinor& Y);
 
 
 //mean of a vector

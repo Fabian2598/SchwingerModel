@@ -26,7 +26,6 @@ void D_dagger_phi(const GaugeConf& GConf, const spinor&  phi, spinor&  Dphi);
 	Application of D D^+
 	It just calls the previous functions
 */
-extern spinor ddagg_buffer;
 void D_D_dagger_phi(const GaugeConf& GConf, const spinor& phi, spinor &Dphi);
 
 /*
