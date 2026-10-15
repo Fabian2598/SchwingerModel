@@ -12,6 +12,7 @@ build_w/
 build_tm/
 build_csw/
 build_4f/
+build_4flavors/
 SM_env/
 mass_script.sh
 HMC_4flavors_doc.tex
